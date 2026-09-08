@@ -186,6 +186,30 @@
   .section-pad{padding:88px 0;}
   .divider{border:none;border-top:1px dashed var(--line);margin:0;}
 
+  /* ---------- Showcase 3D ---------- */
+  .showcase3d-stage{
+    position:relative;width:100%;height:520px;
+    border:1px solid var(--line-soft);border-radius:var(--radius-md);overflow:hidden;
+    background:radial-gradient(ellipse at 50% 30%, var(--bg-2) 0%, var(--bg-0) 70%);
+    cursor:grab;touch-action:none;
+  }
+  .showcase3d-stage:active{cursor:grabbing;}
+  .showcase3d-stage canvas{display:block;width:100%;height:100%;}
+  .showcase3d-hint{
+    position:absolute;left:18px;bottom:14px;z-index:2;
+    font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--ivory-faint);
+    background:rgba(15,31,23,0.6);padding:6px 10px;border-radius:12px;border:1px solid var(--line-soft);
+    pointer-events:none;transition:opacity .4s ease;
+  }
+  .showcase3d-stage.is-interacted .showcase3d-hint{opacity:0;}
+  .showcase3d-fallback{
+    display:none;position:absolute;inset:0;align-items:center;justify-content:center;text-align:center;
+    color:var(--ivory-faint);font-size:14px;padding:24px;font-family:'JetBrains Mono',monospace;
+  }
+  .showcase3d-stage.no-webgl .showcase3d-fallback{display:flex;}
+  .showcase3d-stage.no-webgl canvas{display:none;}
+  @media (max-width:760px){ .showcase3d-stage{height:380px;} }
+
   /* ---------- Process ---------- */
   .process-alt{background:var(--bg-1);}
   .process-track{
@@ -417,6 +441,20 @@
           <a href="#recherche" class="btn btn-primary">Lancer une recherche</a>
           <a href="#catalogue" class="btn btn-outline">Voir le catalogue</a>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SHOWCASE 3D -->
+  <section class="section-pad showcase-3d" id="apercu3d">
+    <div class="wrap">
+      <div class="section-head">
+        <h2>Aperçu 3D interactif</h2>
+        <p>Faites pivoter le véhicule pour l'observer sous tous les angles — glissez avec la souris ou le doigt.</p>
+      </div>
+      <div class="showcase3d-stage" id="showcase3dStage">
+        <div class="showcase3d-hint">Glisser pour tourner</div>
+        <div class="showcase3d-fallback">Aperçu 3D indisponible sur cet appareil.</div>
       </div>
     </div>
   </section>
@@ -755,6 +793,132 @@
     confirmPanel.classList.remove('is-visible');
   });
 
+})();
+</script>
+
+<!-- ---------- Showcase 3D (Three.js) ---------- -->
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js';
+
+(function initShowcase3D(){
+  var stage = document.getElementById('showcase3dStage');
+  if(!stage) return;
+
+  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  var renderer;
+  try{
+    renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
+  }catch(e){
+    renderer = null;
+  }
+  if(!renderer || !renderer.getContext()){
+    stage.classList.add('no-webgl');
+    return;
+  }
+
+  var width = stage.clientWidth || 1, height = stage.clientHeight || 1;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setSize(width, height);
+  stage.insertBefore(renderer.domElement, stage.firstChild);
+
+  var scene = new THREE.Scene();
+  scene.fog = new THREE.Fog(0x0f1f17, 8, 22);
+
+  var camera = new THREE.PerspectiveCamera(38, width / height, 0.1, 100);
+  camera.position.set(4.2, 2.4, 5.6);
+
+  scene.add(new THREE.AmbientLight(0xc7c0a8, 0.6));
+  var key = new THREE.DirectionalLight(0xf2eedf, 1.15);
+  key.position.set(5, 8, 4);
+  scene.add(key);
+  var rim = new THREE.DirectionalLight(0xcda05c, 0.65);
+  rim.position.set(-6, 3, -4);
+  scene.add(rim);
+
+  var grid = new THREE.GridHelper(24, 24, 0x3a5942, 0x26402f);
+  grid.position.y = -0.02;
+  scene.add(grid);
+
+  // ---- Stylised low-poly car, built from primitives ----
+  var car = new THREE.Group();
+  var bodyMat = new THREE.MeshStandardMaterial({ color: 0xcda05c, metalness: 0.55, roughness: 0.32 });
+  var cabinMat = new THREE.MeshStandardMaterial({ color: 0xf2eedf, metalness: 0.15, roughness: 0.12, transparent: true, opacity: 0.78 });
+  var wheelMat = new THREE.MeshStandardMaterial({ color: 0x14231a, metalness: 0.25, roughness: 0.65 });
+  var accentMat = new THREE.MeshStandardMaterial({ color: 0xb0453a, metalness: 0.4, roughness: 0.4 });
+
+  var body = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.5, 1.5), bodyMat);
+  body.position.y = 0.5;
+  car.add(body);
+
+  var nose = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.42, 1.42), bodyMat);
+  nose.position.set(1.75, 0.46, 0);
+  car.add(nose);
+
+  var cabin = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.55, 1.3), cabinMat);
+  cabin.position.set(-0.15, 0.98, 0);
+  car.add(cabin);
+
+  var spoiler = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.35, 1.5), accentMat);
+  spoiler.position.set(-1.62, 0.95, 0);
+  car.add(spoiler);
+
+  var wheelGeo = new THREE.CylinderGeometry(0.42, 0.42, 0.32, 20);
+  [[1.05, 0.42, 0.85], [1.05, 0.42, -0.85], [-1.05, 0.42, 0.85], [-1.05, 0.42, -0.85]].forEach(function(pos){
+    var wheel = new THREE.Mesh(wheelGeo, wheelMat);
+    wheel.rotation.z = Math.PI / 2;
+    wheel.position.set(pos[0], pos[1], pos[2]);
+    car.add(wheel);
+  });
+
+  scene.add(car);
+
+  var controls = new OrbitControls(camera, renderer.domElement);
+  controls.target.set(0, 0.5, 0);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.enablePan = false;
+  controls.minDistance = 4;
+  controls.maxDistance = 9;
+  controls.maxPolarAngle = Math.PI / 2 - 0.03;
+  controls.autoRotate = !reduceMotion;
+  controls.autoRotateSpeed = 1.1;
+
+  ['pointerdown', 'wheel'].forEach(function(evt){
+    renderer.domElement.addEventListener(evt, function(){
+      stage.classList.add('is-interacted');
+    }, { passive: true });
+  });
+
+  var ro = new ResizeObserver(function(){
+    var w = stage.clientWidth || 1, h = stage.clientHeight || 1;
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, h);
+  });
+  ro.observe(stage);
+
+  var isVisible = true;
+  if('IntersectionObserver' in window){
+    var io = new IntersectionObserver(function(entries){
+      isVisible = entries[0].isIntersecting;
+    }, { threshold: 0.1 });
+    io.observe(stage);
+  }
+
+  var running = true;
+  document.addEventListener('visibilitychange', function(){
+    running = !document.hidden;
+  });
+
+  function animate(){
+    requestAnimationFrame(animate);
+    if(!running || !isVisible) return;
+    controls.update();
+    renderer.render(scene, camera);
+  }
+  animate();
 })();
 </script>
 
