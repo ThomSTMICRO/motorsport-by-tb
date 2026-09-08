@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Formation — Achat-revente et importation automobile | MOTORSPORT By TB</title>
+<meta name="description" content="Formation et accompagnement à l'achat-revente et à l'importation automobile, par Thomas Bona — MOTORSPORT by TB.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Fraunces:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /*
+    Cette page assemble les "slides" transmises (PDF de formation) en une
+    présentation défilante et animée. Chaque diapositive est une <section
+    class="fslide"> autonome, alternant fond sombre / clair comme dans le
+    PDF source. Pour ajouter une nouvelle diapositive plus tard : dupliquer
+    un bloc <section class="fslide ...">…</section>, lui donner un id
+    unique et l'ajouter à la liste de points de navigation (.deck-dots).
+  */
+  :root{
+    --bg-0:#0F1F17;
+    --bg-1:#142A20;
+    --bg-2:#1B3527;
+    --line:#3A5942;
+    --line-soft:#26402F;
+    --ivory:#F2EEDF;
+    --ivory-dim:#C7C0A8;
+    --ivory-faint:#8FA394;
+    --brass:#CDA05C;
+    --red:#B0453A;
+    --green:#3C7A52;
+    --green-dim:#2E6B45;
+
+    --paper:#FBFAF6;
+    --paper-2:#F2F0E8;
+    --ink:#14231A;
+    --ink-dim:#5B6B60;
+    --ink-faint:#8A9690;
+    --line-light:#E1DDD0;
+
+    --radius-sm:3px;
+    --radius-md:8px;
+    --maxw:1180px;
+  }
+
+  *,*::before,*::after{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:var(--bg-0);
+    color:var(--ivory);
+    font-family:'Fraunces',Georgia,serif;
+    font-weight:400;
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3,.display{
+    font-family:'Oswald',sans-serif;
+    font-weight:600;
+    letter-spacing:0.01em;
+    margin:0;
+  }
+  p{margin:0 0 1em 0;}
+  a{color:inherit;}
+  .mono{font-family:'JetBrains Mono',monospace;}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 32px;}
+
+  a:focus-visible,button:focus-visible{outline:2px solid var(--brass);outline-offset:3px;}
+
+  /* ---------- Top bar ---------- */
+  .deck-topbar{
+    position:fixed;top:0;left:0;right:0;z-index:60;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:18px 28px;
+    pointer-events:none;
+  }
+  .deck-topbar > *{pointer-events:auto;}
+  .back-link{
+    display:inline-flex;align-items:center;gap:8px;
+    text-decoration:none;color:var(--ivory-dim);
+    font-family:'Oswald',sans-serif;font-size:13px;font-weight:500;letter-spacing:.03em;
+    background:rgba(15,31,23,0.55);backdrop-filter:blur(6px);
+    border:1px solid var(--line-soft);border-radius:20px;
+    padding:8px 16px 8px 12px;
+    transition:border-color .2s ease, color .2s ease;
+  }
+  .back-link:hover{color:var(--ivory);border-color:var(--brass);}
+  .back-link svg{width:14px;height:14px;flex-shrink:0;}
+
+  .progress-track{
+    position:fixed;top:0;left:0;right:0;height:2px;z-index:70;
+    background:transparent;
+  }
+  .progress-fill{
+    height:100%;width:0%;background:var(--brass);
+    transition:width .1s linear;
+  }
+
+  /* ---------- Slide dots nav ---------- */
+  .deck-dots{
+    position:fixed;right:22px;top:50%;transform:translateY(-50%);
+    z-index:60;display:flex;flex-direction:column;gap:12px;
+  }
+  .deck-dots button{
+    width:9px;height:9px;border-radius:50%;padding:0;
+    background:transparent;border:1.5px solid var(--ivory-faint);
+    cursor:pointer;position:relative;
+    transition:background .2s ease, border-color .2s ease, transform .2s ease;
+  }
+  .deck-dots button::after{
+    content:attr(data-label);
+    position:absolute;right:20px;top:50%;transform:translateY(-50%);
+    font-family:'Oswald',sans-serif;font-size:11.5px;letter-spacing:.02em;
+    color:var(--ivory-dim);white-space:nowrap;
+    opacity:0;pointer-events:none;transition:opacity .15s ease;
+    background:rgba(15,31,23,0.85);padding:4px 9px;border-radius:4px;
+    border:1px solid var(--line-soft);
+  }
+  .deck-dots button:hover::after{opacity:1;}
+  .deck-dots button.is-active{background:var(--brass);border-color:var(--brass);transform:scale(1.25);}
+  @media (max-width:760px){ .deck-dots{display:none;} }
+
+  /* ---------- Slide base ---------- */
+  .fslide{
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    position:relative;
+    padding:120px 0 80px;
+    scroll-margin-top:0;
+  }
+  .fslide-dark{background:var(--bg-0);color:var(--ivory);}
+  .fslide-light{background:var(--paper);color:var(--ink);}
+  .fslide-inner{width:100%;}
+
+  .eyebrow{
+    font-family:'JetBrains Mono',monospace;font-size:13px;letter-spacing:.02em;
+    color:var(--brass);margin-bottom:18px;
+  }
+  .fslide-light .eyebrow{color:var(--green-dim);}
+
+  .fslide h2{font-size:clamp(30px,4.6vw,54px);line-height:1.08;margin-bottom:18px;}
+  .fslide-dark h2{color:var(--ivory);}
+  .fslide-light h2{color:var(--ink);}
+  .fslide .lead{
+    font-size:17px;max-width:56ch;
+  }
+  .fslide-dark .lead{color:var(--ivory-dim);}
+  .fslide-light .lead{color:var(--ink-dim);}
+  .hr{border:none;border-top:1px dashed var(--line);margin:34px 0;}
+  .fslide-light .hr{border-top-color:var(--line-light);}
+
+  /* ---------- Reveal-on-scroll ---------- */
+  .rv{
+    opacity:0;
+    transform:translateY(26px);
+    transition:opacity .7s cubic-bezier(.2,.7,.2,1), transform .7s cubic-bezier(.2,.7,.2,1);
+    transition-delay:calc(var(--d, 0) * 90ms);
+  }
+  .fslide.is-visible .rv{opacity:1;transform:translateY(0);}
+  @media (prefers-reduced-motion:reduce){
+    .rv{transition:none;opacity:1;transform:none;}
+    html{scroll-behavior:auto;}
+  }
+
+  /* ---------- Slide 01 — Hero ---------- */
+  .s-hero .hero-title{font-size:clamp(38px,6vw,68px);line-height:1.04;margin-bottom:24px;max-width:16ch;}
+  .s-hero .lead{font-size:19px;max-width:52ch;margin-bottom:36px;}
+  .s-hero .signature{display:flex;align-items:center;gap:18px;margin-top:44px;padding-top:22px;border-top:1px solid var(--line-soft);}
+  .s-hero .signature .name{font-family:'Oswald',sans-serif;font-weight:600;font-size:15px;}
+  .s-hero .signature .org{color:var(--ivory-faint);font-size:13.5px;}
+  .brandmark{
+    font-family:'Oswald',sans-serif;font-style:italic;font-weight:500;letter-spacing:.03em;
+    color:var(--ivory-faint);font-size:14px;position:absolute;right:32px;top:130px;
+    transform:rotate(-2deg);
+  }
+  @media (max-width:760px){ .brandmark{display:none;} }
+  .scroll-cue{
+    position:absolute;bottom:36px;left:50%;transform:translateX(-50%);
+    display:flex;flex-direction:column;align-items:center;gap:8px;
+    color:var(--ivory-faint);font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.08em;
+  }
+  .scroll-cue svg{width:14px;height:14px;animation:bob 1.8s ease-in-out infinite;}
+  @keyframes bob{0%,100%{transform:translateY(0);}50%{transform:translateY(6px);}}
+  @media (prefers-reduced-motion:reduce){ .scroll-cue svg{animation:none;} }
+
+  /* ---------- Slide 02 — Stats ---------- */
+  .stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin-top:10px;}
+  .stat-card{padding:26px 28px 26px 0;border-right:1px solid var(--line-light);}
+  .stat-card:last-child{border-right:none;}
+  .stat-num{font-family:'Oswald',sans-serif;font-weight:700;font-size:clamp(34px,4.6vw,52px);color:var(--green);margin-bottom:8px;}
+  .stat-label{font-family:'Oswald',sans-serif;font-weight:600;font-size:16.5px;margin-bottom:6px;color:var(--ink);}
+  .stat-note{font-size:14px;color:var(--ink-dim);}
+  .closing-line{font-style:italic;font-size:16.5px;color:var(--ink-dim);margin-top:32px;}
+  @media (max-width:760px){
+    .stat-grid{grid-template-columns:1fr;gap:22px;}
+    .stat-card{border-right:none;border-bottom:1px solid var(--line-light);padding:0 0 22px;}
+  }
+
+  /* ---------- Slide 03 — Table rows ---------- */
+  .fact-row{display:grid;grid-template-columns:0.85fr 1.4fr;gap:28px;padding:26px 0;border-bottom:1px solid var(--line-soft);align-items:start;}
+  .fact-row:first-of-type{border-top:1px solid var(--line-soft);}
+  .fact-row h3{font-size:20px;color:var(--ivory);}
+  .fact-row p{color:var(--ivory-dim);font-size:15.5px;margin:0;}
+  @media (max-width:640px){ .fact-row{grid-template-columns:1fr;gap:8px;} }
+
+  /* ---------- Slide 04 — Split ---------- */
+  .split{display:grid;grid-template-columns:0.9fr 1.1fr;min-height:100vh;width:100%;}
+  .split-panel{display:flex;align-items:center;padding:120px 48px;}
+  .split-panel.panel-dark{background:var(--bg-0);}
+  .split-panel.panel-list{background:var(--paper);}
+  .split-panel h2{font-size:clamp(28px,3.6vw,44px);}
+  .access-list{list-style:none;margin:0;padding:0;width:100%;}
+  .access-list li{padding:18px 0;border-bottom:1px solid var(--line-light);}
+  .access-list li:first-child{border-top:1px solid var(--line-light);}
+  .access-list h3{font-family:'Oswald',sans-serif;font-weight:600;font-size:17.5px;color:var(--ink);margin-bottom:6px;}
+  .access-list p{color:var(--ink-dim);font-size:14.5px;margin:0;}
+  @media (max-width:820px){
+    .split{grid-template-columns:1fr;}
+    .split-panel{padding:64px 28px;min-height:auto;}
+    .split-panel.panel-dark{padding-top:150px;}
+  }
+
+  /* ---------- Slide 05 — Modules grid ---------- */
+  .module-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px;background:var(--line-light);border:1px solid var(--line-light);margin-top:8px;}
+  .module-card{background:var(--paper);padding:24px 26px;}
+  .module-card.is-key{background:var(--bg-0);}
+  .module-card h3{font-family:'Oswald',sans-serif;font-weight:600;font-size:18px;color:var(--ink);margin-bottom:8px;}
+  .module-card.is-key h3{color:var(--ivory);}
+  .module-card p{font-size:14.5px;color:var(--ink-dim);margin:0;}
+  .module-card.is-key p{color:var(--ivory-dim);}
+  @media (max-width:640px){ .module-grid{grid-template-columns:1fr;} }
+
+  /* ---------- Slide 06 — Two paths ---------- */
+  .path-panel h2{font-size:clamp(26px,3.4vw,40px);margin-bottom:22px;}
+  .path-list{list-style:none;margin:22px 0 0;padding:0;display:flex;flex-direction:column;gap:14px;}
+  .path-list li{position:relative;padding-left:22px;font-size:15px;}
+  .split-panel.panel-list .path-list li{color:var(--ink-dim);}
+  .split-panel.panel-dark .path-list li{color:var(--ivory-dim);}
+  .path-list li::before{content:"";position:absolute;left:0;top:9px;width:6px;height:6px;border-radius:50%;background:var(--green);}
+  .split-panel.panel-dark .path-list li::before{background:var(--brass);}
+
+  /* ---------- Slide 07 — Timeline ---------- */
+  .timeline{position:relative;margin-top:16px;padding-left:0;}
+  .tl-step{display:grid;grid-template-columns:56px 1fr;gap:0;position:relative;}
+  .tl-marker-col{display:flex;flex-direction:column;align-items:center;}
+  .tl-dot{width:16px;height:16px;border-radius:50%;background:var(--bg-0);border:2px solid var(--green);flex-shrink:0;margin-top:6px;}
+  .tl-line{width:1px;flex:1;background:var(--line-light);min-height:56px;}
+  .tl-step:last-child .tl-line{display:none;}
+  .tl-body{padding:0 0 40px 22px;}
+  .tl-body h3{font-family:'Oswald',sans-serif;font-weight:600;font-size:19px;color:var(--ink);margin-bottom:6px;}
+  .tl-body p{color:var(--ink-dim);font-size:15px;margin:0;}
+
+  /* ---------- Slide 08 — Three cards ---------- */
+  .trio-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:32px;margin-top:36px;}
+  .trio-card h3{font-family:'Oswald',sans-serif;font-weight:600;font-size:17.5px;color:var(--ink);margin-bottom:10px;}
+  .trio-card p{color:var(--ink-dim);font-size:14.5px;margin:0;}
+  @media (max-width:760px){ .trio-grid{grid-template-columns:1fr;gap:26px;} }
+
+  /* ---------- Slide 09 — CTA ---------- */
+  .s-cta h2{font-size:clamp(32px,5vw,56px);margin-bottom:28px;}
+  .cta-list{list-style:none;margin:0 0 40px;padding:0;display:flex;flex-direction:column;gap:16px;max-width:56ch;}
+  .cta-list li{position:relative;padding-left:24px;font-size:16px;color:var(--ivory-dim);}
+  .cta-list li::before{content:"—";position:absolute;left:0;color:var(--brass);}
+  .cta-actions{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:44px;}
+  .btn{
+    display:inline-flex;align-items:center;gap:8px;
+    font-family:'Oswald',sans-serif;font-weight:600;font-size:14.5px;letter-spacing:.01em;
+    padding:14px 26px;border-radius:var(--radius-sm);
+    text-decoration:none;cursor:pointer;border:1.5px solid transparent;
+    transition:background .2s ease, border-color .2s ease, color .2s ease, transform .15s ease;
+  }
+  .btn:active{transform:translateY(1px);}
+  .btn-primary{background:var(--red);color:var(--ivory);border-color:var(--red);}
+  .btn-primary:hover{background:#8F362C;border-color:#8F362C;}
+  .btn-outline{background:transparent;color:var(--ivory);border-color:var(--line);}
+  .btn-outline:hover{border-color:var(--brass);color:var(--brass);}
+  .cta-foot{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:20px;
+    padding-top:26px;border-top:1px solid var(--line-soft);}
+  .cta-foot .name{font-family:'Oswald',sans-serif;font-weight:600;font-size:15.5px;}
+  .cta-foot .org{color:var(--ivory-faint);font-size:13.5px;}
+  .cta-foot .phone{font-family:'JetBrains Mono',monospace;font-size:16px;color:var(--brass);text-decoration:none;}
+  .cta-foot .phone:hover{color:var(--ivory);}
+
+</style>
+</head>
+<body>
+
+<div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+
+<div class="deck-topbar">
+  <a href="index.html" class="back-link">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>
+    MOTORSPORT By TB
+  </a>
+</div>
+
+<nav class="deck-dots" id="deckDots" aria-label="Navigation entre les diapositives">
+  <button data-target="slide-1" data-label="Intro"></button>
+  <button data-target="slide-2" data-label="Résultats"></button>
+  <button data-target="slide-3" data-label="Où se gagne l'argent"></button>
+  <button data-target="slide-4" data-label="Outils &amp; réseau"></button>
+  <button data-target="slide-5" data-label="Modules"></button>
+  <button data-target="slide-6" data-label="Formats"></button>
+  <button data-target="slide-7" data-label="Déroulé"></button>
+  <button data-target="slide-8" data-label="Étudiants"></button>
+  <button data-target="slide-9" data-label="Contact"></button>
+</nav>
+
+<main>
+
+  <!-- SLIDE 1 — Hero -->
+  <section id="slide-1" class="fslide fslide-dark s-hero">
+    <span class="brandmark">MOTORSPORT</span>
+    <div class="wrap fslide-inner">
+      <div class="eyebrow rv" style="--d:0">Formation et accompagnement</div>
+      <h1 class="hero-title rv" style="--d:1">Achat-revente et importation automobile</h1>
+      <p class="lead rv" style="--d:2">Apprendre le métier, obtenir les accès, et réaliser ses premières opérations accompagné.</p>
+      <div class="cta-actions rv" style="--d:3">
+        <a href="#slide-9" class="btn btn-primary">On en parle</a>
+        <a href="#slide-5" class="btn btn-outline">Voir les modules</a>
+      </div>
+      <div class="signature rv" style="--d:4">
+        <div>
+          <div class="name">Thomas Bona</div>
+          <div class="org">French Consulting — MOTORSPORT by TB</div>
+        </div>
+      </div>
+    </div>
+    <div class="scroll-cue">
+      <span>DÉFILER</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+    </div>
+  </section>
+
+  <!-- SLIDE 2 — Ce que j'ai construit -->
+  <section id="slide-2" class="fslide fslide-light">
+    <div class="wrap fslide-inner">
+      <div class="eyebrow rv" style="--d:0">Ce que j'ai construit</div>
+      <h2 class="rv" style="--d:1">Avant de former, j'ai fait tourner l'activité.</h2>
+      <p class="lead rv" style="--d:2">Trois repères, sur six ans de terrain.</p>
+      <hr class="hr rv" style="--d:2">
+      <div class="stat-grid">
+        <div class="stat-card rv" style="--d:3">
+          <div class="stat-num">600 000 €</div>
+          <div class="stat-label">de chiffre d'affaires</div>
+          <div class="stat-note">Réalisés dès la première année d'activité.</div>
+        </div>
+        <div class="stat-card rv" style="--d:4">
+          <div class="stat-num">4</div>
+          <div class="stat-label">sociétés créées</div>
+          <div class="stat-note">En six ans, dans plusieurs pays.</div>
+        </div>
+        <div class="stat-card rv" style="--d:5">
+          <div class="stat-num">30</div>
+          <div class="stat-label">véhicules importés</div>
+          <div class="stat-note">Tous immatriculés, aucun bloqué administrativement.</div>
+        </div>
+      </div>
+      <p class="closing-line rv" style="--d:6">Ce que je transmets, ce sont les méthodes qui ont produit ces résultats.</p>
+    </div>
+  </section>
+
+  <!-- SLIDE 3 — Où se gagne l'argent -->
+  <section id="slide-3" class="fslide fslide-dark">
+    <div class="wrap fslide-inner">
+      <div class="eyebrow rv" style="--d:0">Où se gagne l'argent</div>
+      <h2 class="rv" style="--d:1">Trois réalités du métier</h2>
+      <p class="lead rv" style="--d:2">À comprendre avant de se lancer.</p>
+      <div style="margin-top:34px;">
+        <div class="fact-row rv" style="--d:3">
+          <h3>La marge se fait à l'achat</h3>
+          <p>Un véhicule bien acheté est déjà à moitié revendu. Tout se joue sur le sourcing et l'estimation, pas sur la négociation finale.</p>
+        </div>
+        <div class="fact-row rv" style="--d:4">
+          <h3>L'import ouvre le marché</h3>
+          <p>Acheter en Europe et revendre en France, c'est ce qui crée l'écart de prix. Encore faut-il savoir gérer les démarches.</p>
+        </div>
+        <div class="fact-row rv" style="--d:5">
+          <h3>Le commercial fait la vente</h3>
+          <p>À véhicule égal, c'est l'approche et la confiance qui décident le client, et qui protègent ta marge.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 4 — Pas seulement de la théorie -->
+  <section id="slide-4" class="fslide fslide-light" style="padding:0;">
+    <div class="split fslide-inner">
+      <div class="split-panel panel-dark">
+        <div class="rv" style="--d:0">
+          <div class="eyebrow" style="color:var(--brass);">Pas seulement de la théorie</div>
+          <h2 style="color:var(--ivory);">Les outils et le réseau que j'utilise au quotidien, mis à ta disposition.</h2>
+        </div>
+      </div>
+      <div class="split-panel panel-list">
+        <ul class="access-list">
+          <li class="rv" style="--d:1"><h3>Les logiciels</h3><p>Ceux qui me servent à estimer, sourcer et suivre mes véhicules.</p></li>
+          <li class="rv" style="--d:2"><h3>Mes contacts</h3><p>Le carnet d'adresses qui fait gagner des mois de tâtonnement.</p></li>
+          <li class="rv" style="--d:3"><h3>Le parrainage</h3><p>L'accès aux plateformes et aux enchères pro, partout en Europe.</p></li>
+          <li class="rv" style="--d:4"><h3>Le garantisseur</h3><p>Mon partenaire qui garantit les véhicules que tu revends.</p></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 5 — Les modules -->
+  <section id="slide-5" class="fslide fslide-light">
+    <div class="wrap fslide-inner">
+      <div class="eyebrow rv" style="--d:0">Les modules</div>
+      <h2 class="rv" style="--d:1">Chaque bloc peut être pris seul</h2>
+      <p class="lead rv" style="--d:2">Ou dans le cadre du programme complet.</p>
+      <div class="module-grid">
+        <div class="module-card rv" style="--d:3"><h3>Commercial</h3><p>Approche client, posture, négociation, closing.</p></div>
+        <div class="module-card rv" style="--d:3"><h3>Juridique et fiscal</h3><p>Quelle structure choisir, et comment l'utiliser.</p></div>
+        <div class="module-card rv" style="--d:4"><h3>Achat-revente</h3><p>Sourcing, estimation, calcul de la marge réelle.</p></div>
+        <div class="module-card rv" style="--d:4"><h3>Dépôt-vente</h3><p>Contrat, commission, gestion du stock.</p></div>
+        <div class="module-card is-key rv" style="--d:5"><h3>Importation</h3><p>Toutes les démarches administratives, de A à Z.</p></div>
+        <div class="module-card rv" style="--d:5"><h3>Accès et réseau</h3><p>Logiciels, contacts, parrainages, garantisseur.</p></div>
+      </div>
+      <p class="closing-line rv" style="--d:6">L'importation est le module qui change tout : c'est lui qui crée la marge.</p>
+    </div>
+  </section>
+
+  <!-- SLIDE 6 — Deux façons d'avancer -->
+  <section id="slide-6" class="fslide fslide-light" style="padding:0;">
+    <div class="split fslide-inner">
+      <div class="split-panel panel-list">
+        <div class="path-panel rv" style="--d:0">
+          <div class="eyebrow">Deux façons d'avancer</div>
+          <h2>À la carte</h2>
+          <p class="lead" style="margin-top:14px;">On choisit ensemble, selon ton objectif et le temps que tu peux y consacrer.</p>
+          <ul class="path-list">
+            <li>Tu choisis les modules qui t'intéressent</li>
+            <li>Format court, on va droit au but</li>
+            <li>Idéal si tu as déjà des bases sur le reste</li>
+          </ul>
+        </div>
+      </div>
+      <div class="split-panel panel-dark">
+        <div class="path-panel rv" style="--d:1">
+          <h2 style="color:var(--ivory);">Le programme complet</h2>
+          <ul class="path-list">
+            <li>Tous les modules, dans l'ordre logique</li>
+            <li>Une série d'appels, autant qu'il en faut</li>
+            <li>Un accompagnement sur tes premières voitures</li>
+            <li>Tous les accès : outils, contacts, garantisseur</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 7 — Comment ça se passe -->
+  <section id="slide-7" class="fslide fslide-light">
+    <div class="wrap fslide-inner">
+      <div class="eyebrow rv" style="--d:0">Comment ça se passe</div>
+      <h2 class="rv" style="--d:1">Le déroulé du programme complet</h2>
+      <div class="timeline" style="margin-top:40px;max-width:70ch;">
+        <div class="tl-step rv" style="--d:2">
+          <div class="tl-marker-col"><div class="tl-dot"></div><div class="tl-line"></div></div>
+          <div class="tl-body"><h3>On fait le point</h3><p>Ton objectif, ton temps disponible, ton niveau de départ.</p></div>
+        </div>
+        <div class="tl-step rv" style="--d:3">
+          <div class="tl-marker-col"><div class="tl-dot"></div><div class="tl-line"></div></div>
+          <div class="tl-body"><h3>Les fondations</h3><p>Le commercial, puis l'achat-revente et l'importation.</p></div>
+        </div>
+        <div class="tl-step rv" style="--d:4">
+          <div class="tl-marker-col"><div class="tl-dot"></div><div class="tl-line"></div></div>
+          <div class="tl-body"><h3>La structure</h3><p>Le cadre juridique et fiscal, pour travailler proprement.</p></div>
+        </div>
+        <div class="tl-step rv" style="--d:5">
+          <div class="tl-marker-col"><div class="tl-dot"></div></div>
+          <div class="tl-body"><h3>Le terrain</h3><p>Je t'accompagne sur tes premières voitures, de l'achat à la revente.</p></div>
+        </div>
+      </div>
+      <p class="closing-line rv" style="--d:6">À la carte, même principe : on isole l'étape qui t'intéresse.</p>
+    </div>
+  </section>
+
+  <!-- SLIDE 8 — En parallèle de tes études -->
+  <section id="slide-8" class="fslide fslide-light">
+    <div class="wrap fslide-inner">
+      <div class="eyebrow rv" style="--d:0">En parallèle de tes études</div>
+      <h2 class="rv" style="--d:1">Commencer à côté de tes cours, et apprendre à en vivre.</h2>
+      <div class="trio-grid">
+        <div class="trio-card rv" style="--d:2"><h3>Ton rythme</h3><p>On cale les séances sur ton emploi du temps, pas l'inverse.</p></div>
+        <div class="trio-card rv" style="--d:3"><h3>Sans pression</h3><p>Tu avances à ta vitesse, sans te mettre en difficulté.</p></div>
+        <div class="trio-card rv" style="--d:4"><h3>Les parents dans la boucle</h3><p>Ils sont les bienvenus, autant que tout soit clair.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 9 — CTA / Contact -->
+  <section id="slide-9" class="fslide fslide-dark s-cta">
+    <span class="brandmark">MOTORSPORT</span>
+    <div class="wrap fslide-inner">
+      <div class="eyebrow rv" style="--d:0">La prochaine étape</div>
+      <h2 class="rv" style="--d:1">On en parle, sans engagement</h2>
+      <ul class="cta-list rv" style="--d:2">
+        <li>Un premier échange gratuit, en visio ou en direct</li>
+        <li>Je réponds à toutes les questions, les tiennes et celles de tes parents</li>
+        <li>On voit ce qui te correspond, et on décide seulement après</li>
+      </ul>
+      <div class="cta-actions rv" style="--d:3">
+        <a href="tel:+33652871194" class="btn btn-primary">Appeler +33 6 52 87 11 94</a>
+        <a href="index.html" class="btn btn-outline">Revenir au site</a>
+      </div>
+      <div class="cta-foot rv" style="--d:4">
+        <div>
+          <div class="name">Thomas Bona</div>
+          <div class="org">French Consulting — MOTORSPORT by TB</div>
+        </div>
+        <a class="phone mono" href="tel:+33652871194">+33 6 52 87 11 94</a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+(function(){
+  var slides = Array.prototype.slice.call(document.querySelectorAll('.fslide'));
+  var dots = Array.prototype.slice.call(document.querySelectorAll('.deck-dots button'));
+  var progressFill = document.getElementById('progressFill');
+
+  // Reveal-on-scroll for each slide's contents
+  if('IntersectionObserver' in window){
+    var revealObserver = new IntersectionObserver(function(entries){
+      entries.forEach(function(entry){
+        if(entry.isIntersecting){
+          entry.target.classList.add('is-visible');
+        }
+      });
+    }, {threshold:0.28});
+    slides.forEach(function(slide){ revealObserver.observe(slide); });
+
+    // Active dot tracking
+    var activeObserver = new IntersectionObserver(function(entries){
+      entries.forEach(function(entry){
+        if(entry.isIntersecting){
+          dots.forEach(function(d){ d.classList.remove('is-active'); });
+          var match = dots.filter(function(d){ return d.getAttribute('data-target') === entry.target.id; })[0];
+          if(match){ match.classList.add('is-active'); }
+        }
+      });
+    }, {threshold:0.5});
+    slides.forEach(function(slide){ activeObserver.observe(slide); });
+  } else {
+    slides.forEach(function(slide){ slide.classList.add('is-visible'); });
+  }
+
+  dots.forEach(function(dot){
+    dot.addEventListener('click', function(){
+      var target = document.getElementById(dot.getAttribute('data-target'));
+      if(target){ target.scrollIntoView({behavior:'smooth', block:'start'}); }
+    });
+  });
+
+  // Scroll progress bar
+  function updateProgress(){
+    var scrollTop = window.scrollY || document.documentElement.scrollTop;
+    var docHeight = document.documentElement.scrollHeight - window.innerHeight;
+    var pct = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
+    progressFill.style.width = pct + '%';
+  }
+  window.addEventListener('scroll', updateProgress, {passive:true});
+  window.addEventListener('resize', updateProgress);
+  updateProgress();
+})();
+</script>
+
+</body>
+</html>
