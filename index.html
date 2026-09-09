@@ -317,6 +317,18 @@
   .car-link:hover{color:var(--ivory);}
 
   .catalogue-note{margin-top:28px;color:var(--ivory-faint);font-size:14px;}
+  .catalogue-live-cta{
+    display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap;
+    background:var(--bg-2);border:1px solid var(--brass-dim);border-radius:var(--radius-md);
+    padding:22px 26px;margin-bottom:36px;
+  }
+  .catalogue-live-cta strong{
+    font-family:'Oswald',sans-serif;font-weight:600;font-size:16px;color:var(--ivory);
+    display:block;margin-bottom:4px;
+  }
+  .catalogue-live-cta p{color:var(--ivory-dim);font-size:14.5px;margin:0;max-width:52ch;}
+  .catalogue-live-cta .btn{flex-shrink:0;}
+  @media (max-width:640px){ .catalogue-live-cta{flex-direction:column;align-items:stretch;} }
 
   /* ---------- Request / form ---------- */
   .request-alt{background:var(--bg-1);}
@@ -554,6 +566,13 @@
       <div class="section-head">
         <h2>Trouvailles récentes</h2>
         <p>Un aperçu de véhicules récemment sourcés pour nos clients. Chaque recherche est sur mesure — ceci illustre le type de résultat obtenu.</p>
+      </div>
+      <div class="catalogue-live-cta">
+        <div>
+          <strong>Tout notre stock à jour</strong>
+          <p>Retrouvez l'intégralité de nos véhicules disponibles, avec photos et prix, sur notre boutique LaCentrale.</p>
+        </div>
+        <a href="https://motorsport-by-tb.espacevo.fr/" target="_blank" rel="noopener" class="btn btn-primary">Voir tout le stock sur LaCentrale</a>
       </div>
       <div class="filters" id="filterBar">
         <button class="filter-btn active" data-filter="all">Toutes</button>
