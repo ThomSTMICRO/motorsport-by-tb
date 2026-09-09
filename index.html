@@ -978,12 +978,14 @@ function initScroll3D(config){
   // ---- Points de caméra parcourus au fil du défilement ----
   // Chaque point peut définir son propre point de visée (target), ce qui permet
   // à la caméra de se rapprocher progressivement et de "entrer" dans l'habitacle.
+  var defaultFov = config.fov || 35;
   var checkpoints = config.checkpoints.map(function(cp){
     return {
       theta: cp.theta * Math.PI / 180,
       phi: cp.phi * Math.PI / 180,
       radius: cp.radius,
-      target: cp.target || defaultTarget
+      target: cp.target || defaultTarget,
+      fov: cp.fov || defaultFov
     };
   });
 
@@ -1017,6 +1019,12 @@ function initScroll3D(config){
     camera.position.copy(pos);
     camera.lookAt(target);
     currentRadius = radius;
+
+    var fov = lerp(a.fov, b.fov, t);
+    if(fov !== camera.fov){
+      camera.fov = fov;
+      camera.updateProjectionMatrix();
+    }
   }
   setCameraAtProgress(0);
 
@@ -1059,7 +1067,10 @@ function initScroll3D(config){
 
     if(progressFill) progressFill.style.width = (progress * 100) + '%';
 
-    var stepIndex = Math.min(checkpoints.length - 1, Math.floor(progress * checkpoints.length));
+    // Le nombre de fiches-texte (stepEls) peut être inférieur au nombre de points de
+    // caméra (checkpoints) : la trajectoire 3D peut être plus riche que la narration.
+    var stepCount = stepEls.length || checkpoints.length;
+    var stepIndex = Math.min(stepCount - 1, Math.floor(progress * stepCount));
     stepEls.forEach(function(el){
       el.classList.toggle('is-active', parseInt(el.dataset.step, 10) === stepIndex);
     });
@@ -1142,14 +1153,19 @@ initScroll3D({
   progressFillId: 'scrollInstaProgressFill',
   modelPath: 'models/porsche-918-spyder.glb',
   modelScale: 3.3,
-  fov: 42, // léger grand-angle, pour rester lisible une fois la caméra très proche de l'habitacle
-  // La caméra se rapproche et monte progressivement son point de visée : on quitte le plan large
-  // extérieur pour finir au-dessus de l'habitacle ouvert, comme si on s'installait dans la voiture.
+  fov: 40,
+  // Chorégraphie demandée : on démarre à l'arrière, on monte à la verticale pour une vue
+  // en plongée, on pivote de 280° au-dessus de la voiture, on redescend en se réorientant
+  // face à elle, puis on zoome sur les phares avant. 7 points de caméra pour 4 fiches-texte :
+  // la trajectoire 3D est plus riche que la narration (voir stepCount dans updateProgress).
   checkpoints: [
-    { theta: 30, phi: 78, radius: 7.5, target: { x: 0, y: 0.35, z: 0 } },    // 01 · En coulisses — plan large extérieur
-    { theta: 75, phi: 76, radius: 4.2, target: { x: 0, y: 0.45, z: 0 } },    // 02 · Les livraisons — on s'approche, vue 3/4 profil
-    { theta: 95, phi: 60, radius: 2.0, target: { x: 0, y: 0.55, z: 0.1 } },  // 03 · Le detailing — au-dessus de l'habitacle ouvert
-    { theta: 100, phi: 52, radius: 0.95, target: { x: 0, y: 0.62, z: 0.15 } } // 04 · Rejoignez la communauté — dans l'habitacle
+    { theta: 190, phi: 76, radius: 6.0, target: { x: 0,    y: 0.40, z: 0 },    fov: 40 }, // 0 · Arrière
+    { theta: 190, phi: 40, radius: 7.3, target: { x: 0,    y: 0.40, z: 0 },    fov: 42 }, // 1 · Montée à la verticale
+    { theta: 190, phi: 15, radius: 8.8, target: { x: 0,    y: 0.38, z: 0 },    fov: 44 }, // 2 · Plongée, début du pivot
+    { theta: 470, phi: 15, radius: 8.8, target: { x: 0,    y: 0.38, z: 0 },    fov: 44 }, // 3 · Pivot 280° terminé, toujours en plongée
+    { theta: 430, phi: 50, radius: 3.6, target: { x: 0,    y: 0.40, z: 0 },    fov: 40 }, // 4 · Redescente, réorientation vers l'avant
+    { theta: 390, phi: 80, radius: 3.2, target: { x: 0,    y: 0.42, z: 0 },    fov: 38 }, // 5 · Face à la voiture
+    { theta: 385, phi: 82, radius: 0.85, target: { x: 0.5, y: 0.32, z: 1.5 },  fov: 24 }  // 6 · Zoom sur le phare avant
   ]
 });
 

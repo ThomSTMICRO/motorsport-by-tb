@@ -1,0 +1,83 @@
+name: Diagnostic - verify Porsche camera choreography
+on:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.47.0 >/dev/null 2>&1
+          npx playwright install --with-deps chromium
+
+      - name: Serve site
+        run: |
+          npx http-server -p 8080 . &
+          sleep 2
+
+      - name: Run check
+        run: |
+          cat > check.js << 'EOF'
+          const { chromium } = require('playwright');
+          (async () => {
+            const browser = await chromium.launch();
+            const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+            const consoleErrors = [];
+            page.on('console', msg => { if (msg.type() === 'error') consoleErrors.push(msg.text()); });
+            page.on('pageerror', err => consoleErrors.push('PAGEERROR: ' + err.message));
+
+            await page.goto('http://localhost:8080/index.html', { waitUntil: 'domcontentloaded', timeout: 60000 });
+
+            const igSection = await page.$('#instagram3d');
+            const igBox = await igSection.boundingBox();
+
+            await page.evaluate((y) => window.scrollTo(0, y), igBox.y);
+            await page.waitForFunction(() => {
+              const l = document.querySelector('#instagram3d .showcase3d-loading');
+              return l && (l.classList.contains('is-hidden') || l.classList.contains('is-error'));
+            }, { timeout: 60000 }).catch(() => console.log('LOAD_TIMEOUT'));
+            await page.waitForTimeout(800);
+
+            const loadState = await page.evaluate(() => {
+              const l = document.querySelector('#instagram3d .showcase3d-loading');
+              return { hidden: l.classList.contains('is-hidden'), error: l.classList.contains('is-error') };
+            });
+            console.log('LOAD_STATE', JSON.stringify(loadState));
+
+            // Capture à 9 profondeurs de scroll pour couvrir toute la chorégraphie
+            const scrollable = igBox.height - 900;
+            for (let i = 0; i <= 8; i++) {
+              const y = igBox.y + scrollable * (i / 8);
+              await page.evaluate((yy) => window.scrollTo(0, yy), y);
+              await page.waitForTimeout(650);
+              const step = await page.evaluate(() => {
+                const s = document.querySelector('#instagram3d .scroll3d-step.is-active');
+                return s ? s.dataset.step : null;
+              });
+              console.log('STEP_AT_' + i, step);
+              await page.screenshot({ path: `/tmp/choreo_${i}.jpg`, type: 'jpeg', quality: 55 });
+            }
+
+            console.log('CONSOLE_ERRORS', JSON.stringify(consoleErrors));
+            await browser.close();
+          })();
+          EOF
+          node check.js
+
+      - name: Print thumbnails as base64
+        if: always()
+        run: |
+          for i in 0 1 2 3 4 5 6 7 8; do
+            f="/tmp/choreo_${i}.jpg"
+            if [ -f "$f" ]; then
+              echo "=== $f ==="
+              base64 -w 0 "$f"
+              echo ""
+            fi
+          done
