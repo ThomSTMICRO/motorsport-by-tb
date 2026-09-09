@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BMW M5 M Performance — Présentation | MOTORSPORT By TB</title>
+<meta name="description" content="Présentation cinématique de la BMW M5 M Performance : le V8 M biturbo, l'éclairage signature, l'allure — au fil du défilement.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Fraunces:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /*
+    Présentation "scroll-scrubbing" : une séquence de 97 images extraites d'une vidéo
+    réelle (droits confirmés par le client) est dessinée image par image sur un canvas
+    fixé au viewport, l'image affichée étant pilotée par la position de défilement —
+    exactement la technique des pages produit Apple. Contrairement au compagnon 3D de la
+    page d'accueil (Three.js, rendu en continu), ici il n'y a qu'un dessin de canvas par
+    tick de scroll : léger pour le CPU/GPU, le coût est surtout réseau (précharger les
+    97 images, ~4,5 Mo au total) — d'où l'écran de chargement avant de démarrer.
+  */
+  :root{
+    --bg-0:#FFFFFF;
+    --bg-1:#F5F2E8;
+    --ivory:#17241C;
+    --ivory-dim:#4C574E;
+    --line-soft:#ECE7DA;
+    --brass:#8C5D18;
+    --brass-bright:#B27A1E;
+    --red:#D5402A;
+    --red-bright:#FF6B47;
+
+    --dark-0:#05070c;
+    --on-dark:#F7F3E4;
+    --on-dark-dim:#CEC6A8;
+    --on-dark-faint:#8FA394;
+    --brass-on-dark:#FFCB5C;
+
+    --radius-sm:3px;
+  }
+  *,*::before,*::after{box-sizing:border-box;}
+  body{
+    margin:0;background:var(--bg-0);color:var(--ivory);
+    font-family:'Fraunces',Georgia,serif;font-weight:400;line-height:1.55;
+    -webkit-font-smoothing:antialiased;overflow-x:hidden;
+  }
+  h1,h2,h3,.display{font-family:'Oswald',sans-serif;font-weight:600;letter-spacing:0.01em;margin:0;}
+  p{margin:0 0 1em 0;}
+  a{color:inherit;}
+  .mono{font-family:'JetBrains Mono',monospace;}
+  a:focus-visible,button:focus-visible{outline:2px solid var(--brass);outline-offset:3px;}
+
+  .btn{
+    display:inline-flex;align-items:center;gap:8px;
+    font-family:'Oswald',sans-serif;font-weight:600;font-size:14.5px;letter-spacing:.01em;
+    padding:14px 26px;border-radius:var(--radius-sm);text-decoration:none;cursor:pointer;
+    border:1.5px solid transparent;transition:background .2s ease, box-shadow .2s ease, transform .15s ease;
+  }
+  .btn:active{transform:translateY(1px);}
+  .btn-primary{background:linear-gradient(135deg, var(--red-bright), var(--red));color:#fff;box-shadow:0 8px 22px -6px rgba(232,72,47,0.55);}
+  .btn-primary:hover{background:linear-gradient(135deg, var(--red), #A82C17);box-shadow:0 10px 28px -6px rgba(232,72,47,0.7);}
+
+  /* ---------- Barre du haut + progression (mêmes codes que la page Formation) ---------- */
+  .progress-track{position:fixed;top:0;left:0;right:0;height:2px;z-index:70;}
+  .progress-fill{height:100%;width:0%;background:linear-gradient(90deg, var(--red-bright), var(--brass-bright));transition:width .1s linear;}
+  .deck-topbar{position:fixed;top:0;left:0;right:0;z-index:60;padding:16px 24px;pointer-events:none;}
+  .deck-topbar > *{pointer-events:auto;}
+  .back-link{
+    display:inline-flex;align-items:center;gap:8px;text-decoration:none;color:var(--on-dark-dim);
+    font-family:'Oswald',sans-serif;font-size:13px;font-weight:500;letter-spacing:.03em;
+    background:rgba(5,7,12,0.55);backdrop-filter:blur(6px);
+    border:1px solid rgba(247,243,228,0.18);border-radius:20px;padding:8px 16px 8px 12px;
+    transition:border-color .2s ease, color .2s ease;
+  }
+  .back-link:hover{color:var(--on-dark);border-color:var(--brass-on-dark);}
+  .back-link svg{width:14px;height:14px;flex-shrink:0;}
+
+  /* ---------- Scène scrubbée ---------- */
+  .scrub-stage{position:relative;height:700vh;background:var(--dark-0);}
+  .scrub-sticky{position:sticky;top:0;height:100vh;overflow:hidden;}
+  .scrub-canvas-wrap{position:absolute;inset:0;background:var(--dark-0);}
+  #scrubCanvas{width:100%;height:100%;display:block;}
+
+  .scrub-scrim{
+    position:absolute;left:0;right:0;bottom:0;height:46%;
+    background:linear-gradient(180deg, rgba(5,7,12,0) 0%, rgba(5,7,12,0.82) 78%);
+    pointer-events:none;
+  }
+  .scrub-scrim-top{
+    position:absolute;left:0;right:0;top:0;height:22%;
+    background:linear-gradient(0deg, rgba(5,7,12,0) 0%, rgba(5,7,12,0.5) 100%);
+    pointer-events:none;
+  }
+
+  .scrub-captions{position:absolute;inset:0;}
+  .scrub-caption{
+    position:absolute;left:0;right:0;bottom:9%;padding:0 7vw;
+    opacity:0;transform:translateY(14px);pointer-events:none;
+    transition:opacity .55s ease, transform .55s ease;
+  }
+  .scrub-caption.is-active{opacity:1;transform:translateY(0);pointer-events:auto;}
+  .scrub-caption .eyebrow{
+    font-family:'JetBrains Mono',monospace;font-size:13px;letter-spacing:.03em;
+    color:var(--brass-on-dark);margin-bottom:12px;
+  }
+  .scrub-caption h2{font-size:clamp(26px,4.4vw,50px);color:var(--on-dark);max-width:18ch;margin-bottom:10px;}
+  .scrub-caption p{color:var(--on-dark-dim);font-size:16px;max-width:44ch;margin-bottom:18px;}
+  @media (prefers-reduced-motion:reduce){ .scrub-caption{transition:opacity .2s linear;transform:none;} }
+
+  .scrub-loading{
+    position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    background:var(--dark-0);color:var(--on-dark-dim);font-family:'JetBrains Mono',monospace;font-size:13px;
+    transition:opacity .5s ease;
+  }
+  .scrub-loading.is-hidden{opacity:0;pointer-events:none;}
+  .scrub-progress-bar{width:200px;height:2px;background:rgba(247,243,228,0.15);margin-top:16px;overflow:hidden;}
+  .scrub-progress-bar > div{height:100%;width:0%;background:linear-gradient(90deg, var(--red-bright), var(--brass-bright));}
+
+  .scrub-hint{
+    position:absolute;bottom:28px;left:50%;transform:translateX(-50%);
+    color:var(--on-dark-faint);font-family:'JetBrains Mono',monospace;font-size:11.5px;letter-spacing:.05em;
+    display:flex;flex-direction:column;align-items:center;gap:6px;opacity:1;transition:opacity .4s ease;
+  }
+  .scrub-hint.is-hidden{opacity:0;}
+  .scrub-hint svg{width:16px;height:16px;animation:bounceDown 1.8s ease-in-out infinite;}
+  @keyframes bounceDown{0%,100%{transform:translateY(0);}50%{transform:translateY(6px);}}
+  @media (prefers-reduced-motion:reduce){ .scrub-hint svg{animation:none;} }
+
+  /* ---------- Pied de page léger ---------- */
+  .m5-footer{background:var(--bg-1);border-top:1px solid var(--line-soft);padding:48px 24px;text-align:center;}
+  .m5-footer p{color:var(--ivory-dim);font-size:14px;margin:0 0 16px;}
+  .m5-footer a.btn-outline{
+    background:transparent;color:var(--ivory);border-color:var(--line-soft);
+  }
+  .m5-footer a.btn-outline:hover{border-color:var(--brass);color:var(--brass-bright);}
+</style>
+</head>
+<body>
+
+<div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+<div class="deck-topbar">
+  <a href="index.html" class="back-link">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>
+    MOTORSPORT By TB
+  </a>
+</div>
+
+<main>
+  <section class="scrub-stage" id="scrubStage">
+    <div class="scrub-sticky">
+      <div class="scrub-canvas-wrap">
+        <canvas id="scrubCanvas" aria-hidden="true"></canvas>
+      </div>
+      <div class="scrub-scrim-top"></div>
+      <div class="scrub-scrim"></div>
+
+      <div class="scrub-captions">
+        <div class="scrub-caption" data-from="0" data-to="0.16">
+          <div class="eyebrow">BMW M5 · M Performance</div>
+          <h2>La berline qui roule comme une supercar</h2>
+        </div>
+        <div class="scrub-caption" data-from="0.16" data-to="0.38">
+          <div class="eyebrow">Sous le capot</div>
+          <h2>Le V8 M biturbo</h2>
+          <p>La signature mécanique M, prête à en découdre — sur route comme sur circuit.</p>
+        </div>
+        <div class="scrub-caption" data-from="0.38" data-to="0.58">
+          <div class="eyebrow">Détail</div>
+          <h2>Éclairage signature</h2>
+          <p>Un dessin qui impose sa présence, de jour comme de nuit.</p>
+        </div>
+        <div class="scrub-caption" data-from="0.58" data-to="0.80">
+          <div class="eyebrow">Présence</div>
+          <h2>Une allure qui impose le respect</h2>
+        </div>
+        <div class="scrub-caption" data-from="0.80" data-to="1.01">
+          <div class="eyebrow">Et la vôtre ?</div>
+          <h2>Prête à twister sur asphalte</h2>
+          <p>Vous cherchez ce modèle, ou un véhicule qui lui ressemble ? Parlons de votre recherche.</p>
+          <a href="index.html#detailing" class="btn btn-primary">Lancer une recherche</a>
+        </div>
+      </div>
+
+      <div class="scrub-loading" id="scrubLoading">
+        Chargement de la séquence…
+        <div class="scrub-progress-bar"><div id="scrubLoadFill"></div></div>
+      </div>
+
+      <div class="scrub-hint" id="scrubHint">
+        <span>DÉFILER POUR EXPLORER</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+    </div>
+  </section>
+
+  <div class="m5-footer">
+    <p>Modèle présenté à titre d'exemple — chaque recherche est menée sur mesure, pour le véhicule précis que vous avez en tête.</p>
+    <a href="index.html" class="btn btn-outline">Retour à l'accueil</a>
+  </div>
+</main>
+
+<script>
+(function(){
+  var FRAME_COUNT = 97;
+  var canvas = document.getElementById('scrubCanvas');
+  var ctx = canvas.getContext('2d');
+  var stage = document.getElementById('scrubStage');
+  var loadingEl = document.getElementById('scrubLoading');
+  var loadFill = document.getElementById('scrubLoadFill');
+  var hintEl = document.getElementById('scrubHint');
+  var progressFill = document.getElementById('progressFill');
+  var captionEls = document.querySelectorAll('.scrub-caption');
+
+  function frameSrc(i){
+    var n = String(i + 1);
+    while(n.length < 4) n = '0' + n;
+    return 'images/m5-showcase/frame_' + n + '.jpg';
+  }
+
+  var images = new Array(FRAME_COUNT);
+  var loadedCount = 0;
+  var ready = false;
+
+  for (var i = 0; i < FRAME_COUNT; i++) {
+    (function(idx){
+      var img = new Image();
+      img.onload = img.onerror = function(){
+        loadedCount++;
+        if (loadFill) loadFill.style.width = Math.round(loadedCount / FRAME_COUNT * 100) + '%';
+        if (loadedCount === FRAME_COUNT) {
+          ready = true;
+          if (loadingEl) loadingEl.classList.add('is-hidden');
+          draw(0);
+        }
+      };
+      img.src = frameSrc(idx);
+      images[idx] = img;
+    })(i);
+  }
+
+  function resizeCanvas(){
+    var dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    canvas.width = Math.round(window.innerWidth * dpr);
+    canvas.height = Math.round(window.innerHeight * dpr);
+    currentFrame = -1;
+    if (ready) draw(lastRequestedFrame);
+  }
+
+  var currentFrame = -1;
+  var lastRequestedFrame = 0;
+  function draw(frameIndex){
+    frameIndex = Math.max(0, Math.min(FRAME_COUNT - 1, frameIndex));
+    lastRequestedFrame = frameIndex;
+    if (!ready) return;
+    var img = images[frameIndex];
+    if (!img || !img.complete || !img.naturalWidth) return;
+    if (frameIndex === currentFrame) return;
+    currentFrame = frameIndex;
+
+    var cw = canvas.width, ch = canvas.height;
+    var iw = img.naturalWidth, ih = img.naturalHeight;
+    var scale = Math.max(cw / iw, ch / ih);
+    var dw = iw * scale, dh = ih * scale;
+    var dx = (cw - dw) / 2, dy = (ch - dh) / 2;
+    ctx.clearRect(0, 0, cw, ch);
+    ctx.drawImage(img, dx, dy, dw, dh);
+  }
+
+  var ticking = false;
+  function updateProgress(){
+    var doc = document.documentElement;
+    var docHeight = doc.scrollHeight - window.innerHeight;
+    var scrollTop = window.scrollY || doc.scrollTop;
+    var pageProgress = docHeight > 0 ? Math.max(0, Math.min(1, scrollTop / docHeight)) : 0;
+    if (progressFill) progressFill.style.width = (pageProgress * 100) + '%';
+
+    var rect = stage.getBoundingClientRect();
+    var stageScrollable = stage.offsetHeight - window.innerHeight;
+    var stageScrolled = -rect.top;
+    var p = stageScrollable > 0 ? Math.max(0, Math.min(1, stageScrolled / stageScrollable)) : 0;
+
+    if (p > 0.01 && hintEl) hintEl.classList.add('is-hidden');
+
+    draw(Math.round(p * (FRAME_COUNT - 1)));
+
+    captionEls.forEach(function(el){
+      var from = parseFloat(el.dataset.from), to = parseFloat(el.dataset.to);
+      el.classList.toggle('is-active', p >= from && p < to);
+    });
+
+    ticking = false;
+  }
+
+  window.addEventListener('scroll', function(){
+    if (!ticking) { requestAnimationFrame(updateProgress); ticking = true; }
+  }, { passive: true });
+  window.addEventListener('resize', resizeCanvas);
+
+  resizeCanvas();
+  updateProgress();
+})();
+</script>
+
+</body>
+</html>
