@@ -391,6 +391,8 @@
   .confirm-recap div{display:flex;justify-content:space-between;padding:4px 0;}
   .confirm-recap span:last-child{color:var(--ivory);font-family:'JetBrains Mono',monospace;font-size:12.5px;}
   .confirm-actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:16px;}
+  .confirm-email-link{display:block;text-align:center;font-size:13px;color:var(--brass);text-decoration:none;margin-bottom:20px;}
+  .confirm-email-link:hover{color:var(--brass-bright);text-decoration:underline;}
 
   /* ---------- News ---------- */
   .news-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:2px;background:var(--line-soft);border:1px solid var(--line-soft);}
@@ -739,6 +741,7 @@
               <a class="btn btn-primary" id="whatsappSendBtn" href="#" target="_blank" rel="noopener">Envoyer par WhatsApp</a>
               <a class="btn btn-outline" href="tel:+33652871194">Appeler +33 6 52 87 11 94</a>
             </div>
+            <a class="confirm-email-link" id="emailSendBtn" href="#">Ou envoyer par email</a>
             <button class="btn btn-ghost" id="resetFormBtn" type="button">Envoyer une nouvelle demande</button>
           </div>
         </div>
@@ -847,6 +850,7 @@
         <ul>
           <li><a href="tel:+33652871194">+33 6 52 87 11 94</a></li>
           <li><a href="https://wa.me/33652871194" target="_blank" rel="noopener">WhatsApp</a></li>
+          <li><a href="mailto:thomasbona.pro@gmail.com">thomasbona.pro@gmail.com</a></li>
         </ul>
         <div class="footer-plate">MOTORSPORT · BY TB</div>
       </div>
@@ -967,7 +971,9 @@
   var confirmPanel = document.getElementById('confirmPanel');
   var confirmRecap = document.getElementById('confirmRecap');
   var whatsappSendBtn = document.getElementById('whatsappSendBtn');
+  var emailSendBtn = document.getElementById('emailSendBtn');
   var WHATSAPP_NUMBER = '33652871194';
+  var CONTACT_EMAIL = 'thomasbona.pro@gmail.com';
 
   form.addEventListener('submit', function(e){
     e.preventDefault();
@@ -1004,6 +1010,9 @@
       'Téléphone : ' + (telephone || '—')
     ];
     whatsappSendBtn.href = 'https://wa.me/' + WHATSAPP_NUMBER + '?text=' + encodeURIComponent(waLines.join('\n'));
+    emailSendBtn.href = 'mailto:' + CONTACT_EMAIL +
+      '?subject=' + encodeURIComponent('Demande de recherche — ' + marque + ' ' + modele) +
+      '&body=' + encodeURIComponent(waLines.join('\n'));
 
     dossier.classList.add('is-submitted');
     confirmPanel.classList.add('is-visible');
