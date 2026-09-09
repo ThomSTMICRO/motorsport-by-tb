@@ -233,7 +233,7 @@
   .section-pad{padding:88px 0;}
   .divider{border:none;border-top:1px dashed var(--line);margin:0;}
 
-  /* ---------- Compagnon 3D fixe (BMW S1000 RR, caméra pilotée par le défilement de toute la page) ---------- */
+  /* ---------- Compagnon 3D fixe (Porsche 918 Spyder, caméra pilotée par le défilement de toute la page) ---------- */
   .bike3d-fixed{
     position:fixed;inset:0;z-index:-1;
     background:radial-gradient(ellipse at 60% 30%, #10151f 0%, #05070c 78%);
@@ -440,8 +440,8 @@
 </head>
 <body>
 
-<!-- Compagnon 3D : la BMW S1000 RR reste fixée en arrière-plan et la caméra
-     s'en approche continuellement au fil du défilement de toute la page. -->
+<!-- Compagnon 3D : la Porsche 918 Spyder reste fixée en arrière-plan et la caméra en
+     fait le tour au fil du défilement de toute la page. -->
 <div class="bike3d-fixed" id="bike3dStage" aria-hidden="true"></div>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -503,7 +503,7 @@
     </div>
   </section>
 
-  <!-- COMMENT SE DÉROULE UNE RECHERCHE (la BMW continue son approche derrière ces cartes) -->
+  <!-- COMMENT SE DÉROULE UNE RECHERCHE (la Porsche continue son tour derrière ces cartes) -->
   <section class="section-pad process-section" id="processus">
     <div class="wrap">
       <div class="section-head rv">
@@ -532,7 +532,7 @@
           <p>Import, mise en conformité administrative et remise du véhicule près de chez vous.</p>
         </div>
       </div>
-      <p class="showcase3d-credit">Modèle 3D « Porsche 918 Spyder » utilisé sous licence libre. Modèle 3D « BMW S1000 RR » par VTX (Sketchfab) — utilisé avec autorisation.</p>
+      <p class="showcase3d-credit">Modèle 3D « Porsche 918 Spyder » utilisé sous licence libre.</p>
     </div>
   </section>
 
@@ -1149,54 +1149,40 @@ function initScroll3D(config){
   animate();
 }
 
-// Showroom 3D unique pour toute la page : la Porsche 918 Spyder et la BMW S1000 RR
-// partagent la même scène, positionnées côte à côte. La caméra part de très loin (les
-// deux véhicules ne sont que des silhouettes), plonge en gros plan sur la Porsche,
-// recule pour révéler les deux ensemble, puis dérive vers la BMW et termine tout près
-// de son phare — un seul long plan continu sur toute la hauteur de la page.
+// Showroom 3D unique pour toute la page : la Porsche 918 Spyder, seule, au centre de la
+// scène lunaire. La caméra en fait le tour au fil du défilement et se resserre jusqu'à un
+// plan macro final — un seul long plan continu sur toute la hauteur de la page.
 initScroll3D({
   stageId: 'bike3dStage',
   progressFillId: 'pageProgressFill',
   fov: 30,
   vehicles: [
     {
-      // Porsche 918 Spyder — modèle d'environ 4,65 m de long. emissiveClamp très bas pour
-      // que TOUT élément émissif du modèle (phares, feux, écrans) reste sombre en permanence.
+      // Porsche 918 Spyder — modèle d'environ 4,65 m de long, seule vedette du showroom.
+      // emissiveClamp très bas pour que TOUT élément émissif du modèle (phares, feux,
+      // écrans) reste sombre en permanence.
       modelPath: 'models/porsche-918-spyder.glb',
       modelScale: 3.2,
-      position: { x: -3.2, y: 0, z: 0 },
+      position: { x: 0, y: 0, z: 0 },
       rotationY: 20,
-      emissiveClamp: 0.15
-    },
-    {
-      // BMW S1000 RR — modèle d'environ 2,05 m de long, mis à l'échelle proportionnellement.
-      // Feux éteints également.
-      modelPath: 'models/bmw-s1000rr.glb',
-      modelScale: 1.4,
-      position: { x: 3.2, y: 0, z: 0.3 },
-      rotationY: -15,
       emissiveClamp: 0.15
     }
   ],
-  // Deux tours complets à faible distance, un par véhicule : la caméra tourne à 360°
-  // autour de la Porsche (profil, arrière, profil opposé, avant) en se rapprochant sur un
-  // détail, recule un instant pour révéler les deux véhicules ensemble, puis fait le même
-  // tour complet autour de la BMW en terminant sur un plan macro très rapproché.
+  // Un tour complet à faible distance autour de la Porsche (3/4 avant, profil, 3/4 arrière,
+  // profil opposé, retour 3/4 avant), qui se resserre ensuite progressivement jusqu'à un
+  // plan macro très rapproché sur un détail (calandre/phares), étalé sur toute la hauteur
+  // de la page.
   checkpoints: [
-    { theta: 160,  phi: 78, radius: 4.4, target: { x: -3.2, y: 0.42, z: 0 },    fov: 38 }, // Porsche 3/4 avant
-    { theta: 250,  phi: 74, radius: 3.6, target: { x: -3.2, y: 0.48, z: 0 },    fov: 32 }, // profil
-    { theta: 340,  phi: 80, radius: 3.4, target: { x: -3.2, y: 0.50, z: 0 },    fov: 30 }, // 3/4 arrière
-    { theta: 430,  phi: 72, radius: 3.2, target: { x: -3.2, y: 0.46, z: 0 },    fov: 28 }, // profil opposé
-    { theta: 520,  phi: 76, radius: 3.6, target: { x: -3.2, y: 0.44, z: 0 },    fov: 32 }, // retour 3/4 avant (tour complet)
-    { theta: 560,  phi: 68, radius: 2.3, target: { x: -3.2, y: 0.36, z: 0 },    fov: 22 }, // gros plan détail (calandre/phares)
-    { theta: 610,  phi: 76, radius: 9.0, target: { x: 0,    y: 0.50, z: 0.10 }, fov: 34 }, // recul, révélation des deux véhicules
-    { theta: 650,  phi: 78, radius: 5.0, target: { x: 3.2,  y: 0.58, z: 0.30 }, fov: 34 }, // arrivée BMW, vue d'ensemble
-    { theta: 740,  phi: 74, radius: 2.8, target: { x: 3.2,  y: 0.62, z: 0.30 }, fov: 28 }, // profil
-    { theta: 830,  phi: 80, radius: 2.5, target: { x: 3.2,  y: 0.64, z: 0.30 }, fov: 26 }, // arrière
-    { theta: 920,  phi: 72, radius: 2.3, target: { x: 3.2,  y: 0.60, z: 0.30 }, fov: 24 }, // profil opposé
-    { theta: 1010, phi: 76, radius: 2.7, target: { x: 3.2,  y: 0.62, z: 0.30 }, fov: 28 }, // retour (tour complet)
-    { theta: 1050, phi: 68, radius: 1.5, target: { x: 3.2,  y: 0.68, z: 0.30 }, fov: 20 }, // gros plan détail (phare/té de fourche)
-    { theta: 1090, phi: 72, radius: 1.1, target: { x: 3.2,  y: 0.63, z: 0.30 }, fov: 16 }  // macro final, cockpit/compteurs
+    { theta: 160, phi: 78, radius: 5.5,  target: { x: 0, y: 0.40, z: 0 }, fov: 40 }, // 3/4 avant, vue d'ensemble
+    { theta: 220, phi: 75, radius: 4.6,  target: { x: 0, y: 0.44, z: 0 }, fov: 35 },
+    { theta: 280, phi: 72, radius: 3.8,  target: { x: 0, y: 0.48, z: 0 }, fov: 32 }, // profil
+    { theta: 340, phi: 78, radius: 3.4,  target: { x: 0, y: 0.50, z: 0 }, fov: 30 }, // 3/4 arrière
+    { theta: 400, phi: 74, radius: 3.6,  target: { x: 0, y: 0.46, z: 0 }, fov: 32 }, // arrière
+    { theta: 460, phi: 80, radius: 3.2,  target: { x: 0, y: 0.44, z: 0 }, fov: 29 }, // profil opposé
+    { theta: 520, phi: 76, radius: 3.8,  target: { x: 0, y: 0.42, z: 0 }, fov: 33 }, // retour 3/4 avant (tour complet)
+    { theta: 560, phi: 70, radius: 2.6,  target: { x: 0, y: 0.38, z: 0 }, fov: 25 }, // resserre vers l'avant
+    { theta: 610, phi: 66, radius: 1.9,  target: { x: 0, y: 0.34, z: 0 }, fov: 20 }, // gros plan calandre/phares
+    { theta: 650, phi: 70, radius: 1.45, target: { x: 0, y: 0.30, z: 0 }, fov: 16 }  // macro final
   ]
 });
 
