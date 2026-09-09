@@ -386,6 +386,7 @@
   /* ---------- News ---------- */
   .news-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:2px;background:var(--line-soft);border:1px solid var(--line-soft);}
   .news-card{background:var(--bg-0);padding:28px;}
+  .news-card-img{width:100%;aspect-ratio:4/3;object-fit:cover;object-position:50% 40%;margin:-28px -28px 20px;width:calc(100% + 56px);display:block;}
   .news-date{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--brass);margin-bottom:12px;display:block;}
   .news-card h3{font-size:17px;margin-bottom:10px;line-height:1.3;}
   .news-card p{color:var(--ivory-dim);font-size:14.5px;margin:0;}
@@ -703,6 +704,12 @@
         <p>Livraisons récentes, coulisses des recherches et conseils pour bien préparer un import.</p>
       </div>
       <div class="news-grid">
+        <article class="news-card tilt rv">
+          <img class="news-card-img" src="images/actualites/ferrari-sf90-eze.jpg" alt="Ferrari SF90 Stradale rouge, capot ouvert, devant le village perché d'Èze" loading="lazy">
+          <span class="news-date">Août 2026</span>
+          <h3>Une SF90 Stradale livrée sur la Côte d'Azur</h3>
+          <p>Hybride rechargeable de 1000 ch, réceptionnée puis convoyée jusqu'à Èze pour une remise en main propre face à la Méditerranée.</p>
+        </article>
         <article class="news-card tilt rv">
           <span class="news-date">Juin 2026</span>
           <h3>Une 911 (964) dénichée près de Stuttgart</h3>
