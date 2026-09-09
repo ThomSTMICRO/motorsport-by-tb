@@ -870,11 +870,6 @@
 <script type="module">
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
-import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 // Compagnon 3D unique pour toute la page : la caméra suit le défilement du document et le
 // canvas reste fixé au viewport (voir .bike3d-fixed). Un seul appel existe (voir plus bas) ;
@@ -895,7 +890,9 @@ function initScroll3D(config){
   if(!renderer || !renderer.getContext()) return;
 
   var width = stage.clientWidth || 1, height = stage.clientHeight || 1;
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  // Plafonné à 1.5 (plutôt que la densité de pixels réelle, jusqu'à 3 sur certains mobiles) :
+  // au-delà, le gain de netteté ne justifie pas le coût de rendu supplémentaire.
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
   renderer.setSize(width, height);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.05;
@@ -903,42 +900,24 @@ function initScroll3D(config){
   stage.insertBefore(renderer.domElement, stage.firstChild);
 
   var scene = new THREE.Scene();
-  // Fond opaque explicite (plutôt que de compter sur la transparence du canvas) : le composer
-  // de post-traitement (bloom) ne préserve pas toujours l'alpha jusqu'au rendu final.
-  // Décor lunaire : ciel noir, la surface cratérisée se fond dans le noir au loin.
+  // Fond opaque explicite (plutôt que de compter sur la transparence du canvas), pour un rendu
+  // fiable quel que soit le navigateur. Décor lunaire : ciel noir, la surface cratérisée se
+  // fond dans le noir au loin.
   scene.background = new THREE.Color(0x05070c);
   scene.fog = new THREE.Fog(0x05070c, 14, 46);
-
-  // Environnement studio doux, pour des reflets réalistes sur la carrosserie.
-  var pmrem = new THREE.PMREMGenerator(renderer);
-  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
 
   var defaultTarget = config.target || { x: 0, y: 0.4, z: 0 };
   var target = new THREE.Vector3(defaultTarget.x, defaultTarget.y, defaultTarget.z);
   var camera = new THREE.PerspectiveCamera(config.fov || 35, width / height, 0.1, 200);
 
-  // Bloom optionnel (feux/éléments émissifs qui rayonnent vraiment) — activé par scène via config.bloom.
-  var composer = null;
-  var bloomPass = null;
-  if(config.bloom){
-    composer = new EffectComposer(renderer);
-    composer.addPass(new RenderPass(scene, camera));
-    bloomPass = new UnrealBloomPass(new THREE.Vector2(width, height),
-      (config.bloomParams && config.bloomParams.strength) || 0.8,
-      (config.bloomParams && config.bloomParams.radius) || 0.5,
-      (config.bloomParams && config.bloomParams.threshold) || 0.82
-    );
-    composer.addPass(bloomPass);
-    composer.addPass(new OutputPass());
-  }
-
-  // Éclairage "lunaire" : un unique soleil dur et blanc (pas d'atmosphère pour diffuser la
-  // lumière), un léger contre-jour bleuté (lumière cendrée) et très peu d'ambiante pour que
-  // les ombres restent profondes.
-  var key = new THREE.DirectionalLight(0xffffff, 1.6);
+  // Éclairage "lunaire" : un unique soleil blanc (pas d'atmosphère pour diffuser la lumière),
+  // un léger contre-jour bleuté (lumière cendrée) et très peu d'ambiante pour que les ombres
+  // restent profondes. Intensités modérées pour ne pas provoquer de reflets trop appuyés sur
+  // la carrosserie.
+  var key = new THREE.DirectionalLight(0xffffff, 1.2);
   key.position.set(5, 8, 4);
   scene.add(key);
-  var rim = new THREE.DirectionalLight(0x88a6ff, 0.5);
+  var rim = new THREE.DirectionalLight(0x88a6ff, 0.4);
   rim.position.set(-6, 3, -5);
   scene.add(rim);
   scene.add(new THREE.AmbientLight(0x3a4258, 0.22));
@@ -994,7 +973,7 @@ function initScroll3D(config){
   ground.position.y = -0.01;
   scene.add(ground);
 
-  var starCount = 1200;
+  var starCount = 700;
   var starPos = new Float32Array(starCount * 3);
   for(var si = 0; si < starCount; si++){
     var sr = 55 + Math.random() * 40;
@@ -1011,6 +990,14 @@ function initScroll3D(config){
     opacity: 0.9, sizeAttenuation: true, color: 0xffffff
   }));
   scene.add(stars);
+
+  // Reflets de la carrosserie calqués sur la scène réelle (ciel noir + sol gris) plutôt que
+  // sur un studio photo clair : sans ça, les véhicules réfléchissaient un environnement
+  // lumineux incohérent avec le décor nocturne, ce qui donnait des reflets beaucoup trop
+  // marqués (et coûteux à calculer inutilement en continu).
+  var pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(scene, 0.04).texture;
+  pmrem.dispose();
 
   // ---- Points de caméra parcourus au fil du défilement ----
   // Chaque point peut définir son propre point de visée (target), ce qui permet
@@ -1089,12 +1076,16 @@ function initScroll3D(config){
 
       // Les valeurs d'émissivité venant du fichier peuvent être très élevées (ex. 50) : on les
       // plafonne (emissiveClamp) pour que les phares/feux/écrans restent sombres en permanence.
+      // On atténue aussi les reflets d'environnement (envMapIntensity) : à pleine intensité,
+      // la carrosserie et le chrome réfléchissaient trop fortement le décor, jusqu'à donner
+      // une impression de reflets "cassés"/agressifs.
       var clamp = spec.emissiveClamp != null ? spec.emissiveClamp : (config.emissiveClamp || 6);
       model.traverse(function(node){
         if(!node.isMesh || !node.material) return;
         var mats = Array.isArray(node.material) ? node.material : [node.material];
         mats.forEach(function(mat){
           if(typeof mat.emissiveIntensity === 'number') mat.emissiveIntensity = Math.min(mat.emissiveIntensity, clamp);
+          if(typeof mat.envMapIntensity === 'number') mat.envMapIntensity = 0.55;
         });
       });
 
@@ -1128,7 +1119,6 @@ function initScroll3D(config){
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
     renderer.setSize(w, h);
-    if(composer) composer.setSize(w, h);
   });
   ro.observe(stage);
 
@@ -1154,7 +1144,7 @@ function initScroll3D(config){
       camera.lookAt(target);
     }
 
-    if(composer){ composer.render(); } else { renderer.render(scene, camera); }
+    renderer.render(scene, camera);
   }
   animate();
 }
@@ -1168,8 +1158,6 @@ initScroll3D({
   stageId: 'bike3dStage',
   progressFillId: 'pageProgressFill',
   fov: 30,
-  bloom: true,
-  bloomParams: { strength: 0.4, radius: 0.3, threshold: 0.95 },
   vehicles: [
     {
       // Porsche 918 Spyder — modèle d'environ 4,65 m de long. emissiveClamp très bas pour
