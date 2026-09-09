@@ -226,49 +226,6 @@
   .process-step p{color:var(--ivory-dim);font-size:15px;margin-bottom:0;}
 
   /* ---------- Catalogue ---------- */
-  .filters{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:36px;}
-  .filter-btn{
-    font-family:'Oswald',sans-serif;font-size:13.5px;font-weight:500;
-    background:transparent;border:1px solid var(--line);color:var(--ivory-dim);
-    padding:9px 16px;border-radius:20px;cursor:pointer;
-    transition:all .18s ease;
-  }
-  .filter-btn:hover{border-color:var(--brass);color:var(--ivory);}
-  .filter-btn.active{background:var(--brass);border-color:var(--brass);color:var(--bg-0);}
-
-  .catalogue-grid{
-    display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:22px;
-  }
-  .car-card{
-    background:var(--bg-2);border:1px solid var(--line-soft);border-radius:var(--radius-md);
-    padding:24px;display:flex;flex-direction:column;gap:16px;
-    transition:border-color .2s ease, transform .2s ease;
-  }
-  .car-card:hover{border-color:var(--brass-dim);transform:translateY(-2px);}
-  .car-card.is-hidden{display:none;}
-  .car-icon-wrap{color:var(--brass);height:64px;}
-  .car-icon-wrap svg{width:120px;height:64px;}
-  .car-card.type-sportive .car-icon-wrap{color:var(--red);}
-  .car-tag{
-    align-self:flex-start;font-family:'JetBrains Mono',monospace;font-size:11.5px;
-    color:var(--ivory-faint);border:1px solid var(--line);padding:3px 8px;border-radius:12px;
-  }
-  .car-name{font-size:19px;font-family:'Oswald',sans-serif;font-weight:600;}
-  .car-specs{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px;font-size:13.5px;color:var(--ivory-dim);}
-  .car-specs .k{color:var(--ivory-faint);}
-  .car-specs .v{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--ivory);}
-  .car-price{font-family:'JetBrains Mono',monospace;font-size:15px;color:var(--brass);margin-top:2px;}
-  .car-card-foot{
-    margin-top:auto;display:flex;align-items:center;justify-content:space-between;
-    padding-top:14px;border-top:1px dashed var(--line);
-  }
-  .car-link{
-    font-family:'Oswald',sans-serif;font-size:13.5px;font-weight:500;color:var(--brass);
-    background:none;border:none;cursor:pointer;padding:0;text-align:left;
-  }
-  .car-link:hover{color:var(--ivory);}
-
-  .catalogue-note{margin-top:28px;color:var(--ivory-faint);font-size:14px;}
   .catalogue-live-cta{
     display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap;
     background:var(--bg-2);border:1px solid var(--brass-dim);border-radius:var(--radius-md);
@@ -511,25 +468,16 @@
   <section id="catalogue" class="section-pad">
     <div class="wrap">
       <div class="section-head">
-        <h2>Trouvailles récentes</h2>
-        <p>Un aperçu de véhicules récemment sourcés pour nos clients. Chaque recherche est sur mesure — ceci illustre le type de résultat obtenu.</p>
+        <h2>Notre stock</h2>
+        <p>Retrouvez l'intégralité de nos véhicules disponibles, avec photos et prix, sur notre boutique LaCentrale.</p>
       </div>
       <div class="catalogue-live-cta">
         <div>
           <strong>Tout notre stock à jour</strong>
-          <p>Retrouvez l'intégralité de nos véhicules disponibles, avec photos et prix, sur notre boutique LaCentrale.</p>
+          <p>Chaque véhicule disponible, avec ses photos, son prix et ses caractéristiques.</p>
         </div>
         <a href="https://motorsport-by-tb.espacevo.fr/" target="_blank" rel="noopener" class="btn btn-primary">Voir tout le stock sur LaCentrale</a>
       </div>
-      <div class="filters" id="filterBar">
-        <button class="filter-btn active" data-filter="all">Toutes</button>
-        <button class="filter-btn" data-filter="sportive">Sportives</button>
-        <button class="filter-btn" data-filter="gt">GT / Grand tourisme</button>
-        <button class="filter-btn" data-filter="berline">Berlines &amp; breaks</button>
-        <button class="filter-btn" data-filter="youngtimer">Youngtimers</button>
-      </div>
-      <div class="catalogue-grid" id="catalogueGrid"></div>
-      <p class="catalogue-note">Véhicules à titre d'exemple. Remplacez cette liste par votre stock réel ou vos dernières recherches abouties.</p>
     </div>
   </section>
 
@@ -724,64 +672,6 @@
       nav.classList.remove('is-open');
       hamburger.setAttribute('aria-expanded','false');
     });
-  });
-
-  // ---- Catalogue data (à remplacer par le stock réel) ----
-  var vehicles = [
-    {name:"Porsche 911 Carrera S (992)", type:"sportive", typeLabel:"Sportive", year:2021, km:"28 000 km", country:"Allemagne", price:"85 000 – 95 000 €"},
-    {name:"BMW M3 Competition (G80)", type:"sportive", typeLabel:"Sportive", year:2022, km:"19 500 km", country:"Belgique", price:"78 000 – 88 000 €"},
-    {name:"Mercedes‑AMG GT 63 S", type:"gt", typeLabel:"Grand tourisme", year:2020, km:"42 000 km", country:"Pays‑Bas", price:"95 000 – 110 000 €"},
-    {name:"Audi RS6 Avant (C8)", type:"gt", typeLabel:"Grand tourisme", year:2021, km:"35 000 km", country:"Allemagne", price:"88 000 – 98 000 €"},
-    {name:"BMW Série 5 Touring 530d", type:"berline", typeLabel:"Berline / break", year:2019, km:"65 000 km", country:"Luxembourg", price:"32 000 – 38 000 €"},
-    {name:"Volvo V90 Cross Country", type:"berline", typeLabel:"Berline / break", year:2020, km:"50 000 km", country:"Suède", price:"34 000 – 40 000 €"},
-    {name:"Alpine A110", type:"youngtimer", typeLabel:"Youngtimer", year:2018, km:"40 000 km", country:"France", price:"48 000 – 55 000 €"},
-    {name:"BMW M3 (E46)", type:"youngtimer", typeLabel:"Youngtimer", year:2004, km:"95 000 km", country:"Belgique", price:"35 000 – 42 000 €"}
-  ];
-
-  var grid = document.getElementById('catalogueGrid');
-  grid.innerHTML = vehicles.map(function(v, i){
-    return '' +
-    '<div class="car-card type-'+v.type+'" data-type="'+v.type+'">' +
-      '<div class="car-icon-wrap"><svg><use href="#icon-car"></use></svg></div>' +
-      '<span class="car-tag">'+v.typeLabel+'</span>' +
-      '<div class="car-name">'+v.name+'</div>' +
-      '<div class="car-specs">' +
-        '<div class="k">Année</div><div class="v">'+v.year+'</div>' +
-        '<div class="k">Kilométrage</div><div class="v">'+v.km+'</div>' +
-        '<div class="k">Origine</div><div class="v">'+v.country+'</div>' +
-      '</div>' +
-      '<div class="car-price">'+v.price+'</div>' +
-      '<div class="car-card-foot">' +
-        '<button class="car-link" data-index="'+i+'">Demander plus d\'infos</button>' +
-      '</div>' +
-    '</div>';
-  }).join('');
-
-  // Filters
-  var filterBar = document.getElementById('filterBar');
-  filterBar.addEventListener('click', function(e){
-    var btn = e.target.closest('.filter-btn');
-    if(!btn) return;
-    filterBar.querySelectorAll('.filter-btn').forEach(function(b){ b.classList.remove('active'); });
-    btn.classList.add('active');
-    var f = btn.dataset.filter;
-    grid.querySelectorAll('.car-card').forEach(function(card){
-      var show = (f === 'all' || card.dataset.type === f);
-      card.classList.toggle('is-hidden', !show);
-    });
-  });
-
-  // Prefill request form from a catalogue card
-  grid.addEventListener('click', function(e){
-    var link = e.target.closest('.car-link');
-    if(!link) return;
-    var v = vehicles[parseInt(link.dataset.index, 10)];
-    var parts = v.name.split(' ');
-    document.getElementById('marque').value = parts[0];
-    document.getElementById('modele').value = v.name;
-    document.getElementById('annee').value = v.year;
-    document.getElementById('recherche').scrollIntoView({behavior:'smooth', block:'start'});
-    setTimeout(function(){ document.getElementById('modele').focus(); }, 400);
   });
 
   // Request form submission (client-side demo — à connecter à un email/CRM réel)
