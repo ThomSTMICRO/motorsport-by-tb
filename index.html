@@ -279,7 +279,7 @@
     border:1px solid var(--line-soft);
   }
 
-  /* #processus et #instagram n'ont pas non plus de fond opaque : le ciel nocturne du
+  /* #processus et #passion n'ont pas non plus de fond opaque : le ciel nocturne du
      décor lunaire apparaît directement derrière leur texte, qui bascule donc sur la
      palette "sur fond sombre" déjà utilisée pour le hero/CTA/footer. */
   #processus .eyebrow-mono{color:var(--brass-on-dark);}
@@ -288,28 +288,35 @@
   #processus .showcase3d-credit a{color:var(--on-dark-faint);}
   #processus .showcase3d-credit a:hover{color:var(--brass-on-dark);}
 
-  #instagram .section-head h2{color:var(--on-dark);}
-  #instagram .section-head p{color:var(--on-dark-dim);}
-  #instagram .insta-follow.btn-outline{color:var(--on-dark);border-color:rgba(247,243,228,0.4);}
-  #instagram .insta-follow.btn-outline:hover{border-color:var(--brass-on-dark);color:var(--brass-on-dark);box-shadow:0 0 0 1px var(--brass-on-dark) inset;}
-  #instagram .instagram-media{background:rgba(255,255,255,0.86);backdrop-filter:blur(10px);}
+  #passion .section-head h2{color:var(--on-dark);}
+  #passion .section-head p{color:var(--on-dark-dim);}
+  #passion .insta-follow.btn-outline{color:var(--on-dark);border-color:rgba(247,243,228,0.4);}
+  #passion .insta-follow.btn-outline:hover{border-color:var(--brass-on-dark);color:var(--brass-on-dark);box-shadow:0 0 0 1px var(--brass-on-dark) inset;}
+  #passion .closing-note{color:var(--on-dark-dim);}
 
-  /* ---------- Instagram ---------- */
+  /* ---------- Cars and Friends ---------- */
   .insta-head{
     display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;
   }
   .insta-follow{display:inline-flex;align-items:center;gap:8px;flex-shrink:0;}
-  .insta-grid{
-    display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px;
+  .caf-grid{
+    display:grid;grid-template-columns:1.4fr 1fr;grid-template-rows:auto auto;gap:16px;
     max-width:1040px;
   }
-  .insta-grid > .instagram-media{
-    margin:0 auto !important;width:100% !important;
-    min-height:340px;border:1px solid var(--line-soft);border-radius:var(--radius-md);
-    display:flex;align-items:center;justify-content:center;padding:24px;
+  .caf-grid figure{margin:0;position:relative;border-radius:var(--radius-md);overflow:hidden;}
+  .caf-grid img{width:100%;height:100%;object-fit:cover;display:block;}
+  .caf-grid figcaption{
+    position:absolute;left:0;right:0;bottom:0;padding:16px;
+    background:linear-gradient(0deg, rgba(5,7,12,0.85) 0%, rgba(5,7,12,0) 100%);
+    color:var(--on-dark);font-size:13px;
   }
-  .insta-grid > .instagram-media a{color:var(--brass);font-size:14px;text-decoration:none;}
-  .insta-grid > .instagram-media a:hover{color:var(--ivory);}
+  .caf-photo-main{grid-row:1 / 3;aspect-ratio:4/5;}
+  .caf-photo-a{aspect-ratio:16/10;}
+  .caf-photo-b{aspect-ratio:16/10;}
+  @media (max-width:760px){
+    .caf-grid{grid-template-columns:1fr;grid-template-rows:none;}
+    .caf-photo-main{grid-row:auto;aspect-ratio:4/3;}
+  }
   @media (max-width:640px){ .insta-head{flex-direction:column;align-items:stretch;} }
 
   /* ---------- Process (marqueur réutilisé par le parcours 3D) ---------- */
@@ -586,29 +593,33 @@
   </section>
 
   <!-- INSTAGRAM -->
-  <section class="section-pad instagram-feed" id="instagram">
+  <section class="section-pad instagram-feed" id="passion">
     <div class="wrap">
       <div class="section-head insta-head">
         <div class="rv">
-          <h2>Suivez-nous sur Instagram</h2>
-          <p>Les dernières trouvailles, les coulisses des recherches et les livraisons, en images.</p>
+          <h2>Cars and Friends</h2>
+          <p>Les meilleures affaires ne se trouvent pas seul. Entre passionnés, sur les quais de la Côte d'Azur, on partage les bonnes adresses — et les belles voitures.</p>
         </div>
         <a href="https://www.instagram.com/motorsport.bytb/" target="_blank" rel="noopener" class="btn btn-outline insta-follow rv">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>
           @motorsport.bytb
         </a>
       </div>
-      <div class="insta-grid">
-        <blockquote class="instagram-media tilt rv" data-instgrm-permalink="https://www.instagram.com/p/DboSU8wjCTW/" data-instgrm-version="14">
-          <a href="https://www.instagram.com/p/DboSU8wjCTW/" target="_blank" rel="noopener">Voir cette publication sur Instagram</a>
-        </blockquote>
-        <blockquote class="instagram-media tilt rv rv-d1" data-instgrm-permalink="https://www.instagram.com/p/DaFrLUPDA2x/" data-instgrm-version="14">
-          <a href="https://www.instagram.com/p/DaFrLUPDA2x/" target="_blank" rel="noopener">Voir cette publication sur Instagram</a>
-        </blockquote>
-        <blockquote class="instagram-media tilt rv rv-d2" data-instgrm-permalink="https://www.instagram.com/p/DZE-yRUDABh/" data-instgrm-version="14">
-          <a href="https://www.instagram.com/p/DZE-yRUDABh/" target="_blank" rel="noopener">Voir cette publication sur Instagram</a>
-        </blockquote>
+      <div class="caf-grid">
+        <figure class="tilt rv caf-photo-main">
+          <img src="images/cars-and-friends/quai-villefranche.jpg" alt="Supercars alignées sur le quai de Villefranche-sur-Mer, voiliers et yachts au mouillage en arrière-plan" loading="lazy">
+          <figcaption>Rendez-vous entre passionnés, quai de Villefranche-sur-Mer.</figcaption>
+        </figure>
+        <figure class="tilt rv rv-d1 caf-photo-a">
+          <img src="images/cars-and-friends/portes-papillon.jpg" alt="Porsche, McLaren et Bentley garées portes ouvertes devant la capitainerie" loading="lazy">
+          <figcaption>Porsche, McLaren, Bentley — la Riviera comme terrain de jeu.</figcaption>
+        </figure>
+        <figure class="tilt rv rv-d2 caf-photo-b">
+          <img src="images/cars-and-friends/cercle-motorsport.jpg" alt="Thomas Bona et deux amis posant devant une Ferrari jaune et une McLaren violette, face à la mer" loading="lazy">
+          <figcaption>Thomas et le cercle MOTORSPORT By TB.</figcaption>
+        </figure>
       </div>
+      <p class="closing-note rv rv-d2" style="margin-top:24px;font-style:italic;font-size:14.5px;">Bien s'entourer, c'est la moitié du chemin — le réseau qu'on construit ensemble fait la différence, dans les affaires comme dans la passion.</p>
     </div>
   </section>
 
@@ -1363,9 +1374,6 @@ initScroll3D({
 });
 
 </script>
-
-<!-- Module officiel d'intégration Instagram (charge/actualise les <blockquote class="instagram-media">) -->
-<script async src="https://www.instagram.com/embed.js"></script>
 
 </body>
 </html>
