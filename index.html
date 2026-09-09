@@ -262,6 +262,14 @@
   @media (max-width:920px){ .process-cards{grid-template-columns:1fr 1fr;} }
   @media (max-width:640px){ .process-cards{grid-template-columns:1fr;} }
 
+  /* Filet de sécurité de lisibilité : ces titres/textes n'ont pas de fond de section
+     opaque (la moto peut passer derrière), on leur donne un fond translucide dédié. */
+  #catalogue .section-head, #detailing .request-side{
+    background:rgba(255,255,255,0.86);backdrop-filter:blur(10px);
+    border-radius:var(--radius-md);padding:24px 28px;
+    border:1px solid var(--line-soft);
+  }
+
   /* ---------- Instagram ---------- */
   .insta-head{
     display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;
@@ -1148,11 +1156,17 @@ initScroll3D({
   emissiveClamp: 6,
   headlightMaterialNames: ['vehicle_generic_smallspecmap.024', 'vehicle_generic_smallspecmap.025'],
   headlightGlowRange: [0.85, 1],
+  // Approche volontairement "back-loaded" : la moto reste discrète (grand rayon) sur toute
+  // la partie centrale de la page pour ne jamais gêner la lecture des sections sans fond
+  // opaque (Catalogue, Detailing), puis se rapproche nettement sur le dernier quart.
   checkpoints: [
-    { theta: 195, phi: 80, radius: 15,   target: { x: 0, y: 0.50, z: 0 }, fov: 30 }, // Tout en haut : loin derrière la moto
-    { theta: 208, phi: 78, radius: 9,    target: { x: 0, y: 0.55, z: 0 }, fov: 32 },
-    { theta: 222, phi: 76, radius: 4.5,  target: { x: 0, y: 0.60, z: 0 }, fov: 34 },
-    { theta: 235, phi: 75, radius: 2.0,  target: { x: 0, y: 0.62, z: 0 }, fov: 30 },
+    { theta: 195, phi: 80, radius: 18,   target: { x: 0, y: 0.50, z: 0 }, fov: 28 }, // Tout en haut : loin derrière
+    { theta: 202, phi: 79, radius: 11,   target: { x: 0, y: 0.52, z: 0 }, fov: 30 }, // Première apparition, derrière le parcours
+    { theta: 209, phi: 78, radius: 9,    target: { x: 0, y: 0.55, z: 0 }, fov: 32 }, // Instagram
+    { theta: 216, phi: 77, radius: 8,    target: { x: 0, y: 0.58, z: 0 }, fov: 33 }, // Catalogue
+    { theta: 223, phi: 76, radius: 7,    target: { x: 0, y: 0.60, z: 0 }, fov: 34 }, // Detailing
+    { theta: 230, phi: 75, radius: 5,    target: { x: 0, y: 0.62, z: 0 }, fov: 32 }, // Recherche
+    { theta: 237, phi: 76, radius: 2.5,  target: { x: 0, y: 0.62, z: 0 }, fov: 28 }, // Actualités
     { theta: 245, phi: 77, radius: 0.95, target: { x: 0, y: 0.62, z: 0 }, fov: 24 }  // Tout en bas : tout près
   ]
 });
