@@ -49,17 +49,6 @@
     -webkit-font-smoothing:antialiased;
     position:relative;
   }
-  body::before{
-    content:"";
-    position:fixed;
-    inset:0;
-    pointer-events:none;
-    z-index:0;
-    opacity:0.05;
-    background-image:
-      repeating-linear-gradient(0deg, var(--brass) 0 1px, transparent 1px 80px),
-      repeating-linear-gradient(90deg, var(--brass) 0 1px, transparent 1px 80px);
-  }
   h1,h2,h3,.display{
     font-family:'Oswald',sans-serif;
     font-weight:600;
