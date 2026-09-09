@@ -895,7 +895,7 @@ function initScroll3D(config){
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
   renderer.setSize(width, height);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.05;
+  renderer.toneMappingExposure = 1.15;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   stage.insertBefore(renderer.domElement, stage.firstChild);
 
@@ -910,17 +910,17 @@ function initScroll3D(config){
   var target = new THREE.Vector3(defaultTarget.x, defaultTarget.y, defaultTarget.z);
   var camera = new THREE.PerspectiveCamera(config.fov || 35, width / height, 0.1, 200);
 
-  // Éclairage "lunaire" : un unique soleil blanc (pas d'atmosphère pour diffuser la lumière),
-  // un léger contre-jour bleuté (lumière cendrée) et très peu d'ambiante pour que les ombres
-  // restent profondes. Intensités modérées pour ne pas provoquer de reflets trop appuyés sur
-  // la carrosserie.
-  var key = new THREE.DirectionalLight(0xffffff, 1.2);
+  // Éclairage "lunaire" : un soleil franc et blanc (pas d'atmosphère pour diffuser la
+  // lumière), un contre-jour bleuté (lumière cendrée) et une lumière d'ambiance ciel/sol
+  // (HemisphereLight, moins plate qu'une simple ambiante) pour que la Porsche se détache
+  // clairement du décor sombre plutôt que de rester sous-exposée.
+  var key = new THREE.DirectionalLight(0xffffff, 2.0);
   key.position.set(5, 8, 4);
   scene.add(key);
-  var rim = new THREE.DirectionalLight(0x88a6ff, 0.4);
+  var rim = new THREE.DirectionalLight(0x88a6ff, 0.7);
   rim.position.set(-6, 3, -5);
   scene.add(rim);
-  scene.add(new THREE.AmbientLight(0x3a4258, 0.22));
+  scene.add(new THREE.HemisphereLight(0x1a2438, 0x8f8b83, 0.55));
 
   // ---- Sol lunaire cratérisé (remplace la grille studio) + champ d'étoiles ----
   function makeCraterTexture(){
@@ -1076,16 +1076,16 @@ function initScroll3D(config){
 
       // Les valeurs d'émissivité venant du fichier peuvent être très élevées (ex. 50) : on les
       // plafonne (emissiveClamp) pour que les phares/feux/écrans restent sombres en permanence.
-      // On atténue aussi les reflets d'environnement (envMapIntensity) : à pleine intensité,
-      // la carrosserie et le chrome réfléchissaient trop fortement le décor, jusqu'à donner
-      // une impression de reflets "cassés"/agressifs.
+      // envMapIntensity à 0.8 : suffisant pour des reflets naturels sur la carrosserie (le
+      // décor reflété est désormais sombre, donc plus de risque de reflets "cassés" comme
+      // avec l'ancien studio clair) sans revenir à un effet miroir trop appuyé.
       var clamp = spec.emissiveClamp != null ? spec.emissiveClamp : (config.emissiveClamp || 6);
       model.traverse(function(node){
         if(!node.isMesh || !node.material) return;
         var mats = Array.isArray(node.material) ? node.material : [node.material];
         mats.forEach(function(mat){
           if(typeof mat.emissiveIntensity === 'number') mat.emissiveIntensity = Math.min(mat.emissiveIntensity, clamp);
-          if(typeof mat.envMapIntensity === 'number') mat.envMapIntensity = 0.55;
+          if(typeof mat.envMapIntensity === 'number') mat.envMapIntensity = 0.8;
         });
       });
 
@@ -1150,8 +1150,8 @@ function initScroll3D(config){
 }
 
 // Showroom 3D unique pour toute la page : la Porsche 918 Spyder, seule, au centre de la
-// scène lunaire. La caméra en fait le tour au fil du défilement et se resserre jusqu'à un
-// plan macro final — un seul long plan continu sur toute la hauteur de la page.
+// scène lunaire, filmée comme par un drone (survols à altitude variable) jusqu'à un zoom
+// final sur son logo — un seul long plan continu sur toute la hauteur de la page.
 initScroll3D({
   stageId: 'bike3dStage',
   progressFillId: 'pageProgressFill',
@@ -1168,21 +1168,22 @@ initScroll3D({
       emissiveClamp: 0.15
     }
   ],
-  // Un tour complet à faible distance autour de la Porsche (3/4 avant, profil, 3/4 arrière,
-  // profil opposé, retour 3/4 avant), qui se resserre ensuite progressivement jusqu'à un
-  // plan macro très rapproché sur un détail (calandre/phares), étalé sur toute la hauteur
-  // de la page.
+  // Chorégraphie façon "plan de drone" : la caméra démarre en altitude (vue large et
+  // plongeante), descend en un survol continu qui frôle la Porsche au ras du sol, remonte
+  // pour un second passage aérien, puis plonge et zoome jusqu'au logo Porsche sur le capot.
   checkpoints: [
-    { theta: 160, phi: 78, radius: 5.5,  target: { x: 0, y: 0.40, z: 0 }, fov: 40 }, // 3/4 avant, vue d'ensemble
-    { theta: 220, phi: 75, radius: 4.6,  target: { x: 0, y: 0.44, z: 0 }, fov: 35 },
-    { theta: 280, phi: 72, radius: 3.8,  target: { x: 0, y: 0.48, z: 0 }, fov: 32 }, // profil
-    { theta: 340, phi: 78, radius: 3.4,  target: { x: 0, y: 0.50, z: 0 }, fov: 30 }, // 3/4 arrière
-    { theta: 400, phi: 74, radius: 3.6,  target: { x: 0, y: 0.46, z: 0 }, fov: 32 }, // arrière
-    { theta: 460, phi: 80, radius: 3.2,  target: { x: 0, y: 0.44, z: 0 }, fov: 29 }, // profil opposé
-    { theta: 520, phi: 76, radius: 3.8,  target: { x: 0, y: 0.42, z: 0 }, fov: 33 }, // retour 3/4 avant (tour complet)
-    { theta: 560, phi: 70, radius: 2.6,  target: { x: 0, y: 0.38, z: 0 }, fov: 25 }, // resserre vers l'avant
-    { theta: 610, phi: 66, radius: 1.9,  target: { x: 0, y: 0.34, z: 0 }, fov: 20 }, // gros plan calandre/phares
-    { theta: 650, phi: 70, radius: 1.45, target: { x: 0, y: 0.30, z: 0 }, fov: 16 }  // macro final
+    { theta: 140, phi: 35, radius: 9.0, target: { x: 0, y: 0.35, z: 0 }, fov: 45 }, // altitude, vue large plongeante
+    { theta: 190, phi: 45, radius: 7.5, target: { x: 0, y: 0.38, z: 0 }, fov: 40 }, // descente
+    { theta: 240, phi: 58, radius: 6.0, target: { x: 0, y: 0.42, z: 0 }, fov: 36 },
+    { theta: 290, phi: 70, radius: 4.8, target: { x: 0, y: 0.46, z: 0 }, fov: 33 }, // approche du niveau du sol, profil
+    { theta: 340, phi: 78, radius: 3.8, target: { x: 0, y: 0.48, z: 0 }, fov: 30 }, // 3/4 arrière, bas
+    { theta: 390, phi: 82, radius: 3.4, target: { x: 0, y: 0.44, z: 0 }, fov: 28 }, // survol au ras du sol
+    { theta: 440, phi: 74, radius: 3.6, target: { x: 0, y: 0.42, z: 0 }, fov: 31 }, // remontée, profil opposé
+    { theta: 490, phi: 60, radius: 4.5, target: { x: 0, y: 0.44, z: 0 }, fov: 35 }, // second passage aérien
+    { theta: 540, phi: 48, radius: 5.5, target: { x: 0, y: 0.42, z: 0 }, fov: 38 }, // altitude
+    { theta: 580, phi: 62, radius: 3.2, target: { x: 0, y: 0.36, z: 0 }, fov: 26 }, // piqué vers l'avant
+    { theta: 615, phi: 72, radius: 1.8, target: { x: 0, y: 0.32, z: 0 }, fov: 18 }, // approche du capot
+    { theta: 650, phi: 74, radius: 1.1, target: { x: 0, y: 0.29, z: 0 }, fov: 12 }  // zoom final sur le logo Porsche
   ]
 });
 
