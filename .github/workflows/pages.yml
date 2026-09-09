@@ -36,6 +36,7 @@ jobs:
             --exclude='.git' \
             --exclude='.github' \
             --exclude='_site' \
+            --exclude='_tmp' \
             --exclude='motorsport-site.zip' \
             ./ _site/
 
