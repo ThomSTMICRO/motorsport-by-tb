@@ -24,7 +24,7 @@ jobs:
           python3 -m http.server 8080 &
           sleep 2
 
-      - name: Screenshot at multiple scroll depths
+      - name: Screenshot where the fixed 3D canvas is visible
         timeout-minutes: 2
         run: |
           node <<'EOF'
@@ -37,18 +37,26 @@ jobs:
             page.on('pageerror', err => consoleErrors.push('pageerror: ' + err.message));
 
             await page.goto('http://localhost:8080/index.html', { waitUntil: 'load', timeout: 45000 });
-            await page.waitForTimeout(3000);
+            await page.waitForTimeout(4000);
 
-            const scrollHeight = await page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight);
-            console.log('scrollHeight (scrollable px):', scrollHeight);
-
-            const depths = [0.05, 0.3, 0.6, 0.95];
             const fs = require('fs');
-            for (const d of depths) {
-              await page.evaluate((y) => window.scrollTo(0, y), Math.round(scrollHeight * d));
-              await page.waitForTimeout(600);
+
+            // #processus and #instagram have no opaque background, by design, so the
+            // fixed lunar/Porsche canvas (z-index:-1) shows directly behind their text.
+            const targets = ['#processus', '#instagram'];
+            for (const sel of targets) {
+              const box = await page.evaluate((s) => {
+                const el = document.querySelector(s);
+                if (!el) return null;
+                const r = el.getBoundingClientRect();
+                return { top: r.top + window.scrollY, height: r.height };
+              }, sel);
+              if (!box) { console.log('MISSING SECTION', sel); continue; }
+              const y = Math.round(box.top + box.height / 2 - 450);
+              await page.evaluate((yy) => window.scrollTo(0, Math.max(0, yy)), y);
+              await page.waitForTimeout(900);
               const buf = await page.screenshot();
-              const name = `shot_${Math.round(d*100)}.png`;
+              const name = sel.replace('#', 'shot_') + '.png';
               fs.writeFileSync(name, buf);
               console.log('SHOT', name, 'base64start');
               console.log(buf.toString('base64'));
