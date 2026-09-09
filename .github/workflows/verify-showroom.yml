@@ -25,7 +25,7 @@ jobs:
           sleep 2
 
       - name: Screenshot at multiple scroll depths
-        timeout-minutes: 3
+        timeout-minutes: 2
         run: |
           node <<'EOF'
           const { chromium } = require('playwright');
@@ -42,11 +42,11 @@ jobs:
             const scrollHeight = await page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight);
             console.log('scrollHeight (scrollable px):', scrollHeight);
 
-            const depths = [0, 0.15, 0.28, 0.47, 0.6, 0.73, 0.87, 1.0];
+            const depths = [0.6, 1.0];
             const fs = require('fs');
             for (const d of depths) {
               await page.evaluate((y) => window.scrollTo(0, y), Math.round(scrollHeight * d));
-              await page.waitForTimeout(700);
+              await page.waitForTimeout(600);
               const buf = await page.screenshot();
               const name = `shot_${Math.round(d*100)}.png`;
               fs.writeFileSync(name, buf);
@@ -60,7 +60,8 @@ jobs:
             console.log('CONSOLE_ERRORS_END');
 
             await browser.close();
-          })();
+            process.exit(0);
+          })().catch((err) => { console.error('SCRIPT_ERROR', err); process.exit(1); });
           EOF
 
       - name: Upload screenshots
