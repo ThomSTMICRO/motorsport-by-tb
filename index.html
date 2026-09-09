@@ -194,6 +194,25 @@
   .reveal-4{animation-delay:.44s;}
   @keyframes reveal{to{opacity:1;transform:translateY(0);}}
 
+  /* ---------- Bandeau choc : le parcours de Thomas en trois chiffres ---------- */
+  .shock-strip{
+    background:linear-gradient(160deg, var(--dark-1) 0%, var(--dark-0) 100%);
+    padding:56px 0;position:relative;z-index:1;
+  }
+  .shock-strip-inner{display:flex;align-items:center;justify-content:space-between;gap:32px;flex-wrap:wrap;}
+  .shock-stats{display:flex;gap:48px;flex-wrap:wrap;}
+  .shock-num{
+    font-family:'Oswald',sans-serif;font-weight:700;font-size:clamp(32px,4.2vw,48px);
+    color:var(--brass-on-dark);text-shadow:0 0 24px rgba(255,203,92,0.35);line-height:1;margin-bottom:8px;
+  }
+  .shock-label{font-size:13.5px;color:var(--on-dark-dim);line-height:1.4;}
+  .shock-cta{color:var(--on-dark);border-color:rgba(247,243,228,0.4);flex-shrink:0;}
+  .shock-cta:hover{border-color:var(--brass-on-dark);color:var(--brass-on-dark);box-shadow:0 0 0 1px var(--brass-on-dark) inset;}
+  @media (max-width:760px){
+    .shock-stats{gap:28px;}
+    .shock-strip-inner{justify-content:flex-start;}
+  }
+
   /* Révélation générique au défilement, pour tout le reste de la page. */
   .rv{opacity:0;transform:translateY(24px);transition:opacity .7s cubic-bezier(.2,.7,.2,1), transform .7s cubic-bezier(.2,.7,.2,1);}
   .rv.is-in{opacity:1;transform:translateY(0);}
@@ -507,6 +526,27 @@
           <a href="#catalogue" class="btn btn-outline">Voir le catalogue</a>
         </div>
       </div>
+    </div>
+  </section>
+
+  <!-- BANDEAU CHOC — le parcours de Thomas en trois chiffres -->
+  <section class="shock-strip">
+    <div class="wrap shock-strip-inner">
+      <div class="shock-stats">
+        <div class="shock-stat">
+          <div class="shock-num" data-count="600000" data-suffix=" €">0 €</div>
+          <div class="shock-label">de chiffre d'affaires<br>dès la première année</div>
+        </div>
+        <div class="shock-stat">
+          <div class="shock-num" data-count="4">0</div>
+          <div class="shock-label">sociétés créées<br>en six ans</div>
+        </div>
+        <div class="shock-stat">
+          <div class="shock-num" data-count="30">0</div>
+          <div class="shock-label">véhicules importés<br>tous immatriculés</div>
+        </div>
+      </div>
+      <a href="formation.html#resultats" class="btn btn-outline shock-cta">En savoir plus sur moi →</a>
     </div>
   </section>
 
@@ -836,6 +876,41 @@
     revealEls.forEach(function(el){ revealObserver.observe(el); });
   } else {
     revealEls.forEach(function(el){ el.classList.add('is-in'); });
+  }
+
+  // Compteurs animés (bandeau choc)
+  var shockCounters = document.querySelectorAll('.shock-num[data-count]');
+  function animateShockCounter(el){
+    var target = parseInt(el.getAttribute('data-count'), 10) || 0;
+    var suffix = el.getAttribute('data-suffix') || '';
+    var duration = 1400;
+    var start = null;
+    if(reduceMotion){
+      el.textContent = target.toLocaleString('fr-FR') + suffix;
+      return;
+    }
+    function step(ts){
+      if(start === null) start = ts;
+      var progress = Math.min(1, (ts - start) / duration);
+      var eased = 1 - Math.pow(1 - progress, 3);
+      var value = Math.round(target * eased);
+      el.textContent = value.toLocaleString('fr-FR') + suffix;
+      if(progress < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+  if('IntersectionObserver' in window){
+    var shockObserver = new IntersectionObserver(function(entries){
+      entries.forEach(function(entry){
+        if(entry.isIntersecting){
+          animateShockCounter(entry.target);
+          shockObserver.unobserve(entry.target);
+        }
+      });
+    }, {threshold:0.5});
+    shockCounters.forEach(function(el){ shockObserver.observe(el); });
+  } else {
+    shockCounters.forEach(animateShockCounter);
   }
 
   // Légère inclinaison 3D au survol (.tilt)
