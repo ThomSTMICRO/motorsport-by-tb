@@ -1,0 +1,80 @@
+name: Diagnostic - verify full-page BMW companion
+on:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.47.0 >/dev/null 2>&1
+          npx playwright install --with-deps chromium
+
+      - name: Serve site
+        run: |
+          npx http-server -p 8080 . &
+          sleep 2
+
+      - name: Run check
+        run: |
+          cat > check.js << 'EOF'
+          const { chromium } = require('playwright');
+          (async () => {
+            const browser = await chromium.launch();
+            const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+            const consoleErrors = [];
+            page.on('console', msg => { if (msg.type() === 'error') consoleErrors.push(msg.text()); });
+            page.on('pageerror', err => consoleErrors.push('PAGEERROR: ' + err.message));
+
+            await page.goto('http://localhost:8080/index.html', { waitUntil: 'domcontentloaded', timeout: 60000 });
+
+            await page.waitForFunction(() => {
+              const s = document.querySelector('.bike3d-fixed');
+              return s && s.classList.contains('is-ready');
+            }, { timeout: 90000 }).catch(() => console.log('BIKE_LOAD_TIMEOUT'));
+            await page.waitForTimeout(600);
+
+            const state = await page.evaluate(() => {
+              const s = document.querySelector('.bike3d-fixed');
+              const canvas = s ? s.querySelector('canvas') : null;
+              return { ready: s ? s.classList.contains('is-ready') : null, canvasPresent: !!canvas };
+            });
+            console.log('BIKE_STATE', JSON.stringify(state));
+
+            const docHeight = await page.evaluate(() => document.documentElement.scrollHeight);
+            const viewportH = 900;
+            const scrollable = docHeight - viewportH;
+            console.log('DOC_HEIGHT', docHeight, 'SCROLLABLE', scrollable);
+
+            for (let i = 0; i <= 6; i++) {
+              const y = scrollable * (i / 6);
+              await page.evaluate((yy) => window.scrollTo(0, yy), y);
+              await page.waitForTimeout(500);
+              const progress = await page.evaluate(() => document.getElementById('pageProgressFill').style.width);
+              console.log('SCROLL_' + i, 'y=' + Math.round(y), 'progressBar=' + progress);
+              await page.screenshot({ path: `/tmp/bike_scroll_${i}.jpg`, type: 'jpeg', quality: 55 });
+            }
+
+            console.log('CONSOLE_ERRORS', JSON.stringify(consoleErrors));
+            await browser.close();
+          })();
+          EOF
+          node check.js
+
+      - name: Print thumbnails as base64
+        if: always()
+        run: |
+          for i in 0 1 3 5 6; do
+            f="/tmp/bike_scroll_${i}.jpg"
+            if [ -f "$f" ]; then
+              echo "=== $f ==="
+              base64 -w 0 "$f"
+              echo ""
+            fi
+          done

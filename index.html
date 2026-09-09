@@ -226,85 +226,41 @@
   .section-head{max-width:56ch;margin-bottom:48px;}
   .section-head h2{font-size:clamp(26px,3.2vw,36px);margin-bottom:14px;}
   .section-head p{color:var(--ivory-dim);font-size:16.5px;}
-  .section-pad{padding:88px 0;}
-  .divider{border:none;border-top:1px dashed var(--line);margin:0;}
-
-  /* ---------- Parcours 3D piloté par le défilement (modèle GLB réel) ---------- */
-  .scroll3d-section{position:relative;height:420vh;}
-  .scroll3d-pin{
-    position:sticky;top:0;height:100vh;overflow:hidden;
-    display:flex;align-items:center;
-    background:radial-gradient(ellipse at 62% 42%, var(--bg-2) 0%, var(--bg-0) 72%);
-  }
-  .showcase3d-stage{position:absolute;inset:0;z-index:0;}
-  .showcase3d-stage canvas{display:block;width:100%;height:100%;}
-  .showcase3d-loading{
-    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-    font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--ivory-faint);
-    background:var(--bg-0);transition:opacity .4s ease;pointer-events:none;z-index:3;
-  }
-  .showcase3d-loading.is-hidden{opacity:0;}
-  .showcase3d-loading.is-error{color:var(--red-bright);}
-  .showcase3d-credit{margin:14px 0 0;color:var(--ivory-faint);font-size:12.5px;}
-  .showcase3d-credit a{color:var(--ivory-faint);text-decoration:underline;}
-  .showcase3d-credit a:hover{color:var(--brass-bright);}
-
-  .scroll3d-overlay{position:absolute;inset:0;z-index:2;pointer-events:none;}
-  .scroll3d-head{
-    position:absolute;top:9%;left:0;right:0;text-align:center;
-    max-width:56ch;margin:0 auto;padding:0 32px;
-  }
   .eyebrow-mono{
     font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--brass);
     margin-bottom:10px;
   }
-  .scroll3d-head p{color:var(--ivory-dim);font-size:16px;margin:0;}
+  .section-pad{padding:88px 0;}
+  .divider{border:none;border-top:1px dashed var(--line);margin:0;}
 
-  /* Les fiches d'étape sont ancrées de part et d'autre de la voiture, jamais dessus. */
-  .scroll3d-steps{position:absolute;inset:0;}
-  .scroll3d-step{
-    position:absolute;top:50%;width:min(320px, 40vw);
-    padding:22px 24px;border-radius:var(--radius-md);
+  /* ---------- Compagnon 3D fixe (BMW S1000 RR, caméra pilotée par le défilement de toute la page) ---------- */
+  .bike3d-fixed{
+    position:fixed;inset:0;z-index:-1;
+    background:radial-gradient(ellipse at 60% 38%, var(--bg-2) 0%, var(--bg-0) 78%);
+    opacity:0;transition:opacity 1.2s ease;
+  }
+  .bike3d-fixed.is-ready{opacity:1;}
+  .bike3d-fixed canvas{display:block;width:100%;height:100%;}
+
+  .page-progress-track{position:fixed;top:0;left:0;right:0;height:2px;z-index:70;background:var(--line-soft);}
+  .page-progress-fill{height:100%;width:0%;background:linear-gradient(90deg, var(--red-bright), var(--brass-bright));transition:width .08s linear;}
+
+  .showcase3d-credit{margin:28px 0 0;color:var(--ivory-faint);font-size:12.5px;}
+  .showcase3d-credit a{color:var(--ivory-faint);text-decoration:underline;}
+  .showcase3d-credit a:hover{color:var(--brass-bright);}
+
+  /* ---------- Cartes "process" (fond translucide : la moto reste visible derrière) ---------- */
+  .process-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;}
+  .process-card{
+    padding:26px 24px;border-radius:var(--radius-md);
     background:rgba(255,255,255,0.86);backdrop-filter:blur(10px);
     border:1px solid var(--line-soft);
-    box-shadow:0 20px 44px -18px rgba(23,36,28,0.22);
-    opacity:0;transition:opacity .55s ease, transform .55s ease;
+    box-shadow:0 20px 44px -22px rgba(23,36,28,0.22);
   }
-  .scroll3d-step[data-side="left"]{left:5%;transform:translateY(-50%) translateX(-22px);}
-  .scroll3d-step[data-side="right"]{right:5%;transform:translateY(-50%) translateX(22px);}
-  .scroll3d-step.is-active{opacity:1;}
-  .scroll3d-step.is-active[data-side="left"]{transform:translateY(-50%) translateX(0);}
-  .scroll3d-step.is-active[data-side="right"]{transform:translateY(-50%) translateX(0);}
-  .scroll3d-step h3{font-size:21px;margin:0 0 10px;color:var(--ivory);}
-  .scroll3d-step p{color:var(--ivory-dim);font-size:15px;margin:0;}
-  .scroll3d-step .btn{pointer-events:auto;margin-top:16px;}
-
-  .scroll3d-dots{
-    position:absolute;bottom:38px;left:0;right:0;
-    display:flex;justify-content:center;gap:10px;
-  }
-  .scroll3d-dots span{
-    width:8px;height:8px;border-radius:50%;background:var(--line);
-    transition:background .3s ease, box-shadow .3s ease, transform .3s ease;
-  }
-  .scroll3d-dots span.is-active{
-    background:var(--brass-bright);transform:scale(1.3);
-    box-shadow:0 0 10px 2px rgba(255,203,92,0.6);
-  }
-  .scroll3d-progress-track{position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--line-soft);z-index:3;}
-  .scroll3d-progress-fill{
-    height:100%;width:0%;
-    background:linear-gradient(90deg, var(--red-bright), var(--brass-bright));
-  }
-  @media (max-width:820px){
-    .scroll3d-section{height:360vh;}
-    .scroll3d-head{top:7%;}
-    .scroll3d-step{
-      width:calc(100% - 40px);left:20px !important;right:20px !important;
-      top:auto;bottom:78px;transform:translateY(14px) !important;
-    }
-    .scroll3d-step.is-active{transform:translateY(0) !important;}
-  }
+  .process-card h3{font-size:18px;margin:0 0 8px;}
+  .process-card p{color:var(--ivory-dim);font-size:14.5px;margin:0;}
+  @media (max-width:920px){ .process-cards{grid-template-columns:1fr 1fr;} }
+  @media (max-width:640px){ .process-cards{grid-template-columns:1fr;} }
 
   /* ---------- Instagram ---------- */
   .insta-head{
@@ -460,6 +416,10 @@
 </head>
 <body>
 
+<!-- Compagnon 3D : la BMW S1000 RR reste fixée en arrière-plan et la caméra
+     s'en approche continuellement au fil du défilement de toute la page. -->
+<div class="bike3d-fixed" id="bike3dStage" aria-hidden="true"></div>
+
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <symbol id="icon-car" viewBox="0 0 240 100">
     <path d="M18,72 L18,66 C18,58 24,52 32,50 L48,46 L64,28 C70,22 78,18 87,18 L152,18 C162,18 170,22 176,28 L190,46 C204,48 214,56 216,66 L216,72"
@@ -496,6 +456,8 @@
   </div>
 </header>
 
+<div class="page-progress-track"><div class="page-progress-fill" id="pageProgressFill"></div></div>
+
 <main>
 
   <!-- HERO -->
@@ -517,90 +479,38 @@
     </div>
   </section>
 
-  <!-- PARCOURS 3D (aperçu 3D piloté par le défilement) -->
-  <section class="scroll3d-section" id="processus3d">
-    <div class="scroll3d-pin">
-      <div class="showcase3d-stage" id="showcase3dStage">
-        <div class="showcase3d-loading" id="showcase3dLoading">Chargement du modèle 3D…</div>
+  <!-- COMMENT SE DÉROULE UNE RECHERCHE (la BMW continue son approche derrière ces cartes) -->
+  <section class="section-pad process-section" id="processus">
+    <div class="wrap">
+      <div class="section-head rv">
+        <div class="eyebrow-mono">Comment se déroule une recherche</div>
+        <h2>Du brief à la remise des clés</h2>
       </div>
-      <div class="scroll3d-overlay">
-        <div class="scroll3d-head reveal">
-          <div class="eyebrow-mono">Comment se déroule une recherche</div>
-          <p>Faites défiler pour suivre le parcours, du brief à la remise des clés.</p>
+      <div class="process-cards">
+        <div class="process-card tilt rv">
+          <div class="process-marker">01</div>
+          <h3>Le brief</h3>
+          <p>Vous précisez le modèle, la fourchette de budget, le kilométrage et les critères non négociables.</p>
         </div>
-        <div class="scroll3d-steps">
-          <div class="scroll3d-step is-active" data-step="0" data-side="left">
-            <div class="process-marker">01</div>
-            <h3>Le brief</h3>
-            <p>Vous précisez le modèle, la fourchette de budget, le kilométrage et les critères non négociables.</p>
-          </div>
-          <div class="scroll3d-step" data-step="1" data-side="right">
-            <div class="process-marker">02</div>
-            <h3>Le sourcing</h3>
-            <p>Notre réseau de partenaires et nos veilles couvrent les places de marché en Allemagne, au Benelux et au‑delà.</p>
-          </div>
-          <div class="scroll3d-step" data-step="2" data-side="left">
-            <div class="process-marker">03</div>
-            <h3>La vérification</h3>
-            <p>Contrôle technique, historique d'entretien et essai sur place avant toute proposition ferme.</p>
-          </div>
-          <div class="scroll3d-step" data-step="3" data-side="right">
-            <div class="process-marker">04</div>
-            <h3>La livraison</h3>
-            <p>Import, mise en conformité administrative et remise du véhicule près de chez vous.</p>
-          </div>
+        <div class="process-card tilt rv rv-d1">
+          <div class="process-marker">02</div>
+          <h3>Le sourcing</h3>
+          <p>Notre réseau de partenaires et nos veilles couvrent les places de marché en Allemagne, au Benelux et au‑delà.</p>
         </div>
-        <div class="scroll3d-dots">
-          <span class="is-active"></span><span></span><span></span><span></span>
+        <div class="process-card tilt rv rv-d2">
+          <div class="process-marker">03</div>
+          <h3>La vérification</h3>
+          <p>Contrôle technique, historique d'entretien et essai sur place avant toute proposition ferme.</p>
+        </div>
+        <div class="process-card tilt rv rv-d3">
+          <div class="process-marker">04</div>
+          <h3>La livraison</h3>
+          <p>Import, mise en conformité administrative et remise du véhicule près de chez vous.</p>
         </div>
       </div>
-      <div class="scroll3d-progress-track"><div class="scroll3d-progress-fill" id="scroll3dProgressFill"></div></div>
+      <p class="showcase3d-credit">Modèle 3D « BMW S1000 RR » par VTX (Sketchfab) — utilisé avec autorisation.</p>
     </div>
   </section>
-  <div class="wrap"><p class="showcase3d-credit">Modèle 3D « Ferrari 288 GTO » par Randomness, sous licence <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a> (Sketchfab).</p></div>
-
-  <!-- PARCOURS 3D INSTAGRAM (Porsche 918 Spyder, pilotée par le défilement — la caméra entre dans l'habitacle) -->
-  <section class="scroll3d-section" id="instagram3d">
-    <div class="scroll3d-pin">
-      <div class="showcase3d-stage" id="showcaseInstaStage">
-        <div class="showcase3d-loading" id="showcaseInstaLoading">Chargement du modèle 3D…</div>
-      </div>
-      <div class="scroll3d-overlay">
-        <div class="scroll3d-head reveal">
-          <div class="eyebrow-mono">Sur notre Instagram</div>
-          <p>Faites défiler pour voir ce qui vous attend sur le compte.</p>
-        </div>
-        <div class="scroll3d-steps">
-          <div class="scroll3d-step is-active" data-step="0" data-side="left">
-            <div class="process-marker">01</div>
-            <h3>En coulisses</h3>
-            <p>Chaque recherche, chaque contrôle technique, chaque essai : le quotidien de MOTORSPORT by TB en images.</p>
-          </div>
-          <div class="scroll3d-step" data-step="1" data-side="right">
-            <div class="process-marker">02</div>
-            <h3>Les livraisons</h3>
-            <p>Les clés remises, la plaque MOTORSPORT posée — nos plus belles remises de véhicules.</p>
-          </div>
-          <div class="scroll3d-step" data-step="2" data-side="left">
-            <div class="process-marker">03</div>
-            <h3>Le detailing en direct</h3>
-            <p>Lavage, polish, protection céramique : les avant/après de nos prestations detailing.</p>
-          </div>
-          <div class="scroll3d-step" data-step="3" data-side="right">
-            <div class="process-marker">04</div>
-            <h3>Rejoignez la communauté</h3>
-            <p>Nouvelles trouvailles et coups de cœur du moment, publiés au fil de l'eau.</p>
-            <a href="https://www.instagram.com/motorsport.bytb/" target="_blank" rel="noopener" class="btn btn-primary">@motorsport.bytb</a>
-          </div>
-        </div>
-        <div class="scroll3d-dots">
-          <span class="is-active"></span><span></span><span></span><span></span>
-        </div>
-      </div>
-      <div class="scroll3d-progress-track"><div class="scroll3d-progress-fill" id="scrollInstaProgressFill"></div></div>
-    </div>
-  </section>
-  <div class="wrap"><p class="showcase3d-credit">Modèle 3D « Porsche 918 Spyder » — utilisé sous licence libre.</p></div>
 
   <!-- INSTAGRAM -->
   <section class="section-pad instagram-feed" id="instagram">
@@ -940,13 +850,15 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 function initScroll3D(config){
-  var section = document.getElementById(config.sectionId);
+  // Deux modes : une section pinnée classique (section + stage dédiés), ou config.fullPage
+  // où la caméra suit le défilement de la page entière et le canvas reste fixé au viewport.
+  var section = config.sectionId ? document.getElementById(config.sectionId) : null;
   var stage = document.getElementById(config.stageId);
-  var loadingEl = document.getElementById(config.loadingId);
+  var loadingEl = config.loadingId ? document.getElementById(config.loadingId) : null;
   var progressFill = document.getElementById(config.progressFillId);
-  if(!section || !stage) return;
-  var stepEls = section.querySelectorAll('.scroll3d-step');
-  var dotEls = section.querySelectorAll('.scroll3d-dots span');
+  if(!stage) return;
+  var stepEls = section ? section.querySelectorAll('.scroll3d-step') : [];
+  var dotEls = section ? section.querySelectorAll('.scroll3d-dots span') : [];
 
   var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -1103,6 +1015,7 @@ function initScroll3D(config){
       });
 
       if(loadingEl) loadingEl.classList.add('is-hidden');
+      if(config.fullPage) stage.classList.add('is-ready');
     },
     undefined,
     function(err){
@@ -1131,23 +1044,31 @@ function initScroll3D(config){
   var ticking = false;
 
   function updateProgress(){
-    var rect = section.getBoundingClientRect();
-    var scrollable = section.offsetHeight - window.innerHeight;
-    var scrolled = -rect.top;
-    progress = scrollable > 0 ? Math.max(0, Math.min(1, scrolled / scrollable)) : 0;
+    if(config.fullPage){
+      var scrollableDoc = document.documentElement.scrollHeight - window.innerHeight;
+      var scrolledDoc = window.scrollY || document.documentElement.scrollTop;
+      progress = scrollableDoc > 0 ? Math.max(0, Math.min(1, scrolledDoc / scrollableDoc)) : 0;
+    } else {
+      var rect = section.getBoundingClientRect();
+      var scrollable = section.offsetHeight - window.innerHeight;
+      var scrolled = -rect.top;
+      progress = scrollable > 0 ? Math.max(0, Math.min(1, scrolled / scrollable)) : 0;
+    }
 
     if(progressFill) progressFill.style.width = (progress * 100) + '%';
 
-    // Le nombre de fiches-texte (stepEls) peut être inférieur au nombre de points de
-    // caméra (checkpoints) : la trajectoire 3D peut être plus riche que la narration.
-    var stepCount = stepEls.length || checkpoints.length;
-    var stepIndex = Math.min(stepCount - 1, Math.floor(progress * stepCount));
-    stepEls.forEach(function(el){
-      el.classList.toggle('is-active', parseInt(el.dataset.step, 10) === stepIndex);
-    });
-    dotEls.forEach(function(dot, i){
-      dot.classList.toggle('is-active', i === stepIndex);
-    });
+    if(section){
+      // Le nombre de fiches-texte (stepEls) peut être inférieur au nombre de points de
+      // caméra (checkpoints) : la trajectoire 3D peut être plus riche que la narration.
+      var stepCount = stepEls.length || checkpoints.length;
+      var stepIndex = Math.min(stepCount - 1, Math.floor(progress * stepCount));
+      stepEls.forEach(function(el){
+        el.classList.toggle('is-active', parseInt(el.dataset.step, 10) === stepIndex);
+      });
+      dotEls.forEach(function(dot, i){
+        dot.classList.toggle('is-active', i === stepIndex);
+      });
+    }
 
     ticking = false;
   }
@@ -1170,7 +1091,7 @@ function initScroll3D(config){
   ro.observe(stage);
 
   var isVisible = true;
-  if('IntersectionObserver' in window){
+  if(section && 'IntersectionObserver' in window){
     var io = new IntersectionObserver(function(entries){
       isVisible = entries[0].isIntersecting;
     }, { threshold: 0 });
@@ -1212,52 +1133,27 @@ function initScroll3D(config){
   animate();
 }
 
+// Compagnon 3D unique pour toute la page : la BMW S1000 RR reste fixée au viewport et la
+// caméra s'en approche continuellement, du sommet de la page (loin derrière) jusqu'au bas
+// (tout près), en tournant légèrement autour d'elle pour rester vivante en un seul long plan.
 initScroll3D({
-  sectionId: 'processus3d',
-  stageId: 'showcase3dStage',
-  loadingId: 'showcase3dLoading',
-  progressFillId: 'scroll3dProgressFill',
-  modelPath: 'models/ferrari-288-gto.glb',
-  modelScale: 3.2,
-  checkpoints: [
-    { theta: 25,  phi: 78, radius: 4.4 }, // 01 · Le brief — plan rapproché 3/4 avant
-    { theta: 100, phi: 80, radius: 6.2 }, // 02 · Le sourcing — profil, recul
-    { theta: 205, phi: 72, radius: 4.8 }, // 03 · La vérification — 3/4 arrière, inspection
-    { theta: 330, phi: 84, radius: 7.8 }  // 04 · La livraison — vue large, remise des clés
-  ]
-});
-
-initScroll3D({
-  sectionId: 'instagram3d',
-  stageId: 'showcaseInstaStage',
-  loadingId: 'showcaseInstaLoading',
-  progressFillId: 'scrollInstaProgressFill',
-  modelPath: 'models/porsche-918-spyder.glb',
-  modelScale: 3.3,
-  fov: 40,
-  // Bloom + feux dynamiques : les matériaux émissifs du modèle (feu arrière, verre du phare)
-  // rayonnent vraiment, et deux points lumineux s'allument sur les phares avant au moment du zoom.
+  fullPage: true,
+  stageId: 'bike3dStage',
+  progressFillId: 'pageProgressFill',
+  modelPath: 'models/bmw-s1000rr.glb',
+  modelScale: 3.0,
+  fov: 30,
   bloom: true,
-  bloomParams: { strength: 0.65, radius: 0.4, threshold: 0.93 },
+  bloomParams: { strength: 0.6, radius: 0.4, threshold: 0.9 },
   emissiveClamp: 6,
-  headlightMaterialNames: ['Glass_Bumped_2'],
-  headlightGlowRange: [0.83, 1],
-  dynamicLights: [
-    { position: { x: 0.5,  y: 0.32, z: 1.55 }, color: 0xfff4d6, maxIntensity: 2.2, distance: 2.5 },
-    { position: { x: -0.5, y: 0.32, z: 1.55 }, color: 0xfff4d6, maxIntensity: 2.2, distance: 2.5 }
-  ],
-  // Chorégraphie demandée : on démarre à l'arrière, on monte à la verticale pour une vue
-  // en plongée, on pivote de 280° au-dessus de la voiture, on redescend en se réorientant
-  // face à elle, puis on zoome sur les phares avant. 7 points de caméra pour 4 fiches-texte :
-  // la trajectoire 3D est plus riche que la narration (voir stepCount dans updateProgress).
+  headlightMaterialNames: ['vehicle_generic_smallspecmap.024', 'vehicle_generic_smallspecmap.025'],
+  headlightGlowRange: [0.85, 1],
   checkpoints: [
-    { theta: 190, phi: 76, radius: 6.0, target: { x: 0,    y: 0.40, z: 0 },    fov: 40 }, // 0 · Arrière
-    { theta: 190, phi: 40, radius: 7.3, target: { x: 0,    y: 0.40, z: 0 },    fov: 42 }, // 1 · Montée à la verticale
-    { theta: 190, phi: 15, radius: 8.8, target: { x: 0,    y: 0.38, z: 0 },    fov: 44 }, // 2 · Plongée, début du pivot
-    { theta: 470, phi: 15, radius: 8.8, target: { x: 0,    y: 0.38, z: 0 },    fov: 44 }, // 3 · Pivot 280° terminé, toujours en plongée
-    { theta: 430, phi: 50, radius: 3.6, target: { x: 0,    y: 0.40, z: 0 },    fov: 40 }, // 4 · Redescente, réorientation vers l'avant
-    { theta: 390, phi: 80, radius: 3.2, target: { x: 0,    y: 0.42, z: 0 },    fov: 38 }, // 5 · Face à la voiture
-    { theta: 385, phi: 82, radius: 0.85, target: { x: 0.5, y: 0.32, z: 1.5 },  fov: 24 }  // 6 · Zoom sur le phare avant
+    { theta: 195, phi: 80, radius: 15,   target: { x: 0, y: 0.50, z: 0 }, fov: 30 }, // Tout en haut : loin derrière la moto
+    { theta: 208, phi: 78, radius: 9,    target: { x: 0, y: 0.55, z: 0 }, fov: 32 },
+    { theta: 222, phi: 76, radius: 4.5,  target: { x: 0, y: 0.60, z: 0 }, fov: 34 },
+    { theta: 235, phi: 75, radius: 2.0,  target: { x: 0, y: 0.62, z: 0 }, fov: 30 },
+    { theta: 245, phi: 77, radius: 0.95, target: { x: 0, y: 0.62, z: 0 }, fov: 24 }  // Tout en bas : tout près
   ]
 });
 
