@@ -921,6 +921,10 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 function initScroll3D(config){
   var section = document.getElementById(config.sectionId);
@@ -962,6 +966,21 @@ function initScroll3D(config){
   var defaultTarget = config.target || { x: 0, y: 0.4, z: 0 };
   var target = new THREE.Vector3(defaultTarget.x, defaultTarget.y, defaultTarget.z);
   var camera = new THREE.PerspectiveCamera(config.fov || 35, width / height, 0.1, 200);
+
+  // Bloom optionnel (feux/éléments émissifs qui rayonnent vraiment) — activé par scène via config.bloom.
+  var composer = null;
+  var bloomPass = null;
+  if(config.bloom){
+    composer = new EffectComposer(renderer);
+    composer.addPass(new RenderPass(scene, camera));
+    bloomPass = new UnrealBloomPass(new THREE.Vector2(width, height),
+      (config.bloomParams && config.bloomParams.strength) || 0.8,
+      (config.bloomParams && config.bloomParams.radius) || 0.5,
+      (config.bloomParams && config.bloomParams.threshold) || 0.82
+    );
+    composer.addPass(bloomPass);
+    composer.addPass(new OutputPass());
+  }
 
   var key = new THREE.DirectionalLight(0xf7f3e4, 1.3);
   key.position.set(5, 8, 4);
@@ -1028,6 +1047,10 @@ function initScroll3D(config){
   }
   setCameraAtProgress(0);
 
+  // Matériaux des feux repérés dans le modèle (ex. le phare avant) : leur intensité
+  // émissive est animée avec le défilement pour donner l'impression qu'ils s'allument.
+  var headlightMaterials = [];
+
   var loader = new GLTFLoader();
   loader.load(
     config.modelPath,
@@ -1044,6 +1067,25 @@ function initScroll3D(config){
       model.position.set(-center.x * scale, -box.min.y * scale, -center.z * scale);
 
       scene.add(model);
+
+      // Les valeurs d'émissivité venant du fichier peuvent être très élevées (ex. 50) : on les
+      // plafonne pour rester exploitable avec le bloom, et on garde une référence sur les
+      // matériaux de feux désignés par la config pour les faire "s'allumer" progressivement.
+      var clamp = config.emissiveClamp || 6;
+      model.traverse(function(node){
+        if(!node.isMesh || !node.material) return;
+        var mats = Array.isArray(node.material) ? node.material : [node.material];
+        mats.forEach(function(mat){
+          if(typeof mat.emissiveIntensity !== 'number') return;
+          mat.emissiveIntensity = Math.min(mat.emissiveIntensity, clamp);
+          if(config.headlightMaterialNames && config.headlightMaterialNames.indexOf(mat.name) !== -1){
+            mat.userData.baseEmissive = mat.emissiveIntensity;
+            mat.emissiveIntensity = mat.userData.baseEmissive * 0.12;
+            headlightMaterials.push(mat);
+          }
+        });
+      });
+
       if(loadingEl) loadingEl.classList.add('is-hidden');
     },
     undefined,
@@ -1054,6 +1096,19 @@ function initScroll3D(config){
       }
     }
   );
+
+  // ---- Feux dynamiques (ex. phares) qui s'allument à un moment donné du défilement ----
+  function smoothstep(edge0, edge1, x){
+    var t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0 || 1)));
+    return t * t * (3 - 2 * t);
+  }
+  var glowRange = config.headlightGlowRange || [0.83, 1];
+  var dynamicLights = (config.dynamicLights || []).map(function(dl){
+    var light = new THREE.PointLight(dl.color || 0xfff4d6, 0, dl.distance || 3, dl.decay || 2);
+    light.position.set(dl.position.x, dl.position.y, dl.position.z);
+    scene.add(light);
+    return { light: light, maxIntensity: dl.maxIntensity || 2 };
+  });
 
   // ---- Progression liée au défilement ----
   var progress = 0;
@@ -1094,6 +1149,7 @@ function initScroll3D(config){
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
     renderer.setSize(w, h);
+    if(composer) composer.setSize(w, h);
   });
   ro.observe(stage);
 
@@ -1126,7 +1182,16 @@ function initScroll3D(config){
       camera.position.y += Math.sin(idleAngle * 1.3) * bobAmp * 0.5;
       camera.lookAt(target);
     }
-    renderer.render(scene, camera);
+
+    if(dynamicLights.length || headlightMaterials.length){
+      var glowT = smoothstep(glowRange[0], glowRange[1], progress);
+      dynamicLights.forEach(function(dl){ dl.light.intensity = dl.maxIntensity * glowT; });
+      headlightMaterials.forEach(function(mat){
+        mat.emissiveIntensity = lerp(mat.userData.baseEmissive * 0.12, mat.userData.baseEmissive, glowT);
+      });
+    }
+
+    if(composer){ composer.render(); } else { renderer.render(scene, camera); }
   }
   animate();
 }
@@ -1154,6 +1219,17 @@ initScroll3D({
   modelPath: 'models/porsche-918-spyder.glb',
   modelScale: 3.3,
   fov: 40,
+  // Bloom + feux dynamiques : les matériaux émissifs du modèle (feu arrière, verre du phare)
+  // rayonnent vraiment, et deux points lumineux s'allument sur les phares avant au moment du zoom.
+  bloom: true,
+  bloomParams: { strength: 0.75, radius: 0.55, threshold: 0.8 },
+  emissiveClamp: 6,
+  headlightMaterialNames: ['Glass_Bumped_2'],
+  headlightGlowRange: [0.83, 1],
+  dynamicLights: [
+    { position: { x: 0.5,  y: 0.32, z: 1.55 }, color: 0xfff4d6, maxIntensity: 2.2, distance: 2.5 },
+    { position: { x: -0.5, y: 0.32, z: 1.55 }, color: 0xfff4d6, maxIntensity: 2.2, distance: 2.5 }
+  ],
   // Chorégraphie demandée : on démarre à l'arrière, on monte à la verticale pour une vue
   // en plongée, on pivote de 280° au-dessus de la voiture, on redescend en se réorientant
   // face à elle, puis on zoome sur les phares avant. 7 points de caméra pour 4 fiches-texte :
