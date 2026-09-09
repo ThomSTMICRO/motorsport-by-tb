@@ -1,0 +1,45 @@
+name: Probe BMW M5 video
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install ffmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+
+      - name: Probe metadata
+        run: |
+          echo "META_START"
+          ffprobe -v error -show_format -show_streams _tmp/bmw-m5-source.mov
+          echo "META_END"
+
+      - name: Extract sample frames
+        run: |
+          mkdir -p /tmp/frames
+          # 8 evenly spaced sample frames across the whole clip, downscaled for a quick look
+          ffmpeg -y -i _tmp/bmw-m5-source.mov -vf "select='not(mod(n\,30))',scale=480:-1" -vsync vfr -q:v 4 /tmp/frames/sample_%03d.jpg 2>&1 | tail -30
+          ls -la /tmp/frames | head -20
+          echo "FRAME_COUNT: $(ls /tmp/frames | wc -l)"
+
+      - name: Print a spread of sample frames as base64
+        run: |
+          cd /tmp/frames
+          files=(sample_*.jpg)
+          total=${#files[@]}
+          echo "total extracted: $total"
+          # pick up to 8 evenly spaced frames from what we extracted
+          for i in 0 1 2 3 4 5 6 7; do
+            idx=$(( i * (total - 1) / 7 ))
+            f="${files[$idx]}"
+            if [ -n "$f" ]; then
+              echo "SHOT $f base64start"
+              base64 -w0 "$f"
+              echo ""
+              echo "SHOT $f base64end"
+            fi
+          done
