@@ -170,8 +170,13 @@
   .photo-band{position:relative;height:78vh;min-height:460px;overflow:hidden;}
   .photo-band-bg{
     position:absolute;inset:-12% 0;height:124%;width:100%;
-    background-size:cover;background-position:center;will-change:transform;
+    overflow:hidden;will-change:transform;
   }
+  .photo-band-bg-inner{
+    width:100%;height:100%;background-size:cover;background-position:center;
+    transform:scale(1.14);transition:transform 1.8s cubic-bezier(.16,.7,.2,1);
+  }
+  .photo-band.is-in .photo-band-bg-inner{transform:scale(1);}
   .photo-band-overlay{
     position:absolute;inset:0;
     background:linear-gradient(0deg, rgba(11,25,18,0.9) 0%, rgba(11,25,18,0.15) 40%, rgba(11,25,18,0.05) 60%, rgba(11,25,18,0.55) 100%);
@@ -197,6 +202,7 @@
   .facts-photo-frame{
     border-radius:var(--radius-md);overflow:hidden;border:1px solid var(--line-soft);
     box-shadow:0 24px 60px -20px rgba(0,0,0,0.6);
+    transition:transform .15s ease-out;will-change:transform;
   }
   .facts-photo-frame img{width:100%;height:100%;object-fit:cover;aspect-ratio:3/4;}
   @media (max-width:860px){ .facts-layout{grid-template-columns:1fr;gap:32px;} .facts-photo-frame img{aspect-ratio:16/10;} }
@@ -343,7 +349,7 @@
 
   <!-- BANDEAU PHOTO — résultat livré -->
   <section class="photo-band">
-    <div class="photo-band-bg" data-parallax style="background-image:url('images/formation/porsche-911-livraison.jpg')"></div>
+    <div class="photo-band-bg" data-parallax><div class="photo-band-bg-inner" style="background-image:url('images/formation/porsche-911-livraison.jpg')"></div></div>
     <div class="photo-band-overlay"></div>
     <div class="wrap photo-band-caption rv">
       <span class="photo-band-tag">Livraison client</span>
@@ -372,7 +378,7 @@
             <p>À véhicule égal, c'est l'approche et la confiance qui décident le client, et qui protègent ta marge.</p>
           </div>
         </div>
-        <div class="facts-photo-frame rv rv-d2">
+        <div class="facts-photo-frame tilt rv rv-d2">
           <img src="images/formation/bmw-z4-transport.jpg" alt="Transport d'une BMW Z4 sur plateau, préparation pour l'importation">
         </div>
       </div>
@@ -415,7 +421,7 @@
 
   <!-- BANDEAU PHOTO — passion / lifestyle -->
   <section class="photo-band">
-    <div class="photo-band-bg" data-parallax style="background-image:url('images/formation/portrait-vignoble.jpg')"></div>
+    <div class="photo-band-bg" data-parallax><div class="photo-band-bg-inner" style="background-image:url('images/formation/portrait-vignoble.jpg')"></div></div>
     <div class="photo-band-overlay"></div>
     <div class="wrap photo-band-caption rv">
       <span class="photo-band-tag">Thomas Bona</span>
@@ -542,6 +548,35 @@
   }
 
   var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // ---- Effet Ken Burns : zoom arrière progressif à l'entrée des bandeaux photo ----
+  var photoBands = document.querySelectorAll('.photo-band');
+  if('IntersectionObserver' in window){
+    var bandObserver = new IntersectionObserver(function(entries){
+      entries.forEach(function(entry){
+        if(entry.isIntersecting){
+          entry.target.classList.add('is-in');
+          bandObserver.unobserve(entry.target);
+        }
+      });
+    }, {threshold:0.2});
+    photoBands.forEach(function(el){ bandObserver.observe(el); });
+  } else {
+    photoBands.forEach(function(el){ el.classList.add('is-in'); });
+  }
+
+  // ---- Légère inclinaison 3D au survol ----
+  if(!reduceMotion && window.matchMedia('(hover: hover)').matches){
+    document.querySelectorAll('.tilt').forEach(function(el){
+      el.addEventListener('mousemove', function(e){
+        var rect = el.getBoundingClientRect();
+        var x = (e.clientX - rect.left) / rect.width - 0.5;
+        var y = (e.clientY - rect.top) / rect.height - 0.5;
+        el.style.transform = 'perspective(900px) rotateX(' + (-y * 5) + 'deg) rotateY(' + (x * 5) + 'deg) translateY(-2px)';
+      });
+      el.addEventListener('mouseleave', function(){ el.style.transform = ''; });
+    });
+  }
 
   // ---- Parallaxe sur le hero et les bandeaux photo ----
   var heroImg = document.getElementById('heroParallax');

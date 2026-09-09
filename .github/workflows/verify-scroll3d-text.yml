@@ -1,0 +1,76 @@
+name: Diagnostic - verify scroll3d text panels
+on:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.47.0 >/dev/null 2>&1
+          npx playwright install --with-deps chromium
+
+      - name: Serve site
+        run: |
+          npx http-server -p 8080 . &
+          sleep 2
+
+      - name: Run scroll3d check
+        run: |
+          cat > check.js << 'EOF'
+          const { chromium } = require('playwright');
+          (async () => {
+            const browser = await chromium.launch();
+            const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+            const consoleErrors = [];
+            page.on('console', msg => { if (msg.type() === 'error') consoleErrors.push(msg.text()); });
+            page.on('pageerror', err => consoleErrors.push('PAGEERROR: ' + err.message));
+
+            await page.goto('http://localhost:8080/index.html', { waitUntil: 'networkidle', timeout: 30000 });
+            await page.waitForTimeout(1500);
+
+            const section = await page.$('.scroll3d-section');
+            const box = await section.boundingBox();
+            const scrollableRange = box.height - 900;
+
+            for (let i = 0; i <= 8; i++) {
+              const y = box.y + scrollableRange * (i / 8);
+              await page.evaluate((yy) => window.scrollTo(0, yy), y);
+              await page.waitForTimeout(600);
+              const state = await page.evaluate(() => {
+                const loading = document.querySelector('.showcase3d-loading');
+                const activeStep = document.querySelector('.scroll3d-step.is-active');
+                const fill = document.querySelector('.scroll3d-progress-fill');
+                const canvas = document.querySelector('.showcase3d-stage canvas');
+                return {
+                  loadingHidden: loading ? loading.classList.contains('is-hidden') : null,
+                  loadingError: loading ? loading.classList.contains('is-error') : null,
+                  activeStep: activeStep ? activeStep.dataset.step : null,
+                  activeSide: activeStep ? activeStep.dataset.side : null,
+                  progressWidth: fill ? fill.style.width : null,
+                  canvasPresent: !!canvas,
+                };
+              });
+              console.log('SCROLL_STEP_' + i, JSON.stringify(state));
+              await page.screenshot({ path: `/tmp/gha_scroll_${i}.jpg`, type: 'jpeg', quality: 55 });
+            }
+
+            console.log('CONSOLE_ERRORS', JSON.stringify(consoleErrors));
+            await browser.close();
+          })();
+          EOF
+          node check.js
+
+      - name: Print thumbnails as base64
+        run: |
+          for f in /tmp/gha_scroll_2.jpg /tmp/gha_scroll_5.jpg; do
+            echo "=== $f ==="
+            base64 -w 0 "$f"
+            echo ""
+          done

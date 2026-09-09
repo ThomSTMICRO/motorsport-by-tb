@@ -191,8 +191,19 @@
   .reveal-3{animation-delay:.31s;}
   .reveal-4{animation-delay:.44s;}
   @keyframes reveal{to{opacity:1;transform:translateY(0);}}
+
+  /* Révélation générique au défilement, pour tout le reste de la page. */
+  .rv{opacity:0;transform:translateY(24px);transition:opacity .7s cubic-bezier(.2,.7,.2,1), transform .7s cubic-bezier(.2,.7,.2,1);}
+  .rv.is-in{opacity:1;transform:translateY(0);}
+  .rv-d1{transition-delay:.08s;} .rv-d2{transition-delay:.16s;} .rv-d3{transition-delay:.24s;} .rv-d4{transition-delay:.32s;}
+
+  /* Inclinaison 3D au survol, sur les cartes/éléments interactifs. */
+  .tilt{transition:transform .15s ease-out, box-shadow .2s ease;will-change:transform;}
+
   @media (prefers-reduced-motion:reduce){
     .reveal{animation:none;opacity:1;transform:none;}
+    .rv{transition:none;opacity:1;transform:none;}
+    .tilt{transition:none;}
     html{scroll-behavior:auto;}
     .hero-video{display:none;}
     .hero-overlay{background:var(--bg-0);}
@@ -225,23 +236,39 @@
   .showcase3d-credit a{color:var(--ivory-faint);text-decoration:underline;}
   .showcase3d-credit a:hover{color:var(--brass-bright);}
 
-  .scroll3d-overlay{position:relative;z-index:2;width:100%;pointer-events:none;}
-  .scroll3d-head{max-width:44ch;margin-bottom:34px;}
+  .scroll3d-overlay{position:absolute;inset:0;z-index:2;pointer-events:none;}
+  .scroll3d-head{
+    position:absolute;top:9%;left:0;right:0;text-align:center;
+    max-width:56ch;margin:0 auto;padding:0 32px;
+  }
   .eyebrow-mono{
     font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--brass-bright);
     text-shadow:0 0 18px rgba(255,203,92,0.35);margin-bottom:10px;
   }
-  .scroll3d-head p{color:var(--ivory-dim);font-size:16px;margin:0;}
-  .scroll3d-steps{position:relative;max-width:38ch;min-height:150px;}
+  .scroll3d-head p{color:var(--ivory-dim);font-size:16px;margin:0;text-shadow:0 2px 12px rgba(0,0,0,0.6);}
+
+  /* Les fiches d'étape sont ancrées de part et d'autre de la voiture, jamais dessus. */
+  .scroll3d-steps{position:absolute;inset:0;}
   .scroll3d-step{
-    position:absolute;top:0;left:0;width:100%;
-    opacity:0;transform:translateY(18px);
-    transition:opacity .5s ease, transform .5s ease;
+    position:absolute;top:50%;width:min(320px, 40vw);
+    padding:22px 24px;border-radius:var(--radius-md);
+    background:rgba(8,18,13,0.68);backdrop-filter:blur(10px);
+    border:1px solid rgba(255,255,255,0.09);
+    box-shadow:0 20px 44px -18px rgba(0,0,0,0.6);
+    opacity:0;transition:opacity .55s ease, transform .55s ease;
   }
-  .scroll3d-step.is-active{opacity:1;transform:translateY(0);}
-  .scroll3d-step h3{font-size:20px;margin:0 0 10px;color:var(--ivory);}
-  .scroll3d-step p{color:var(--ivory-dim);font-size:15px;margin:0;}
-  .scroll3d-dots{display:flex;gap:10px;margin-top:36px;}
+  .scroll3d-step[data-side="left"]{left:5%;transform:translateY(-50%) translateX(-22px);}
+  .scroll3d-step[data-side="right"]{right:5%;transform:translateY(-50%) translateX(22px);}
+  .scroll3d-step.is-active{opacity:1;}
+  .scroll3d-step.is-active[data-side="left"]{transform:translateY(-50%) translateX(0);}
+  .scroll3d-step.is-active[data-side="right"]{transform:translateY(-50%) translateX(0);}
+  .scroll3d-step h3{font-size:21px;margin:0 0 10px;color:var(--ivory);text-shadow:0 2px 10px rgba(0,0,0,0.6);}
+  .scroll3d-step p{color:var(--ivory-dim);font-size:15px;margin:0;text-shadow:0 2px 10px rgba(0,0,0,0.6);}
+
+  .scroll3d-dots{
+    position:absolute;bottom:38px;left:0;right:0;
+    display:flex;justify-content:center;gap:10px;
+  }
   .scroll3d-dots span{
     width:8px;height:8px;border-radius:50%;background:var(--line);
     transition:background .3s ease, box-shadow .3s ease, transform .3s ease;
@@ -255,9 +282,14 @@
     height:100%;width:0%;
     background:linear-gradient(90deg, var(--red-bright), var(--brass-bright));
   }
-  @media (max-width:760px){
+  @media (max-width:820px){
     .scroll3d-section{height:360vh;}
-    .scroll3d-steps{min-height:130px;}
+    .scroll3d-head{top:7%;}
+    .scroll3d-step{
+      width:calc(100% - 40px);left:20px !important;right:20px !important;
+      top:auto;bottom:78px;transform:translateY(14px) !important;
+    }
+    .scroll3d-step.is-active{transform:translateY(0) !important;}
   }
 
   /* ---------- Instagram ---------- */
@@ -478,36 +510,34 @@
         <div class="showcase3d-loading" id="showcase3dLoading">Chargement du modèle 3D…</div>
       </div>
       <div class="scroll3d-overlay">
-        <div class="wrap">
-          <div class="scroll3d-head reveal">
-            <div class="eyebrow-mono">Comment se déroule une recherche</div>
-            <p>Faites défiler pour suivre le parcours, du brief à la remise des clés.</p>
+        <div class="scroll3d-head reveal">
+          <div class="eyebrow-mono">Comment se déroule une recherche</div>
+          <p>Faites défiler pour suivre le parcours, du brief à la remise des clés.</p>
+        </div>
+        <div class="scroll3d-steps">
+          <div class="scroll3d-step is-active" data-step="0" data-side="left">
+            <div class="process-marker">01</div>
+            <h3>Le brief</h3>
+            <p>Vous précisez le modèle, la fourchette de budget, le kilométrage et les critères non négociables.</p>
           </div>
-          <div class="scroll3d-steps">
-            <div class="scroll3d-step is-active" data-step="0">
-              <div class="process-marker">01</div>
-              <h3>Le brief</h3>
-              <p>Vous précisez le modèle, la fourchette de budget, le kilométrage et les critères non négociables.</p>
-            </div>
-            <div class="scroll3d-step" data-step="1">
-              <div class="process-marker">02</div>
-              <h3>Le sourcing</h3>
-              <p>Notre réseau de partenaires et nos veilles couvrent les places de marché en Allemagne, au Benelux et au‑delà.</p>
-            </div>
-            <div class="scroll3d-step" data-step="2">
-              <div class="process-marker">03</div>
-              <h3>La vérification</h3>
-              <p>Contrôle technique, historique d'entretien et essai sur place avant toute proposition ferme.</p>
-            </div>
-            <div class="scroll3d-step" data-step="3">
-              <div class="process-marker">04</div>
-              <h3>La livraison</h3>
-              <p>Import, mise en conformité administrative et remise du véhicule près de chez vous.</p>
-            </div>
+          <div class="scroll3d-step" data-step="1" data-side="right">
+            <div class="process-marker">02</div>
+            <h3>Le sourcing</h3>
+            <p>Notre réseau de partenaires et nos veilles couvrent les places de marché en Allemagne, au Benelux et au‑delà.</p>
           </div>
-          <div class="scroll3d-dots">
-            <span class="is-active"></span><span></span><span></span><span></span>
+          <div class="scroll3d-step" data-step="2" data-side="left">
+            <div class="process-marker">03</div>
+            <h3>La vérification</h3>
+            <p>Contrôle technique, historique d'entretien et essai sur place avant toute proposition ferme.</p>
           </div>
+          <div class="scroll3d-step" data-step="3" data-side="right">
+            <div class="process-marker">04</div>
+            <h3>La livraison</h3>
+            <p>Import, mise en conformité administrative et remise du véhicule près de chez vous.</p>
+          </div>
+        </div>
+        <div class="scroll3d-dots">
+          <span class="is-active"></span><span></span><span></span><span></span>
         </div>
       </div>
       <div class="scroll3d-progress-track"><div class="scroll3d-progress-fill" id="scroll3dProgressFill"></div></div>
@@ -519,20 +549,20 @@
   <section class="section-pad instagram-feed" id="instagram">
     <div class="wrap">
       <div class="section-head insta-head">
-        <div>
+        <div class="rv">
           <h2>Suivez-nous sur Instagram</h2>
           <p>Les dernières trouvailles, les coulisses des recherches et les livraisons, en images.</p>
         </div>
-        <a href="https://www.instagram.com/motorsport.bytb/" target="_blank" rel="noopener" class="btn btn-outline insta-follow">
+        <a href="https://www.instagram.com/motorsport.bytb/" target="_blank" rel="noopener" class="btn btn-outline insta-follow rv">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>
           @motorsport.bytb
         </a>
       </div>
       <div class="insta-grid">
-        <blockquote class="instagram-media" data-instgrm-permalink="https://www.instagram.com/p/DboSU8wjCTW/" data-instgrm-version="14">
+        <blockquote class="instagram-media tilt rv" data-instgrm-permalink="https://www.instagram.com/p/DboSU8wjCTW/" data-instgrm-version="14">
           <a href="https://www.instagram.com/p/DboSU8wjCTW/" target="_blank" rel="noopener">Voir cette publication sur Instagram</a>
         </blockquote>
-        <blockquote class="instagram-media" data-instgrm-permalink="https://www.instagram.com/reel/DaQfUi6Mdo7/" data-instgrm-version="14">
+        <blockquote class="instagram-media tilt rv rv-d1" data-instgrm-permalink="https://www.instagram.com/reel/DaQfUi6Mdo7/" data-instgrm-version="14">
           <a href="https://www.instagram.com/reel/DaQfUi6Mdo7/" target="_blank" rel="noopener">Voir cette publication sur Instagram</a>
         </blockquote>
       </div>
@@ -542,11 +572,11 @@
   <!-- CATALOGUE -->
   <section id="catalogue" class="section-pad">
     <div class="wrap">
-      <div class="section-head">
+      <div class="section-head rv">
         <h2>Notre stock</h2>
         <p>Retrouvez l'intégralité de nos véhicules disponibles, avec photos et prix, sur notre boutique LaCentrale.</p>
       </div>
-      <div class="catalogue-live-cta">
+      <div class="catalogue-live-cta tilt rv">
         <div>
           <strong>Tout notre stock à jour</strong>
           <p>Chaque véhicule disponible, avec ses photos, son prix et ses caractéristiques.</p>
@@ -674,22 +704,22 @@
   <!-- NEWS -->
   <section id="actus" class="section-pad">
     <div class="wrap">
-      <div class="section-head">
+      <div class="section-head rv">
         <h2>Actualités</h2>
         <p>Livraisons récentes, coulisses des recherches et conseils pour bien préparer un import.</p>
       </div>
       <div class="news-grid">
-        <article class="news-card">
+        <article class="news-card tilt rv">
           <span class="news-date">Juin 2026</span>
           <h3>Une 911 (964) dénichée près de Stuttgart</h3>
           <p>Trois semaines de recherche, un carnet d'entretien complet et une remise en main propre à Lyon.</p>
         </article>
-        <article class="news-card">
+        <article class="news-card tilt rv">
           <span class="news-date">Avril 2026</span>
           <h3>Livraison d'un break restauré, importé des Pays‑Bas</h3>
           <p>De la vérification technique à la mise en conformité, retour sur un dossier mené en six semaines.</p>
         </article>
-        <article class="news-card">
+        <article class="news-card tilt rv">
           <span class="news-date">Février 2026</span>
           <h3>Comment cadrer son budget pour une youngtimer</h3>
           <p>Prix d'achat, frais d'import, remise en état : les postes à anticiper avant de se lancer.</p>
@@ -703,11 +733,11 @@
 <footer class="site-footer" id="contact">
   <div class="wrap">
     <div class="footer-grid">
-      <div class="footer-brand">
+      <div class="footer-brand rv">
         <svg class="footer-logo" width="190" height="58" role="img" aria-label="MOTORSPORT By T.B."><use href="#logo-mark"></use></svg>
         <p>MOTORSPORT By TB conçoit des recherches automobiles sur mesure et sourcées dans toute l'Europe, du brief à la livraison.</p>
       </div>
-      <div class="footer-col">
+      <div class="footer-col rv rv-d1">
         <h4>Navigation</h4>
         <ul>
           <li><a href="#catalogue">Catalogue</a></li>
@@ -717,7 +747,7 @@
           <li><a href="#actus">Actualités</a></li>
         </ul>
       </div>
-      <div class="footer-col">
+      <div class="footer-col rv rv-d2">
         <h4>Contact</h4>
         <ul>
           <li><a href="mailto:contact@motorsportbytb.exemple">contact@motorsportbytb.exemple</a></li>
@@ -735,6 +765,56 @@
 
 <script>
 (function(){
+  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Révélation générique au défilement (.rv)
+  var revealEls = document.querySelectorAll('.rv');
+  if('IntersectionObserver' in window){
+    var revealObserver = new IntersectionObserver(function(entries){
+      entries.forEach(function(entry){
+        if(entry.isIntersecting){
+          entry.target.classList.add('is-in');
+          revealObserver.unobserve(entry.target);
+        }
+      });
+    }, {threshold:0.15, rootMargin:'0px 0px -6% 0px'});
+    revealEls.forEach(function(el){ revealObserver.observe(el); });
+  } else {
+    revealEls.forEach(function(el){ el.classList.add('is-in'); });
+  }
+
+  // Légère inclinaison 3D au survol (.tilt)
+  if(!reduceMotion && window.matchMedia('(hover: hover)').matches){
+    document.querySelectorAll('.tilt').forEach(function(el){
+      el.addEventListener('mousemove', function(e){
+        var rect = el.getBoundingClientRect();
+        var x = (e.clientX - rect.left) / rect.width - 0.5;
+        var y = (e.clientY - rect.top) / rect.height - 0.5;
+        el.style.transform = 'perspective(900px) rotateX(' + (-y * 5) + 'deg) rotateY(' + (x * 5) + 'deg) translateY(-2px)';
+      });
+      el.addEventListener('mouseleave', function(){
+        el.style.transform = '';
+      });
+    });
+  }
+
+  // Lueur qui suit le curseur dans le hero
+  var hero = document.getElementById('accueil');
+  if(hero && !reduceMotion && window.matchMedia('(hover: hover)').matches){
+    var glow = document.createElement('div');
+    glow.style.cssText = 'position:absolute;width:520px;height:520px;border-radius:50%;'
+      + 'background:radial-gradient(circle, rgba(234,172,59,0.16) 0%, rgba(234,172,59,0) 70%);'
+      + 'pointer-events:none;z-index:1;transform:translate(-50%,-50%);transition:opacity .3s ease;opacity:0;';
+    hero.appendChild(glow);
+    hero.addEventListener('mousemove', function(e){
+      var rect = hero.getBoundingClientRect();
+      glow.style.left = (e.clientX - rect.left) + 'px';
+      glow.style.top = (e.clientY - rect.top) + 'px';
+      glow.style.opacity = '1';
+    });
+    hero.addEventListener('mouseleave', function(){ glow.style.opacity = '0'; });
+  }
+
   // Mobile nav toggle
   var hamburger = document.getElementById('hamburgerBtn');
   var nav = document.getElementById('mainNav');
@@ -852,10 +932,10 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
   // ---- Points de caméra parcourus au fil du défilement ----
   var checkpoints = [
-    { theta: 25,  phi: 78, radius: 3.4 }, // 01 · Le brief — plan rapproché 3/4 avant
-    { theta: 100, phi: 80, radius: 5.2 }, // 02 · Le sourcing — profil, recul
-    { theta: 205, phi: 72, radius: 3.8 }, // 03 · La vérification — 3/4 arrière, inspection
-    { theta: 330, phi: 84, radius: 6.8 }  // 04 · La livraison — vue large, remise des clés
+    { theta: 25,  phi: 78, radius: 4.4 }, // 01 · Le brief — plan rapproché 3/4 avant
+    { theta: 100, phi: 80, radius: 6.2 }, // 02 · Le sourcing — profil, recul
+    { theta: 205, phi: 72, radius: 4.8 }, // 03 · La vérification — 3/4 arrière, inspection
+    { theta: 330, phi: 84, radius: 7.8 }  // 04 · La livraison — vue large, remise des clés
   ].map(function(cp){
     return { theta: cp.theta * Math.PI / 180, phi: cp.phi * Math.PI / 180, radius: cp.radius };
   });
