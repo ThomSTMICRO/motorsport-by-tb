@@ -1,0 +1,76 @@
+name: Verify 3D showcase (diagnostic, manual only)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Start local server
+        run: |
+          python3 -m http.server 8080 &
+          sleep 1
+
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-audit --no-fund playwright@1.48.0 >/dev/null 2>&1
+          npx playwright install --with-deps chromium >/dev/null 2>&1
+
+      - name: Render and check the 3D showcase
+        run: |
+          cat > check.js << 'EOF'
+          const { chromium } = require('playwright');
+          (async () => {
+            const browser = await chromium.launch();
+            const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+            const consoleMsgs = [];
+            page.on('console', m => consoleMsgs.push(m.type() + ': ' + m.text()));
+            page.on('pageerror', e => consoleMsgs.push('pageerror: ' + e.message));
+            page.on('requestfailed', r => consoleMsgs.push('requestfailed: ' + r.url() + ' ' + (r.failure()?.errorText)));
+
+            await page.goto('http://localhost:8080/index.html', { waitUntil: 'load', timeout: 30000 });
+            await page.evaluate(() => document.getElementById('apercu3d').scrollIntoView({block:'start'}));
+
+            // Attend soit que le chargement se termine, soit 15s max.
+            await page.waitForFunction(() => {
+              const el = document.getElementById('showcase3dLoading');
+              return el && (el.classList.contains('is-hidden') || el.classList.contains('is-error'));
+            }, { timeout: 15000 }).catch(() => console.log('TIMEOUT waiting for load state'));
+
+            await page.waitForTimeout(1500);
+            await page.screenshot({ path: 'showcase3d-check.png' });
+
+            const state = await page.evaluate(() => {
+              const el = document.getElementById('showcase3dLoading');
+              const canvas = document.querySelector('#showcase3dStage canvas');
+              return {
+                loadingClasses: el ? el.className : 'MISSING',
+                loadingText: el ? el.textContent : 'MISSING',
+                hasCanvas: !!canvas,
+                canvasSize: canvas ? [canvas.width, canvas.height] : null
+              };
+            });
+            console.log('STATE', JSON.stringify(state, null, 2));
+            console.log('CONSOLE_LOG', JSON.stringify(consoleMsgs.slice(0, 60), null, 2));
+
+            await browser.close();
+          })();
+          EOF
+          node check.js
+
+      - name: Upload screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: showcase3d-check
+          path: showcase3d-check.png
+          if-no-files-found: ignore
+          retention-days: 3

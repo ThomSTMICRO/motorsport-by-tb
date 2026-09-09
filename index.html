@@ -186,6 +186,34 @@
   .section-pad{padding:88px 0;}
   .divider{border:none;border-top:1px dashed var(--line);margin:0;}
 
+  /* ---------- Showcase 3D (modèle GLB réel) ---------- */
+  .showcase3d-stage{
+    position:relative;width:100%;height:560px;
+    border:1px solid var(--line-soft);border-radius:var(--radius-md);overflow:hidden;
+    background:radial-gradient(ellipse at 50% 38%, var(--bg-2) 0%, var(--bg-0) 72%);
+    cursor:grab;touch-action:pan-y;
+  }
+  .showcase3d-stage:active{cursor:grabbing;}
+  .showcase3d-stage canvas{display:block;width:100%;height:100%;}
+  .showcase3d-loading{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--ivory-faint);
+    background:var(--bg-0);transition:opacity .4s ease;pointer-events:none;
+  }
+  .showcase3d-loading.is-hidden{opacity:0;}
+  .showcase3d-loading.is-error{color:var(--red);}
+  .showcase3d-hint{
+    position:absolute;left:18px;bottom:14px;z-index:2;
+    font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--ivory-faint);
+    background:rgba(15,31,23,0.6);padding:6px 10px;border-radius:12px;border:1px solid var(--line-soft);
+    pointer-events:none;transition:opacity .4s ease;
+  }
+  .showcase3d-stage.is-interacted .showcase3d-hint{opacity:0;}
+  .showcase3d-credit{margin-top:14px;color:var(--ivory-faint);font-size:12.5px;}
+  .showcase3d-credit a{color:var(--ivory-faint);text-decoration:underline;}
+  .showcase3d-credit a:hover{color:var(--brass);}
+  @media (max-width:760px){ .showcase3d-stage{height:400px;} }
+
   /* ---------- Instagram ---------- */
   .insta-head{
     display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;
@@ -405,6 +433,21 @@
           <a href="#catalogue" class="btn btn-outline">Voir le catalogue</a>
         </div>
       </div>
+    </div>
+  </section>
+
+  <!-- SHOWCASE 3D -->
+  <section class="section-pad showcase-3d" id="apercu3d">
+    <div class="wrap">
+      <div class="section-head">
+        <h2>Explorez en 3D</h2>
+        <p>Faites pivoter le modèle avec la souris ou le doigt, molette pour zoomer.</p>
+      </div>
+      <div class="showcase3d-stage" id="showcase3dStage">
+        <div class="showcase3d-loading" id="showcase3dLoading">Chargement du modèle 3D…</div>
+        <div class="showcase3d-hint">Glisser pour tourner · Molette pour zoomer</div>
+      </div>
+      <p class="showcase3d-credit">Modèle 3D « Ferrari 288 GTO » par Randomness, sous licence <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a> (Sketchfab).</p>
     </div>
   </section>
 
@@ -706,6 +749,143 @@
     confirmPanel.classList.remove('is-visible');
   });
 
+})();
+</script>
+
+<!-- ---------- Showcase 3D (Three.js + modèle GLB réel) ---------- -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+(function initShowcase3D(){
+  var stage = document.getElementById('showcase3dStage');
+  var loadingEl = document.getElementById('showcase3dLoading');
+  if(!stage) return;
+
+  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  var renderer;
+  try{
+    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  }catch(e){
+    renderer = null;
+  }
+  if(!renderer || !renderer.getContext()){
+    if(loadingEl){ loadingEl.textContent = 'Aperçu 3D indisponible sur cet appareil.'; loadingEl.classList.add('is-error'); }
+    return;
+  }
+
+  var width = stage.clientWidth || 1, height = stage.clientHeight || 1;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setSize(width, height);
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.05;
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  stage.insertBefore(renderer.domElement, stage.firstChild);
+
+  var scene = new THREE.Scene();
+  scene.fog = new THREE.Fog(0x0f1f17, 9, 26);
+
+  // Environnement studio doux, pour des reflets réalistes sur la carrosserie.
+  var pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+
+  var camera = new THREE.PerspectiveCamera(35, width / height, 0.1, 200);
+  camera.position.set(4, 2, 5.5);
+
+  var key = new THREE.DirectionalLight(0xf2eedf, 1.3);
+  key.position.set(5, 8, 4);
+  scene.add(key);
+  var rim = new THREE.DirectionalLight(0xcda05c, 0.6);
+  rim.position.set(-6, 3, -5);
+  scene.add(rim);
+  scene.add(new THREE.AmbientLight(0xc7c0a8, 0.35));
+
+  var grid = new THREE.GridHelper(30, 30, 0x3a5942, 0x26402f);
+  grid.position.y = -0.01;
+  scene.add(grid);
+
+  var controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.minDistance = 2;
+  controls.maxDistance = 14;
+  controls.maxPolarAngle = Math.PI / 2 - 0.02;
+  controls.autoRotate = !reduceMotion;
+  controls.autoRotateSpeed = 1.0;
+  controls.target.set(0, 0.4, 0);
+
+  ['pointerdown', 'wheel'].forEach(function(evt){
+    renderer.domElement.addEventListener(evt, function(){
+      stage.classList.add('is-interacted');
+    }, { passive: true });
+  });
+
+  var loader = new GLTFLoader();
+  loader.load(
+    'models/ferrari-288-gto.glb',
+    function(gltf){
+      var model = gltf.scene;
+
+      // Recentre et met à l'échelle le modèle quelles que soient ses dimensions d'origine.
+      var box = new THREE.Box3().setFromObject(model);
+      var size = box.getSize(new THREE.Vector3());
+      var center = box.getCenter(new THREE.Vector3());
+      var maxDim = Math.max(size.x, size.y, size.z) || 1;
+      var scale = 3.2 / maxDim;
+      model.scale.setScalar(scale);
+      model.position.set(-center.x * scale, -box.min.y * scale, -center.z * scale);
+
+      scene.add(model);
+      if(loadingEl) loadingEl.classList.add('is-hidden');
+    },
+    undefined,
+    function(err){
+      if(loadingEl){
+        loadingEl.textContent = 'Le modèle 3D n’a pas pu être chargé.';
+        loadingEl.classList.add('is-error');
+      }
+    }
+  );
+
+  var ro = new ResizeObserver(function(){
+    var w = stage.clientWidth || 1, h = stage.clientHeight || 1;
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, h);
+  });
+  ro.observe(stage);
+
+  var isVisible = true;
+  if('IntersectionObserver' in window){
+    var io = new IntersectionObserver(function(entries){
+      isVisible = entries[0].isIntersecting;
+    }, { threshold: 0.1 });
+    io.observe(stage);
+  }
+
+  var running = true;
+  document.addEventListener('visibilitychange', function(){
+    running = !document.hidden;
+  });
+
+  function animate(){
+    requestAnimationFrame(animate);
+    if(!running || !isVisible) return;
+    controls.update();
+    renderer.render(scene, camera);
+  }
+  animate();
 })();
 </script>
 
