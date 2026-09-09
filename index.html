@@ -546,7 +546,7 @@
   </section>
   <div class="wrap"><p class="showcase3d-credit">Modèle 3D « Ferrari 288 GTO » par Randomness, sous licence <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a> (Sketchfab).</p></div>
 
-  <!-- PARCOURS 3D INSTAGRAM (Porsche 911 Turbo S, pilotée par le défilement) -->
+  <!-- PARCOURS 3D INSTAGRAM (Porsche 918 Spyder, pilotée par le défilement — la caméra entre dans l'habitacle) -->
   <section class="scroll3d-section" id="instagram3d">
     <div class="scroll3d-pin">
       <div class="showcase3d-stage" id="showcaseInstaStage">
@@ -587,7 +587,7 @@
       <div class="scroll3d-progress-track"><div class="scroll3d-progress-fill" id="scrollInstaProgressFill"></div></div>
     </div>
   </section>
-  <div class="wrap"><p class="showcase3d-credit">Modèle 3D « Porsche 911 Turbo S » — utilisé avec autorisation.</p></div>
+  <div class="wrap"><p class="showcase3d-credit">Modèle 3D « Porsche 918 Spyder » — utilisé sous licence libre.</p></div>
 
   <!-- INSTAGRAM -->
   <section class="section-pad instagram-feed" id="instagram">
@@ -959,8 +959,9 @@ function initScroll3D(config){
   var pmrem = new THREE.PMREMGenerator(renderer);
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
 
-  var target = new THREE.Vector3(0, 0.4, 0);
-  var camera = new THREE.PerspectiveCamera(35, width / height, 0.1, 200);
+  var defaultTarget = config.target || { x: 0, y: 0.4, z: 0 };
+  var target = new THREE.Vector3(defaultTarget.x, defaultTarget.y, defaultTarget.z);
+  var camera = new THREE.PerspectiveCamera(config.fov || 35, width / height, 0.1, 200);
 
   var key = new THREE.DirectionalLight(0xf7f3e4, 1.3);
   key.position.set(5, 8, 4);
@@ -975,19 +976,28 @@ function initScroll3D(config){
   scene.add(grid);
 
   // ---- Points de caméra parcourus au fil du défilement ----
+  // Chaque point peut définir son propre point de visée (target), ce qui permet
+  // à la caméra de se rapprocher progressivement et de "entrer" dans l'habitacle.
   var checkpoints = config.checkpoints.map(function(cp){
-    return { theta: cp.theta * Math.PI / 180, phi: cp.phi * Math.PI / 180, radius: cp.radius };
+    return {
+      theta: cp.theta * Math.PI / 180,
+      phi: cp.phi * Math.PI / 180,
+      radius: cp.radius,
+      target: cp.target || defaultTarget
+    };
   });
 
-  function sphericalToCartesian(theta, phi, radius){
+  function sphericalToCartesian(theta, phi, radius, tgt){
     return new THREE.Vector3(
-      target.x + radius * Math.sin(phi) * Math.sin(theta),
-      target.y + radius * Math.cos(phi),
-      target.z + radius * Math.sin(phi) * Math.cos(theta)
+      tgt.x + radius * Math.sin(phi) * Math.sin(theta),
+      tgt.y + radius * Math.cos(phi),
+      tgt.z + radius * Math.sin(phi) * Math.cos(theta)
     );
   }
 
   function lerp(a, b, t){ return a + (b - a) * t; }
+
+  var currentRadius = checkpoints[0].radius;
 
   function setCameraAtProgress(p){
     var segCount = checkpoints.length - 1;
@@ -998,9 +1008,15 @@ function initScroll3D(config){
     var theta = lerp(a.theta, b.theta, t);
     var phi = lerp(a.phi, b.phi, t);
     var radius = lerp(a.radius, b.radius, t);
-    var pos = sphericalToCartesian(theta, phi, radius);
+    target.set(
+      lerp(a.target.x, b.target.x, t),
+      lerp(a.target.y, b.target.y, t),
+      lerp(a.target.z, b.target.z, t)
+    );
+    var pos = sphericalToCartesian(theta, phi, radius, target);
     camera.position.copy(pos);
     camera.lookAt(target);
+    currentRadius = radius;
   }
   setCameraAtProgress(0);
 
@@ -1092,9 +1108,11 @@ function initScroll3D(config){
     }
     setCameraAtProgress(progress);
     if(!reduceMotion){
-      // Léger flottement continu par-dessus la position pilotée par le scroll.
-      camera.position.x += Math.sin(idleAngle) * 0.04;
-      camera.position.y += Math.sin(idleAngle * 1.3) * 0.02;
+      // Léger flottement continu par-dessus la position pilotée par le scroll,
+      // proportionnel à la distance courante pour rester discret même très près du sujet.
+      var bobAmp = Math.max(currentRadius * 0.012, 0.008);
+      camera.position.x += Math.sin(idleAngle) * bobAmp;
+      camera.position.y += Math.sin(idleAngle * 1.3) * bobAmp * 0.5;
       camera.lookAt(target);
     }
     renderer.render(scene, camera);
@@ -1122,13 +1140,16 @@ initScroll3D({
   stageId: 'showcaseInstaStage',
   loadingId: 'showcaseInstaLoading',
   progressFillId: 'scrollInstaProgressFill',
-  modelPath: 'models/porsche-911-turbo-s.glb',
+  modelPath: 'models/porsche-918-spyder.glb',
   modelScale: 3.3,
+  fov: 42, // léger grand-angle, pour rester lisible une fois la caméra très proche de l'habitacle
+  // La caméra se rapproche et monte progressivement son point de visée : on quitte le plan large
+  // extérieur pour finir au-dessus de l'habitacle ouvert, comme si on s'installait dans la voiture.
   checkpoints: [
-    { theta: 20,  phi: 76, radius: 4.6 }, // 01 · En coulisses — 3/4 avant rapproché
-    { theta: 95,  phi: 80, radius: 6.4 }, // 02 · Les livraisons — profil, recul
-    { theta: 200, phi: 70, radius: 5.0 }, // 03 · Le detailing — 3/4 arrière, inspection
-    { theta: 325, phi: 85, radius: 7.6 }  // 04 · Rejoignez la communauté — vue large
+    { theta: 30, phi: 78, radius: 7.5, target: { x: 0, y: 0.35, z: 0 } },    // 01 · En coulisses — plan large extérieur
+    { theta: 75, phi: 76, radius: 4.2, target: { x: 0, y: 0.45, z: 0 } },    // 02 · Les livraisons — on s'approche, vue 3/4 profil
+    { theta: 95, phi: 60, radius: 2.0, target: { x: 0, y: 0.55, z: 0.1 } },  // 03 · Le detailing — au-dessus de l'habitacle ouvert
+    { theta: 100, phi: 52, radius: 0.95, target: { x: 0, y: 0.62, z: 0.15 } } // 04 · Rejoignez la communauté — dans l'habitacle
   ]
 });
 
