@@ -516,7 +516,7 @@
           <p>Import, mise en conformité administrative et remise du véhicule près de chez vous.</p>
         </div>
       </div>
-      <p class="showcase3d-credit">Modèle 3D « BMW S1000 RR » par VTX (Sketchfab) — utilisé avec autorisation.</p>
+      <p class="showcase3d-credit">Modèle 3D « Porsche 918 Spyder » utilisé sous licence libre. Modèle 3D « BMW S1000 RR » par VTX (Sketchfab) — utilisé avec autorisation.</p>
     </div>
   </section>
 
@@ -983,56 +983,78 @@ function initScroll3D(config){
   }
   setCameraAtProgress(0);
 
-  // Matériaux des feux repérés dans le modèle (ex. le phare avant) : leur intensité
-  // émissive est animée avec le défilement pour donner l'impression qu'ils s'allument.
-  var headlightMaterials = [];
+  // Un ou plusieurs véhicules dans la même scène (config.vehicles), chacun avec sa propre
+  // position, son échelle, et sa propre plage de défilement où ses feux "s'allument".
+  // Rétrocompatible avec un unique config.modelPath.
+  var vehicleSpecs = config.vehicles || [{
+    modelPath: config.modelPath,
+    modelScale: config.modelScale,
+    position: { x: 0, y: 0, z: 0 },
+    headlightMaterialNames: config.headlightMaterialNames,
+    headlightGlowRange: config.headlightGlowRange,
+    emissiveClamp: config.emissiveClamp
+  }];
+  var glowGroups = [];
+  var loadedCount = 0;
 
   var loader = new GLTFLoader();
-  loader.load(
-    config.modelPath,
-    function(gltf){
-      var model = gltf.scene;
+  vehicleSpecs.forEach(function(spec){
+    loader.load(
+      spec.modelPath,
+      function(gltf){
+        var model = gltf.scene;
 
-      // Recentre et met à l'échelle le modèle quelles que soient ses dimensions d'origine.
-      var box = new THREE.Box3().setFromObject(model);
-      var size = box.getSize(new THREE.Vector3());
-      var center = box.getCenter(new THREE.Vector3());
-      var maxDim = Math.max(size.x, size.y, size.z) || 1;
-      var scale = (config.modelScale || 3.2) / maxDim;
-      model.scale.setScalar(scale);
-      model.position.set(-center.x * scale, -box.min.y * scale, -center.z * scale);
+        // Recentre et met à l'échelle le modèle quelles que soient ses dimensions d'origine,
+        // puis le place à la position demandée dans la scène partagée.
+        var box = new THREE.Box3().setFromObject(model);
+        var size = box.getSize(new THREE.Vector3());
+        var center = box.getCenter(new THREE.Vector3());
+        var maxDim = Math.max(size.x, size.y, size.z) || 1;
+        var scale = (spec.modelScale || 3.2) / maxDim;
+        model.scale.setScalar(scale);
+        var pos = spec.position || { x: 0, y: 0, z: 0 };
+        model.position.set(pos.x - center.x * scale, pos.y - box.min.y * scale, pos.z - center.z * scale);
+        if(spec.rotationY) model.rotation.y = spec.rotationY * Math.PI / 180;
 
-      scene.add(model);
+        scene.add(model);
 
-      // Les valeurs d'émissivité venant du fichier peuvent être très élevées (ex. 50) : on les
-      // plafonne pour rester exploitable avec le bloom, et on garde une référence sur les
-      // matériaux de feux désignés par la config pour les faire "s'allumer" progressivement.
-      var clamp = config.emissiveClamp || 6;
-      model.traverse(function(node){
-        if(!node.isMesh || !node.material) return;
-        var mats = Array.isArray(node.material) ? node.material : [node.material];
-        mats.forEach(function(mat){
-          if(typeof mat.emissiveIntensity !== 'number') return;
-          mat.emissiveIntensity = Math.min(mat.emissiveIntensity, clamp);
-          if(config.headlightMaterialNames && config.headlightMaterialNames.indexOf(mat.name) !== -1){
-            mat.userData.baseEmissive = mat.emissiveIntensity;
-            mat.emissiveIntensity = mat.userData.baseEmissive * 0.12;
-            headlightMaterials.push(mat);
-          }
+        // Les valeurs d'émissivité venant du fichier peuvent être très élevées (ex. 50) : on les
+        // plafonne pour rester exploitable avec le bloom, et on garde une référence sur les
+        // matériaux de feux désignés par la config pour les faire "s'allumer" progressivement.
+        var clamp = spec.emissiveClamp || config.emissiveClamp || 6;
+        var vehicleHeadlights = [];
+        model.traverse(function(node){
+          if(!node.isMesh || !node.material) return;
+          var mats = Array.isArray(node.material) ? node.material : [node.material];
+          mats.forEach(function(mat){
+            if(typeof mat.emissiveIntensity !== 'number') return;
+            mat.emissiveIntensity = Math.min(mat.emissiveIntensity, clamp);
+            if(spec.headlightMaterialNames && spec.headlightMaterialNames.indexOf(mat.name) !== -1){
+              mat.userData.baseEmissive = mat.emissiveIntensity;
+              mat.emissiveIntensity = mat.userData.baseEmissive * 0.12;
+              vehicleHeadlights.push(mat);
+            }
+          });
         });
-      });
+        if(vehicleHeadlights.length){
+          glowGroups.push({ materials: vehicleHeadlights, range: spec.headlightGlowRange || config.headlightGlowRange || [0.83, 1] });
+        }
 
-      if(loadingEl) loadingEl.classList.add('is-hidden');
-      if(config.fullPage) stage.classList.add('is-ready');
-    },
-    undefined,
-    function(err){
-      if(loadingEl){
-        loadingEl.textContent = 'Le modèle 3D n’a pas pu être chargé.';
-        loadingEl.classList.add('is-error');
+        loadedCount++;
+        if(loadedCount === 1){
+          if(loadingEl) loadingEl.classList.add('is-hidden');
+          if(config.fullPage) stage.classList.add('is-ready');
+        }
+      },
+      undefined,
+      function(err){
+        if(loadingEl){
+          loadingEl.textContent = 'Le modèle 3D n’a pas pu être chargé.';
+          loadingEl.classList.add('is-error');
+        }
       }
-    }
-  );
+    );
+  });
 
   // ---- Feux dynamiques (ex. phares) qui s'allument à un moment donné du défilement ----
   function smoothstep(edge0, edge1, x){
@@ -1128,46 +1150,71 @@ function initScroll3D(config){
       camera.lookAt(target);
     }
 
-    if(dynamicLights.length || headlightMaterials.length){
-      var glowT = smoothstep(glowRange[0], glowRange[1], progress);
-      dynamicLights.forEach(function(dl){ dl.light.intensity = dl.maxIntensity * glowT; });
-      headlightMaterials.forEach(function(mat){
+    if(dynamicLights.length){
+      var dlGlowT = smoothstep(glowRange[0], glowRange[1], progress);
+      dynamicLights.forEach(function(dl){ dl.light.intensity = dl.maxIntensity * dlGlowT; });
+    }
+    glowGroups.forEach(function(group){
+      var glowT = smoothstep(group.range[0], group.range[1], progress);
+      group.materials.forEach(function(mat){
         mat.emissiveIntensity = lerp(mat.userData.baseEmissive * 0.12, mat.userData.baseEmissive, glowT);
       });
-    }
+    });
 
     if(composer){ composer.render(); } else { renderer.render(scene, camera); }
   }
   animate();
 }
 
-// Compagnon 3D unique pour toute la page : la BMW S1000 RR reste fixée au viewport et la
-// caméra s'en approche continuellement, du sommet de la page (loin derrière) jusqu'au bas
-// (tout près), en tournant légèrement autour d'elle pour rester vivante en un seul long plan.
+// Showroom 3D unique pour toute la page : la Porsche 918 Spyder et la BMW S1000 RR
+// partagent la même scène, positionnées côte à côte. La caméra part de très loin (les
+// deux véhicules ne sont que des silhouettes), plonge en gros plan sur la Porsche,
+// recule pour révéler les deux ensemble, puis dérive vers la BMW et termine tout près
+// de son phare — un seul long plan continu sur toute la hauteur de la page.
 initScroll3D({
   fullPage: true,
   stageId: 'bike3dStage',
   progressFillId: 'pageProgressFill',
-  modelPath: 'models/bmw-s1000rr.glb',
-  modelScale: 3.0,
   fov: 30,
   bloom: true,
   bloomParams: { strength: 0.6, radius: 0.4, threshold: 0.9 },
-  emissiveClamp: 6,
-  headlightMaterialNames: ['vehicle_generic_smallspecmap.024', 'vehicle_generic_smallspecmap.025'],
-  headlightGlowRange: [0.85, 1],
-  // Approche volontairement "back-loaded" : la moto reste discrète (grand rayon) sur toute
-  // la partie centrale de la page pour ne jamais gêner la lecture des sections sans fond
-  // opaque (Catalogue, Detailing), puis se rapproche nettement sur le dernier quart.
+  vehicles: [
+    {
+      // Porsche 918 Spyder — modèle d'environ 4,65 m de long.
+      modelPath: 'models/porsche-918-spyder.glb',
+      modelScale: 3.2,
+      position: { x: -3.2, y: 0, z: 0 },
+      rotationY: 20,
+      emissiveClamp: 6,
+      headlightMaterialNames: ['Glass_Bumped_2'],
+      // S'allume tôt (autour du gros plan Instagram) puis reste allumée pour le reste du parcours.
+      headlightGlowRange: [0.15, 0.32]
+    },
+    {
+      // BMW S1000 RR — modèle d'environ 2,05 m de long, mis à l'échelle proportionnellement.
+      modelPath: 'models/bmw-s1000rr.glb',
+      modelScale: 1.4,
+      position: { x: 3.2, y: 0, z: 0.3 },
+      rotationY: -15,
+      emissiveClamp: 6,
+      headlightMaterialNames: ['vehicle_generic_smallspecmap.024', 'vehicle_generic_smallspecmap.025'],
+      // Ne s'allume qu'au tout dernier moment, pour le gros plan final.
+      headlightGlowRange: [0.85, 1]
+    }
+  ],
+  // Approche volontairement "back-loaded" : les véhicules restent discrets (grand rayon)
+  // sur toute la partie centrale de la page pour ne jamais gêner la lecture des sections
+  // sans fond opaque (Catalogue, Detailing), avec un recul de révélation au milieu du
+  // parcours, puis un resserrement net sur le dernier quart pour le final sur la BMW.
   checkpoints: [
-    { theta: 195, phi: 80, radius: 18,   target: { x: 0, y: 0.50, z: 0 }, fov: 28 }, // Tout en haut : loin derrière
-    { theta: 202, phi: 79, radius: 11,   target: { x: 0, y: 0.52, z: 0 }, fov: 30 }, // Première apparition, derrière le parcours
-    { theta: 209, phi: 78, radius: 9,    target: { x: 0, y: 0.55, z: 0 }, fov: 32 }, // Instagram
-    { theta: 216, phi: 77, radius: 8,    target: { x: 0, y: 0.58, z: 0 }, fov: 33 }, // Catalogue
-    { theta: 223, phi: 76, radius: 7,    target: { x: 0, y: 0.60, z: 0 }, fov: 34 }, // Detailing
-    { theta: 230, phi: 75, radius: 5,    target: { x: 0, y: 0.62, z: 0 }, fov: 32 }, // Recherche
-    { theta: 237, phi: 76, radius: 2.5,  target: { x: 0, y: 0.62, z: 0 }, fov: 28 }, // Actualités
-    { theta: 245, phi: 77, radius: 0.95, target: { x: 0, y: 0.62, z: 0 }, fov: 24 }  // Tout en bas : tout près
+    { theta: 195, phi: 80, radius: 24,   target: { x: 0,    y: 0.45, z: 0 },    fov: 26 }, // Tout en haut : les deux au loin
+    { theta: 203, phi: 79, radius: 16,   target: { x: -1.0, y: 0.48, z: 0 },    fov: 28 }, // Première apparition, dérive vers la Porsche
+    { theta: 210, phi: 78, radius: 7,    target: { x: -3.0, y: 0.42, z: 0 },    fov: 30 }, // Instagram : gros plan Porsche, phares
+    { theta: 218, phi: 77, radius: 15,   target: { x: -0.3, y: 0.48, z: 0.05 }, fov: 34 }, // Catalogue : recul, révélation des deux
+    { theta: 226, phi: 76, radius: 13,   target: { x: 0.8,  y: 0.50, z: 0.1 },  fov: 33 }, // Detailing : dérive vers la BMW
+    { theta: 234, phi: 75, radius: 9,    target: { x: 2.0,  y: 0.55, z: 0.2 },  fov: 31 }, // Recherche
+    { theta: 242, phi: 76, radius: 3.5,  target: { x: 3.0,  y: 0.60, z: 0.28 }, fov: 27 }, // Actualités : approche finale BMW
+    { theta: 248, phi: 77, radius: 0.95, target: { x: 3.2,  y: 0.62, z: 0.3 },  fov: 24 }  // Tout en bas : gros plan phare BMW
   ]
 });
 
