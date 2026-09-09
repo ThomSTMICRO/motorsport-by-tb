@@ -155,17 +155,6 @@
     object-fit:cover;
     z-index:0;
   }
-  .hero-3d-stage{
-    position:absolute;inset:0;z-index:0;
-    background:var(--bg-0);
-    opacity:0;transition:opacity 1.1s ease;
-  }
-  .hero-3d-stage.is-ready{opacity:1;}
-  .hero-3d-stage canvas{display:block;width:100%;height:100%;}
-  .hero-3d-credit{
-    position:absolute;right:24px;bottom:16px;z-index:2;
-    font-size:11.5px;color:rgba(247,243,228,0.45);margin:0;
-  }
   .hero-overlay{
     position:absolute;inset:0;
     background:linear-gradient(100deg, rgba(15,31,23,0.95) 0%, rgba(15,31,23,0.86) 30%, rgba(15,31,23,0.55) 58%, rgba(15,31,23,0.22) 100%);
@@ -217,7 +206,6 @@
     .tilt{transition:none;}
     html{scroll-behavior:auto;}
     .hero-video{display:none;}
-    .hero-3d-stage{display:none;}
     .hero-overlay{background:var(--bg-0);}
   }
 
@@ -276,6 +264,7 @@
   .scroll3d-step.is-active[data-side="right"]{transform:translateY(-50%) translateX(0);}
   .scroll3d-step h3{font-size:21px;margin:0 0 10px;color:var(--ivory);text-shadow:0 2px 10px rgba(0,0,0,0.6);}
   .scroll3d-step p{color:var(--ivory-dim);font-size:15px;margin:0;text-shadow:0 2px 10px rgba(0,0,0,0.6);}
+  .scroll3d-step .btn{pointer-events:auto;margin-top:16px;}
 
   .scroll3d-dots{
     position:absolute;bottom:38px;left:0;right:0;
@@ -498,7 +487,9 @@
 
   <!-- HERO -->
   <section id="accueil" class="hero">
-    <div class="hero-3d-stage" id="hero3dStage" aria-hidden="true"></div>
+    <video class="hero-video" autoplay muted loop playsinline preload="auto" aria-hidden="true">
+      <source src="hero-video.mp4" type="video/mp4">
+    </video>
     <div class="hero-overlay" aria-hidden="true"></div>
     <div class="wrap">
       <div class="hero-inner">
@@ -511,7 +502,6 @@
         </div>
       </div>
     </div>
-    <p class="hero-3d-credit">Modèle 3D « Porsche 911 Turbo S » — utilisé avec autorisation.</p>
   </section>
 
   <!-- PARCOURS 3D (aperçu 3D piloté par le défilement) -->
@@ -555,6 +545,49 @@
     </div>
   </section>
   <div class="wrap"><p class="showcase3d-credit">Modèle 3D « Ferrari 288 GTO » par Randomness, sous licence <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a> (Sketchfab).</p></div>
+
+  <!-- PARCOURS 3D INSTAGRAM (Porsche 911 Turbo S, pilotée par le défilement) -->
+  <section class="scroll3d-section" id="instagram3d">
+    <div class="scroll3d-pin">
+      <div class="showcase3d-stage" id="showcaseInstaStage">
+        <div class="showcase3d-loading" id="showcaseInstaLoading">Chargement du modèle 3D…</div>
+      </div>
+      <div class="scroll3d-overlay">
+        <div class="scroll3d-head reveal">
+          <div class="eyebrow-mono">Sur notre Instagram</div>
+          <p>Faites défiler pour voir ce qui vous attend sur le compte.</p>
+        </div>
+        <div class="scroll3d-steps">
+          <div class="scroll3d-step is-active" data-step="0" data-side="left">
+            <div class="process-marker">01</div>
+            <h3>En coulisses</h3>
+            <p>Chaque recherche, chaque contrôle technique, chaque essai : le quotidien de MOTORSPORT by TB en images.</p>
+          </div>
+          <div class="scroll3d-step" data-step="1" data-side="right">
+            <div class="process-marker">02</div>
+            <h3>Les livraisons</h3>
+            <p>Les clés remises, la plaque MOTORSPORT posée — nos plus belles remises de véhicules.</p>
+          </div>
+          <div class="scroll3d-step" data-step="2" data-side="left">
+            <div class="process-marker">03</div>
+            <h3>Le detailing en direct</h3>
+            <p>Lavage, polish, protection céramique : les avant/après de nos prestations detailing.</p>
+          </div>
+          <div class="scroll3d-step" data-step="3" data-side="right">
+            <div class="process-marker">04</div>
+            <h3>Rejoignez la communauté</h3>
+            <p>Nouvelles trouvailles et coups de cœur du moment, publiés au fil de l'eau.</p>
+            <a href="https://www.instagram.com/motorsport.bytb/" target="_blank" rel="noopener" class="btn btn-primary">@motorsport.bytb</a>
+          </div>
+        </div>
+        <div class="scroll3d-dots">
+          <span class="is-active"></span><span></span><span></span><span></span>
+        </div>
+      </div>
+      <div class="scroll3d-progress-track"><div class="scroll3d-progress-fill" id="scrollInstaProgressFill"></div></div>
+    </div>
+  </section>
+  <div class="wrap"><p class="showcase3d-credit">Modèle 3D « Porsche 911 Turbo S » — utilisé avec autorisation.</p></div>
 
   <!-- INSTAGRAM -->
   <section class="section-pad instagram-feed" id="instagram">
@@ -889,14 +922,14 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
-(function initScroll3D(){
-  var section = document.getElementById('processus3d');
-  var stage = document.getElementById('showcase3dStage');
-  var loadingEl = document.getElementById('showcase3dLoading');
-  var progressFill = document.getElementById('scroll3dProgressFill');
-  var stepEls = document.querySelectorAll('.scroll3d-step');
-  var dotEls = document.querySelectorAll('.scroll3d-dots span');
+function initScroll3D(config){
+  var section = document.getElementById(config.sectionId);
+  var stage = document.getElementById(config.stageId);
+  var loadingEl = document.getElementById(config.loadingId);
+  var progressFill = document.getElementById(config.progressFillId);
   if(!section || !stage) return;
+  var stepEls = section.querySelectorAll('.scroll3d-step');
+  var dotEls = section.querySelectorAll('.scroll3d-dots span');
 
   var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -942,12 +975,7 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
   scene.add(grid);
 
   // ---- Points de caméra parcourus au fil du défilement ----
-  var checkpoints = [
-    { theta: 25,  phi: 78, radius: 4.4 }, // 01 · Le brief — plan rapproché 3/4 avant
-    { theta: 100, phi: 80, radius: 6.2 }, // 02 · Le sourcing — profil, recul
-    { theta: 205, phi: 72, radius: 4.8 }, // 03 · La vérification — 3/4 arrière, inspection
-    { theta: 330, phi: 84, radius: 7.8 }  // 04 · La livraison — vue large, remise des clés
-  ].map(function(cp){
+  var checkpoints = config.checkpoints.map(function(cp){
     return { theta: cp.theta * Math.PI / 180, phi: cp.phi * Math.PI / 180, radius: cp.radius };
   });
 
@@ -978,7 +1006,7 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
   var loader = new GLTFLoader();
   loader.load(
-    'models/ferrari-288-gto.glb',
+    config.modelPath,
     function(gltf){
       var model = gltf.scene;
 
@@ -987,7 +1015,7 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
       var size = box.getSize(new THREE.Vector3());
       var center = box.getCenter(new THREE.Vector3());
       var maxDim = Math.max(size.x, size.y, size.z) || 1;
-      var scale = 3.2 / maxDim;
+      var scale = (config.modelScale || 3.2) / maxDim;
       model.scale.setScalar(scale);
       model.position.set(-center.x * scale, -box.min.y * scale, -center.z * scale);
 
@@ -1072,132 +1100,38 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
     renderer.render(scene, camera);
   }
   animate();
-})();
+}
 
-(function initHero3D(){
-  var stage = document.getElementById('hero3dStage');
-  if(!stage) return;
+initScroll3D({
+  sectionId: 'processus3d',
+  stageId: 'showcase3dStage',
+  loadingId: 'showcase3dLoading',
+  progressFillId: 'scroll3dProgressFill',
+  modelPath: 'models/ferrari-288-gto.glb',
+  modelScale: 3.2,
+  checkpoints: [
+    { theta: 25,  phi: 78, radius: 4.4 }, // 01 · Le brief — plan rapproché 3/4 avant
+    { theta: 100, phi: 80, radius: 6.2 }, // 02 · Le sourcing — profil, recul
+    { theta: 205, phi: 72, radius: 4.8 }, // 03 · La vérification — 3/4 arrière, inspection
+    { theta: 330, phi: 84, radius: 7.8 }  // 04 · La livraison — vue large, remise des clés
+  ]
+});
 
-  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if(reduceMotion) return; // le CSS masque déjà .hero-3d-stage dans ce cas
+initScroll3D({
+  sectionId: 'instagram3d',
+  stageId: 'showcaseInstaStage',
+  loadingId: 'showcaseInstaLoading',
+  progressFillId: 'scrollInstaProgressFill',
+  modelPath: 'models/porsche-911-turbo-s.glb',
+  modelScale: 3.3,
+  checkpoints: [
+    { theta: 20,  phi: 76, radius: 4.6 }, // 01 · En coulisses — 3/4 avant rapproché
+    { theta: 95,  phi: 80, radius: 6.4 }, // 02 · Les livraisons — profil, recul
+    { theta: 200, phi: 70, radius: 5.0 }, // 03 · Le detailing — 3/4 arrière, inspection
+    { theta: 325, phi: 85, radius: 7.6 }  // 04 · Rejoignez la communauté — vue large
+  ]
+});
 
-  var renderer;
-  try{
-    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-  }catch(e){
-    renderer = null;
-  }
-  if(!renderer || !renderer.getContext()) return;
-
-  var width = stage.clientWidth || 1, height = stage.clientHeight || 1;
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-  renderer.setSize(width, height);
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.1;
-  renderer.outputColorSpace = THREE.SRGBColorSpace;
-  stage.appendChild(renderer.domElement);
-
-  var scene = new THREE.Scene();
-  scene.fog = new THREE.Fog(0x0b1912, 8, 24);
-
-  var pmrem = new THREE.PMREMGenerator(renderer);
-  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-
-  var target = new THREE.Vector3(0, 0.45, 0);
-  var camera = new THREE.PerspectiveCamera(32, width / height, 0.1, 200);
-  var baseTheta = 38 * Math.PI / 180, basePhi = 76 * Math.PI / 180, radius = 5.4;
-  function sphericalToCartesian(theta, phi, r){
-    return new THREE.Vector3(
-      target.x + r * Math.sin(phi) * Math.sin(theta),
-      target.y + r * Math.cos(phi),
-      target.z + r * Math.sin(phi) * Math.cos(theta)
-    );
-  }
-  camera.position.copy(sphericalToCartesian(baseTheta, basePhi, radius));
-  camera.lookAt(target);
-
-  var key = new THREE.DirectionalLight(0xf7f3e4, 1.3);
-  key.position.set(5, 8, 4);
-  scene.add(key);
-  var rim = new THREE.DirectionalLight(0xeaac3b, 0.7);
-  rim.position.set(-6, 3, -5);
-  scene.add(rim);
-  scene.add(new THREE.AmbientLight(0xc7c0a8, 0.35));
-
-  var modelGroup = new THREE.Group();
-  scene.add(modelGroup);
-
-  var loader = new GLTFLoader();
-  loader.load(
-    'models/porsche-911-turbo-s.glb',
-    function(gltf){
-      var model = gltf.scene;
-      var box = new THREE.Box3().setFromObject(model);
-      var size = box.getSize(new THREE.Vector3());
-      var center = box.getCenter(new THREE.Vector3());
-      var maxDim = Math.max(size.x, size.y, size.z) || 1;
-      var scale = 3.4 / maxDim;
-      model.scale.setScalar(scale);
-      model.position.set(-center.x * scale, -box.min.y * scale, -center.z * scale);
-      modelGroup.add(model);
-      stage.classList.add('is-ready');
-    },
-    undefined,
-    function(){ /* échec silencieux : le dégradé de fond reste affiché */ }
-  );
-
-  var ro = new ResizeObserver(function(){
-    var w = stage.clientWidth || 1, h = stage.clientHeight || 1;
-    camera.aspect = w / h;
-    camera.updateProjectionMatrix();
-    renderer.setSize(w, h);
-  });
-  ro.observe(stage);
-
-  var isVisible = true;
-  if('IntersectionObserver' in window){
-    var io = new IntersectionObserver(function(entries){
-      isVisible = entries[0].isIntersecting;
-    }, { threshold: 0 });
-    io.observe(stage);
-  }
-
-  var running = true;
-  document.addEventListener('visibilitychange', function(){
-    running = !document.hidden;
-  });
-
-  // Légère parallaxe : la caméra suit doucement le curseur au-dessus du hero.
-  var pointerX = 0, pointerY = 0, smoothX = 0, smoothY = 0;
-  var heroSection = document.getElementById('accueil');
-  if(heroSection && window.matchMedia('(hover: hover)').matches){
-    heroSection.addEventListener('mousemove', function(e){
-      var rect = heroSection.getBoundingClientRect();
-      pointerX = ((e.clientX - rect.left) / rect.width - 0.5) * 2;
-      pointerY = ((e.clientY - rect.top) / rect.height - 0.5) * 2;
-    });
-    heroSection.addEventListener('mouseleave', function(){ pointerX = 0; pointerY = 0; });
-  }
-
-  var turntable = 0;
-  function animate(){
-    requestAnimationFrame(animate);
-    if(!running || !isVisible) return;
-
-    turntable += 0.0022;
-    modelGroup.rotation.y = turntable;
-
-    smoothX += (pointerX - smoothX) * 0.04;
-    smoothY += (pointerY - smoothY) * 0.04;
-    var theta = baseTheta + smoothX * 0.18;
-    var phi = basePhi - smoothY * 0.08;
-    camera.position.copy(sphericalToCartesian(theta, phi, radius));
-    camera.lookAt(target);
-
-    renderer.render(scene, camera);
-  }
-  animate();
-})();
 </script>
 
 <!-- Module officiel d'intégration Instagram (charge/actualise les <blockquote class="instagram-media">) -->
