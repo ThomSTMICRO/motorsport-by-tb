@@ -876,16 +876,13 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
+// Compagnon 3D unique pour toute la page : la caméra suit le défilement du document et le
+// canvas reste fixé au viewport (voir .bike3d-fixed). Un seul appel existe (voir plus bas) ;
+// la fonction n'a donc plus besoin de gérer un mode "section pinnée" séparé.
 function initScroll3D(config){
-  // Deux modes : une section pinnée classique (section + stage dédiés), ou config.fullPage
-  // où la caméra suit le défilement de la page entière et le canvas reste fixé au viewport.
-  var section = config.sectionId ? document.getElementById(config.sectionId) : null;
   var stage = document.getElementById(config.stageId);
-  var loadingEl = config.loadingId ? document.getElementById(config.loadingId) : null;
   var progressFill = document.getElementById(config.progressFillId);
   if(!stage) return;
-  var stepEls = section ? section.querySelectorAll('.scroll3d-step') : [];
-  var dotEls = section ? section.querySelectorAll('.scroll3d-dots span') : [];
 
   var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -895,10 +892,7 @@ function initScroll3D(config){
   }catch(e){
     renderer = null;
   }
-  if(!renderer || !renderer.getContext()){
-    if(loadingEl){ loadingEl.textContent = 'Aperçu 3D indisponible sur cet appareil.'; loadingEl.classList.add('is-error'); }
-    return;
-  }
+  if(!renderer || !renderer.getContext()) return;
 
   var width = stage.clientWidth || 1, height = stage.clientHeight || 1;
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -1072,122 +1066,52 @@ function initScroll3D(config){
   setCameraAtProgress(0);
 
   // Un ou plusieurs véhicules dans la même scène (config.vehicles), chacun avec sa propre
-  // position, son échelle, et sa propre plage de défilement où ses feux "s'allument".
-  // Rétrocompatible avec un unique config.modelPath.
-  var vehicleSpecs = config.vehicles || [{
-    modelPath: config.modelPath,
-    modelScale: config.modelScale,
-    position: { x: 0, y: 0, z: 0 },
-    headlightMaterialNames: config.headlightMaterialNames,
-    headlightGlowRange: config.headlightGlowRange,
-    emissiveClamp: config.emissiveClamp
-  }];
-  var glowGroups = [];
+  // position, échelle et rotation.
   var loadedCount = 0;
-
   var loader = new GLTFLoader();
-  vehicleSpecs.forEach(function(spec){
-    loader.load(
-      spec.modelPath,
-      function(gltf){
-        var model = gltf.scene;
+  (config.vehicles || []).forEach(function(spec){
+    loader.load(spec.modelPath, function(gltf){
+      var model = gltf.scene;
 
-        // Recentre et met à l'échelle le modèle quelles que soient ses dimensions d'origine,
-        // puis le place à la position demandée dans la scène partagée.
-        var box = new THREE.Box3().setFromObject(model);
-        var size = box.getSize(new THREE.Vector3());
-        var center = box.getCenter(new THREE.Vector3());
-        var maxDim = Math.max(size.x, size.y, size.z) || 1;
-        var scale = (spec.modelScale || 3.2) / maxDim;
-        model.scale.setScalar(scale);
-        var pos = spec.position || { x: 0, y: 0, z: 0 };
-        model.position.set(pos.x - center.x * scale, pos.y - box.min.y * scale, pos.z - center.z * scale);
-        if(spec.rotationY) model.rotation.y = spec.rotationY * Math.PI / 180;
+      // Recentre et met à l'échelle le modèle quelles que soient ses dimensions d'origine,
+      // puis le place à la position demandée dans la scène partagée.
+      var box = new THREE.Box3().setFromObject(model);
+      var size = box.getSize(new THREE.Vector3());
+      var center = box.getCenter(new THREE.Vector3());
+      var maxDim = Math.max(size.x, size.y, size.z) || 1;
+      var scale = (spec.modelScale || 3.2) / maxDim;
+      model.scale.setScalar(scale);
+      var pos = spec.position || { x: 0, y: 0, z: 0 };
+      model.position.set(pos.x - center.x * scale, pos.y - box.min.y * scale, pos.z - center.z * scale);
+      if(spec.rotationY) model.rotation.y = spec.rotationY * Math.PI / 180;
 
-        scene.add(model);
+      scene.add(model);
 
-        // Les valeurs d'émissivité venant du fichier peuvent être très élevées (ex. 50) : on les
-        // plafonne pour rester exploitable avec le bloom, et on garde une référence sur les
-        // matériaux de feux désignés par la config pour les faire "s'allumer" progressivement.
-        var clamp = spec.emissiveClamp || config.emissiveClamp || 6;
-        var vehicleHeadlights = [];
-        model.traverse(function(node){
-          if(!node.isMesh || !node.material) return;
-          var mats = Array.isArray(node.material) ? node.material : [node.material];
-          mats.forEach(function(mat){
-            if(typeof mat.emissiveIntensity !== 'number') return;
-            mat.emissiveIntensity = Math.min(mat.emissiveIntensity, clamp);
-            if(spec.headlightMaterialNames && spec.headlightMaterialNames.indexOf(mat.name) !== -1){
-              mat.userData.baseEmissive = mat.emissiveIntensity;
-              mat.emissiveIntensity = mat.userData.baseEmissive * 0.12;
-              vehicleHeadlights.push(mat);
-            }
-          });
+      // Les valeurs d'émissivité venant du fichier peuvent être très élevées (ex. 50) : on les
+      // plafonne (emissiveClamp) pour que les phares/feux/écrans restent sombres en permanence.
+      var clamp = spec.emissiveClamp != null ? spec.emissiveClamp : (config.emissiveClamp || 6);
+      model.traverse(function(node){
+        if(!node.isMesh || !node.material) return;
+        var mats = Array.isArray(node.material) ? node.material : [node.material];
+        mats.forEach(function(mat){
+          if(typeof mat.emissiveIntensity === 'number') mat.emissiveIntensity = Math.min(mat.emissiveIntensity, clamp);
         });
-        if(vehicleHeadlights.length){
-          glowGroups.push({ materials: vehicleHeadlights, range: spec.headlightGlowRange || config.headlightGlowRange || [0.83, 1] });
-        }
+      });
 
-        loadedCount++;
-        if(loadedCount === 1){
-          if(loadingEl) loadingEl.classList.add('is-hidden');
-          if(config.fullPage) stage.classList.add('is-ready');
-        }
-      },
-      undefined,
-      function(err){
-        if(loadingEl){
-          loadingEl.textContent = 'Le modèle 3D n’a pas pu être chargé.';
-          loadingEl.classList.add('is-error');
-        }
-      }
-    );
+      loadedCount++;
+      if(loadedCount === 1) stage.classList.add('is-ready');
+    });
   });
 
-  // ---- Feux dynamiques (ex. phares) qui s'allument à un moment donné du défilement ----
-  function smoothstep(edge0, edge1, x){
-    var t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0 || 1)));
-    return t * t * (3 - 2 * t);
-  }
-  var glowRange = config.headlightGlowRange || [0.83, 1];
-  var dynamicLights = (config.dynamicLights || []).map(function(dl){
-    var light = new THREE.PointLight(dl.color || 0xfff4d6, 0, dl.distance || 3, dl.decay || 2);
-    light.position.set(dl.position.x, dl.position.y, dl.position.z);
-    scene.add(light);
-    return { light: light, maxIntensity: dl.maxIntensity || 2 };
-  });
-
-  // ---- Progression liée au défilement ----
+  // ---- Progression liée au défilement de toute la page ----
   var progress = 0;
   var ticking = false;
 
   function updateProgress(){
-    if(config.fullPage){
-      var scrollableDoc = document.documentElement.scrollHeight - window.innerHeight;
-      var scrolledDoc = window.scrollY || document.documentElement.scrollTop;
-      progress = scrollableDoc > 0 ? Math.max(0, Math.min(1, scrolledDoc / scrollableDoc)) : 0;
-    } else {
-      var rect = section.getBoundingClientRect();
-      var scrollable = section.offsetHeight - window.innerHeight;
-      var scrolled = -rect.top;
-      progress = scrollable > 0 ? Math.max(0, Math.min(1, scrolled / scrollable)) : 0;
-    }
-
+    var scrollable = document.documentElement.scrollHeight - window.innerHeight;
+    var scrolled = window.scrollY || document.documentElement.scrollTop;
+    progress = scrollable > 0 ? Math.max(0, Math.min(1, scrolled / scrollable)) : 0;
     if(progressFill) progressFill.style.width = (progress * 100) + '%';
-
-    if(section){
-      // Le nombre de fiches-texte (stepEls) peut être inférieur au nombre de points de
-      // caméra (checkpoints) : la trajectoire 3D peut être plus riche que la narration.
-      var stepCount = stepEls.length || checkpoints.length;
-      var stepIndex = Math.min(stepCount - 1, Math.floor(progress * stepCount));
-      stepEls.forEach(function(el){
-        el.classList.toggle('is-active', parseInt(el.dataset.step, 10) === stepIndex);
-      });
-      dotEls.forEach(function(dot, i){
-        dot.classList.toggle('is-active', i === stepIndex);
-      });
-    }
-
     ticking = false;
   }
 
@@ -1208,14 +1132,6 @@ function initScroll3D(config){
   });
   ro.observe(stage);
 
-  var isVisible = true;
-  if(section && 'IntersectionObserver' in window){
-    var io = new IntersectionObserver(function(entries){
-      isVisible = entries[0].isIntersecting;
-    }, { threshold: 0 });
-    io.observe(section);
-  }
-
   var running = true;
   document.addEventListener('visibilitychange', function(){
     running = !document.hidden;
@@ -1224,7 +1140,7 @@ function initScroll3D(config){
   var idleAngle = 0;
   function animate(){
     requestAnimationFrame(animate);
-    if(!running || !isVisible) return;
+    if(!running) return;
     if(!reduceMotion){
       idleAngle += 0.0015;
     }
@@ -1238,17 +1154,6 @@ function initScroll3D(config){
       camera.lookAt(target);
     }
 
-    if(dynamicLights.length){
-      var dlGlowT = smoothstep(glowRange[0], glowRange[1], progress);
-      dynamicLights.forEach(function(dl){ dl.light.intensity = dl.maxIntensity * dlGlowT; });
-    }
-    glowGroups.forEach(function(group){
-      var glowT = smoothstep(group.range[0], group.range[1], progress);
-      group.materials.forEach(function(mat){
-        mat.emissiveIntensity = lerp(mat.userData.baseEmissive * 0.12, mat.userData.baseEmissive, glowT);
-      });
-    });
-
     if(composer){ composer.render(); } else { renderer.render(scene, camera); }
   }
   animate();
@@ -1260,7 +1165,6 @@ function initScroll3D(config){
 // recule pour révéler les deux ensemble, puis dérive vers la BMW et termine tout près
 // de son phare — un seul long plan continu sur toute la hauteur de la page.
 initScroll3D({
-  fullPage: true,
   stageId: 'bike3dStage',
   progressFillId: 'pageProgressFill',
   fov: 30,
@@ -1268,9 +1172,8 @@ initScroll3D({
   bloomParams: { strength: 0.4, radius: 0.3, threshold: 0.95 },
   vehicles: [
     {
-      // Porsche 918 Spyder — modèle d'environ 4,65 m de long. Feux éteints : pas de
-      // headlightMaterialNames/headlightGlowRange, et un emissiveClamp très bas pour que
-      // TOUT élément émissif du modèle (phares, feux, écrans) reste sombre en permanence.
+      // Porsche 918 Spyder — modèle d'environ 4,65 m de long. emissiveClamp très bas pour
+      // que TOUT élément émissif du modèle (phares, feux, écrans) reste sombre en permanence.
       modelPath: 'models/porsche-918-spyder.glb',
       modelScale: 3.2,
       position: { x: -3.2, y: 0, z: 0 },
