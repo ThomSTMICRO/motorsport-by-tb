@@ -9,19 +9,22 @@
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Fraunces:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg-0:#0F1F17;
-    --bg-1:#142A20;
-    --bg-2:#1B3527;
-    --bg-2-hover:#20402E;
-    --line:#3A5942;
-    --line-soft:#26402F;
-    --ivory:#F2EEDF;
-    --ivory-dim:#C7C0A8;
+    --bg-0:#0B1912;
+    --bg-1:#122A1C;
+    --bg-2:#193A27;
+    --bg-2-hover:#1F4A30;
+    --line:#3E6647;
+    --line-soft:#264936;
+    --ivory:#F7F3E4;
+    --ivory-dim:#CEC6A8;
     --ivory-faint:#8FA394;
-    --brass:#CDA05C;
-    --brass-dim:#8C7038;
-    --red:#B0453A;
-    --red-hover:#8F362C;
+    --brass:#EAAC3B;
+    --brass-bright:#FFCB5C;
+    --brass-dim:#A8752A;
+    --red:#E8482F;
+    --red-bright:#FF6B47;
+    --red-hover:#C0331D;
+    --green-accent:#3ECB7A;
     --radius-sm:3px;
     --radius-md:6px;
     --maxw:1180px;
@@ -106,13 +109,20 @@
     font-family:'Oswald',sans-serif;font-weight:600;font-size:14px;letter-spacing:0.01em;
     padding:12px 22px;border-radius:var(--radius-sm);
     text-decoration:none;cursor:pointer;border:1.5px solid transparent;
-    transition:background .2s ease, border-color .2s ease, color .2s ease, transform .15s ease;
+    transition:background .2s ease, border-color .2s ease, color .2s ease, transform .15s ease, box-shadow .2s ease;
   }
   .btn:active{transform:translateY(1px);}
-  .btn-primary{background:var(--red);color:var(--ivory);border-color:var(--red);}
-  .btn-primary:hover{background:var(--red-hover);border-color:var(--red-hover);}
+  .btn-primary{
+    background:linear-gradient(135deg, var(--red-bright), var(--red));
+    color:var(--ivory);border-color:transparent;
+    box-shadow:0 8px 22px -6px rgba(232,72,47,0.55);
+  }
+  .btn-primary:hover{
+    background:linear-gradient(135deg, var(--red), var(--red-hover));
+    box-shadow:0 10px 28px -6px rgba(232,72,47,0.7);
+  }
   .btn-outline{background:transparent;color:var(--ivory);border-color:var(--line);}
-  .btn-outline:hover{border-color:var(--brass);color:var(--brass);}
+  .btn-outline:hover{border-color:var(--brass);color:var(--brass-bright);box-shadow:0 0 0 1px var(--brass) inset;}
   .btn-ghost{background:transparent;color:var(--brass);border-color:transparent;padding:12px 4px;}
   .btn-ghost:hover{color:var(--ivory);}
 
@@ -152,15 +162,24 @@
   }
   .hero-inner{position:relative;z-index:2;max-width:640px;}
   .hero-eyebrow{
-    font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--brass);
-    margin-bottom:18px;
+    font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--brass-bright);
+    margin-bottom:18px;text-shadow:0 0 18px rgba(255,203,92,0.35);
+    display:inline-flex;align-items:center;gap:8px;
+  }
+  .hero-eyebrow::before{
+    content:"";width:7px;height:7px;border-radius:50%;
+    background:var(--red-bright);box-shadow:0 0 10px 2px rgba(255,107,71,0.7);
   }
   .hero h1{
     font-size:clamp(34px,5vw,58px);
     line-height:1.06;
     margin-bottom:22px;
   }
-  .hero h1 em{font-style:italic;font-family:'Fraunces',serif;font-weight:500;color:var(--brass);}
+  .hero h1 em{
+    font-style:italic;font-family:'Fraunces',serif;font-weight:500;
+    background:linear-gradient(100deg, var(--brass-bright), var(--brass) 60%, var(--red-bright));
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
   .hero p.lead{
     font-size:18px;color:var(--ivory-dim);max-width:52ch;margin-bottom:34px;
   }
@@ -186,33 +205,60 @@
   .section-pad{padding:88px 0;}
   .divider{border:none;border-top:1px dashed var(--line);margin:0;}
 
-  /* ---------- Showcase 3D (modèle GLB réel) ---------- */
-  .showcase3d-stage{
-    position:relative;width:100%;height:560px;
-    border:1px solid var(--line-soft);border-radius:var(--radius-md);overflow:hidden;
-    background:radial-gradient(ellipse at 50% 38%, var(--bg-2) 0%, var(--bg-0) 72%);
-    cursor:grab;touch-action:pan-y;
+  /* ---------- Parcours 3D piloté par le défilement (modèle GLB réel) ---------- */
+  .scroll3d-section{position:relative;height:420vh;}
+  .scroll3d-pin{
+    position:sticky;top:0;height:100vh;overflow:hidden;
+    display:flex;align-items:center;
+    background:radial-gradient(ellipse at 62% 42%, var(--bg-2) 0%, var(--bg-0) 72%);
   }
-  .showcase3d-stage:active{cursor:grabbing;}
+  .showcase3d-stage{position:absolute;inset:0;z-index:0;}
   .showcase3d-stage canvas{display:block;width:100%;height:100%;}
   .showcase3d-loading{
     position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
     font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--ivory-faint);
-    background:var(--bg-0);transition:opacity .4s ease;pointer-events:none;
+    background:var(--bg-0);transition:opacity .4s ease;pointer-events:none;z-index:3;
   }
   .showcase3d-loading.is-hidden{opacity:0;}
-  .showcase3d-loading.is-error{color:var(--red);}
-  .showcase3d-hint{
-    position:absolute;left:18px;bottom:14px;z-index:2;
-    font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--ivory-faint);
-    background:rgba(15,31,23,0.6);padding:6px 10px;border-radius:12px;border:1px solid var(--line-soft);
-    pointer-events:none;transition:opacity .4s ease;
-  }
-  .showcase3d-stage.is-interacted .showcase3d-hint{opacity:0;}
-  .showcase3d-credit{margin-top:14px;color:var(--ivory-faint);font-size:12.5px;}
+  .showcase3d-loading.is-error{color:var(--red-bright);}
+  .showcase3d-credit{margin:14px 0 0;color:var(--ivory-faint);font-size:12.5px;}
   .showcase3d-credit a{color:var(--ivory-faint);text-decoration:underline;}
-  .showcase3d-credit a:hover{color:var(--brass);}
-  @media (max-width:760px){ .showcase3d-stage{height:400px;} }
+  .showcase3d-credit a:hover{color:var(--brass-bright);}
+
+  .scroll3d-overlay{position:relative;z-index:2;width:100%;pointer-events:none;}
+  .scroll3d-head{max-width:44ch;margin-bottom:34px;}
+  .eyebrow-mono{
+    font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--brass-bright);
+    text-shadow:0 0 18px rgba(255,203,92,0.35);margin-bottom:10px;
+  }
+  .scroll3d-head p{color:var(--ivory-dim);font-size:16px;margin:0;}
+  .scroll3d-steps{position:relative;max-width:38ch;min-height:150px;}
+  .scroll3d-step{
+    position:absolute;top:0;left:0;width:100%;
+    opacity:0;transform:translateY(18px);
+    transition:opacity .5s ease, transform .5s ease;
+  }
+  .scroll3d-step.is-active{opacity:1;transform:translateY(0);}
+  .scroll3d-step h3{font-size:20px;margin:0 0 10px;color:var(--ivory);}
+  .scroll3d-step p{color:var(--ivory-dim);font-size:15px;margin:0;}
+  .scroll3d-dots{display:flex;gap:10px;margin-top:36px;}
+  .scroll3d-dots span{
+    width:8px;height:8px;border-radius:50%;background:var(--line);
+    transition:background .3s ease, box-shadow .3s ease, transform .3s ease;
+  }
+  .scroll3d-dots span.is-active{
+    background:var(--brass-bright);transform:scale(1.3);
+    box-shadow:0 0 10px 2px rgba(255,203,92,0.6);
+  }
+  .scroll3d-progress-track{position:absolute;left:0;right:0;bottom:0;height:3px;background:rgba(255,255,255,0.06);z-index:3;}
+  .scroll3d-progress-fill{
+    height:100%;width:0%;
+    background:linear-gradient(90deg, var(--red-bright), var(--brass-bright));
+  }
+  @media (max-width:760px){
+    .scroll3d-section{height:360vh;}
+    .scroll3d-steps{min-height:130px;}
+  }
 
   /* ---------- Instagram ---------- */
   .insta-head{
@@ -232,32 +278,23 @@
   .insta-grid > .instagram-media a:hover{color:var(--ivory);}
   @media (max-width:640px){ .insta-head{flex-direction:column;align-items:stretch;} }
 
-  /* ---------- Process ---------- */
-  .process-alt{background:var(--bg-1);}
-  .process-track{
-    display:grid;grid-template-columns:repeat(4,1fr);gap:0;
-    position:relative;margin-top:10px;
-  }
-  .process-track::before{
-    content:"";position:absolute;top:19px;left:5%;right:5%;height:0;
-    border-top:1px dashed var(--line);
-  }
-  .process-step{position:relative;padding:0 20px 0 0;}
+  /* ---------- Process (marqueur réutilisé par le parcours 3D) ---------- */
   .process-marker{
     width:40px;height:40px;border-radius:50%;
     background:var(--bg-0);border:1.5px solid var(--brass);
     display:flex;align-items:center;justify-content:center;
-    font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--brass);
+    font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--brass-bright);
     position:relative;z-index:1;margin-bottom:20px;
+    box-shadow:0 0 0 3px rgba(234,172,59,0.12), 0 0 16px -2px rgba(234,172,59,0.4);
   }
-  .process-step h3{font-size:18px;margin-bottom:10px;}
-  .process-step p{color:var(--ivory-dim);font-size:15px;margin-bottom:0;}
 
   /* ---------- Catalogue ---------- */
   .catalogue-live-cta{
     display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap;
-    background:var(--bg-2);border:1px solid var(--brass-dim);border-radius:var(--radius-md);
+    background:linear-gradient(135deg, var(--bg-2), var(--bg-2-hover));
+    border:1px solid var(--brass);border-radius:var(--radius-md);
     padding:22px 26px;margin-bottom:36px;
+    box-shadow:0 12px 32px -14px rgba(234,172,59,0.4);
   }
   .catalogue-live-cta strong{
     font-family:'Oswald',sans-serif;font-weight:600;font-size:16px;color:var(--ivory);
@@ -367,8 +404,6 @@
     .nav-cta{display:none;}
     nav.main-nav.is-open .nav-cta{display:flex;}
     .hamburger{display:flex;}
-    .process-track{grid-template-columns:1fr;gap:28px;}
-    .process-track::before{display:none;}
     .field-row{grid-template-columns:1fr;}
     .footer-grid{grid-template-columns:1fr;gap:32px;}
     .hero{padding:100px 0 70px;min-height:520px;}
@@ -436,20 +471,49 @@
     </div>
   </section>
 
-  <!-- SHOWCASE 3D -->
-  <section class="section-pad showcase-3d" id="apercu3d">
-    <div class="wrap">
-      <div class="section-head">
-        <h2>Explorez en 3D</h2>
-        <p>Faites pivoter le modèle avec la souris ou le doigt, molette pour zoomer.</p>
-      </div>
+  <!-- PARCOURS 3D (aperçu 3D piloté par le défilement) -->
+  <section class="scroll3d-section" id="processus3d">
+    <div class="scroll3d-pin">
       <div class="showcase3d-stage" id="showcase3dStage">
         <div class="showcase3d-loading" id="showcase3dLoading">Chargement du modèle 3D…</div>
-        <div class="showcase3d-hint">Glisser pour tourner · Molette pour zoomer</div>
       </div>
-      <p class="showcase3d-credit">Modèle 3D « Ferrari 288 GTO » par Randomness, sous licence <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a> (Sketchfab).</p>
+      <div class="scroll3d-overlay">
+        <div class="wrap">
+          <div class="scroll3d-head reveal">
+            <div class="eyebrow-mono">Comment se déroule une recherche</div>
+            <p>Faites défiler pour suivre le parcours, du brief à la remise des clés.</p>
+          </div>
+          <div class="scroll3d-steps">
+            <div class="scroll3d-step is-active" data-step="0">
+              <div class="process-marker">01</div>
+              <h3>Le brief</h3>
+              <p>Vous précisez le modèle, la fourchette de budget, le kilométrage et les critères non négociables.</p>
+            </div>
+            <div class="scroll3d-step" data-step="1">
+              <div class="process-marker">02</div>
+              <h3>Le sourcing</h3>
+              <p>Notre réseau de partenaires et nos veilles couvrent les places de marché en Allemagne, au Benelux et au‑delà.</p>
+            </div>
+            <div class="scroll3d-step" data-step="2">
+              <div class="process-marker">03</div>
+              <h3>La vérification</h3>
+              <p>Contrôle technique, historique d'entretien et essai sur place avant toute proposition ferme.</p>
+            </div>
+            <div class="scroll3d-step" data-step="3">
+              <div class="process-marker">04</div>
+              <h3>La livraison</h3>
+              <p>Import, mise en conformité administrative et remise du véhicule près de chez vous.</p>
+            </div>
+          </div>
+          <div class="scroll3d-dots">
+            <span class="is-active"></span><span></span><span></span><span></span>
+          </div>
+        </div>
+      </div>
+      <div class="scroll3d-progress-track"><div class="scroll3d-progress-fill" id="scroll3dProgressFill"></div></div>
     </div>
   </section>
+  <div class="wrap"><p class="showcase3d-credit">Modèle 3D « Ferrari 288 GTO » par Randomness, sous licence <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a> (Sketchfab).</p></div>
 
   <!-- INSTAGRAM -->
   <section class="section-pad instagram-feed" id="instagram">
@@ -471,38 +535,6 @@
         <blockquote class="instagram-media" data-instgrm-permalink="https://www.instagram.com/reel/DaQfUi6Mdo7/" data-instgrm-version="14">
           <a href="https://www.instagram.com/reel/DaQfUi6Mdo7/" target="_blank" rel="noopener">Voir cette publication sur Instagram</a>
         </blockquote>
-      </div>
-    </div>
-  </section>
-
-  <!-- PROCESS -->
-  <section class="section-pad process-alt">
-    <div class="wrap">
-      <div class="section-head">
-        <h2>Comment se déroule une recherche</h2>
-        <p>Quatre étapes, du brief initial à la remise des clés, avec un point de contact unique tout au long du parcours.</p>
-      </div>
-      <div class="process-track">
-        <div class="process-step">
-          <div class="process-marker">01</div>
-          <h3>Le brief</h3>
-          <p>Vous précisez le modèle, la fourchette de budget, le kilométrage et les critères non négociables.</p>
-        </div>
-        <div class="process-step">
-          <div class="process-marker">02</div>
-          <h3>Le sourcing</h3>
-          <p>Notre réseau de partenaires et nos veilles couvrent les places de marché en Allemagne, au Benelux et au‑delà.</p>
-        </div>
-        <div class="process-step">
-          <div class="process-marker">03</div>
-          <h3>La vérification</h3>
-          <p>Contrôle technique, historique d'entretien et essai sur place avant toute proposition ferme.</p>
-        </div>
-        <div class="process-step">
-          <div class="process-marker">04</div>
-          <h3>La livraison</h3>
-          <p>Import, mise en conformité administrative et remise du véhicule près de chez vous.</p>
-        </div>
       </div>
     </div>
   </section>
@@ -763,14 +795,17 @@
 </script>
 <script type="module">
 import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
-(function initShowcase3D(){
+(function initScroll3D(){
+  var section = document.getElementById('processus3d');
   var stage = document.getElementById('showcase3dStage');
   var loadingEl = document.getElementById('showcase3dLoading');
-  if(!stage) return;
+  var progressFill = document.getElementById('scroll3dProgressFill');
+  var stepEls = document.querySelectorAll('.scroll3d-step');
+  var dotEls = document.querySelectorAll('.scroll3d-dots span');
+  if(!section || !stage) return;
 
   var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -794,42 +829,61 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
   stage.insertBefore(renderer.domElement, stage.firstChild);
 
   var scene = new THREE.Scene();
-  scene.fog = new THREE.Fog(0x0f1f17, 9, 26);
+  scene.fog = new THREE.Fog(0x0b1912, 9, 27);
 
   // Environnement studio doux, pour des reflets réalistes sur la carrosserie.
   var pmrem = new THREE.PMREMGenerator(renderer);
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
 
+  var target = new THREE.Vector3(0, 0.4, 0);
   var camera = new THREE.PerspectiveCamera(35, width / height, 0.1, 200);
-  camera.position.set(4, 2, 5.5);
 
-  var key = new THREE.DirectionalLight(0xf2eedf, 1.3);
+  var key = new THREE.DirectionalLight(0xf7f3e4, 1.3);
   key.position.set(5, 8, 4);
   scene.add(key);
-  var rim = new THREE.DirectionalLight(0xcda05c, 0.6);
+  var rim = new THREE.DirectionalLight(0xeaac3b, 0.65);
   rim.position.set(-6, 3, -5);
   scene.add(rim);
   scene.add(new THREE.AmbientLight(0xc7c0a8, 0.35));
 
-  var grid = new THREE.GridHelper(30, 30, 0x3a5942, 0x26402f);
+  var grid = new THREE.GridHelper(30, 30, 0x3e6647, 0x264936);
   grid.position.y = -0.01;
   scene.add(grid);
 
-  var controls = new OrbitControls(camera, renderer.domElement);
-  controls.enableDamping = true;
-  controls.dampingFactor = 0.08;
-  controls.minDistance = 2;
-  controls.maxDistance = 14;
-  controls.maxPolarAngle = Math.PI / 2 - 0.02;
-  controls.autoRotate = !reduceMotion;
-  controls.autoRotateSpeed = 1.0;
-  controls.target.set(0, 0.4, 0);
-
-  ['pointerdown', 'wheel'].forEach(function(evt){
-    renderer.domElement.addEventListener(evt, function(){
-      stage.classList.add('is-interacted');
-    }, { passive: true });
+  // ---- Points de caméra parcourus au fil du défilement ----
+  var checkpoints = [
+    { theta: 25,  phi: 78, radius: 3.4 }, // 01 · Le brief — plan rapproché 3/4 avant
+    { theta: 100, phi: 80, radius: 5.2 }, // 02 · Le sourcing — profil, recul
+    { theta: 205, phi: 72, radius: 3.8 }, // 03 · La vérification — 3/4 arrière, inspection
+    { theta: 330, phi: 84, radius: 6.8 }  // 04 · La livraison — vue large, remise des clés
+  ].map(function(cp){
+    return { theta: cp.theta * Math.PI / 180, phi: cp.phi * Math.PI / 180, radius: cp.radius };
   });
+
+  function sphericalToCartesian(theta, phi, radius){
+    return new THREE.Vector3(
+      target.x + radius * Math.sin(phi) * Math.sin(theta),
+      target.y + radius * Math.cos(phi),
+      target.z + radius * Math.sin(phi) * Math.cos(theta)
+    );
+  }
+
+  function lerp(a, b, t){ return a + (b - a) * t; }
+
+  function setCameraAtProgress(p){
+    var segCount = checkpoints.length - 1;
+    var scaled = Math.max(0, Math.min(1, p)) * segCount;
+    var idx = Math.min(Math.floor(scaled), segCount - 1);
+    var t = scaled - idx;
+    var a = checkpoints[idx], b = checkpoints[idx + 1];
+    var theta = lerp(a.theta, b.theta, t);
+    var phi = lerp(a.phi, b.phi, t);
+    var radius = lerp(a.radius, b.radius, t);
+    var pos = sphericalToCartesian(theta, phi, radius);
+    camera.position.copy(pos);
+    camera.lookAt(target);
+  }
+  setCameraAtProgress(0);
 
   var loader = new GLTFLoader();
   loader.load(
@@ -858,6 +912,37 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
     }
   );
 
+  // ---- Progression liée au défilement ----
+  var progress = 0;
+  var ticking = false;
+
+  function updateProgress(){
+    var rect = section.getBoundingClientRect();
+    var scrollable = section.offsetHeight - window.innerHeight;
+    var scrolled = -rect.top;
+    progress = scrollable > 0 ? Math.max(0, Math.min(1, scrolled / scrollable)) : 0;
+
+    if(progressFill) progressFill.style.width = (progress * 100) + '%';
+
+    var stepIndex = Math.min(checkpoints.length - 1, Math.floor(progress * checkpoints.length));
+    stepEls.forEach(function(el){
+      el.classList.toggle('is-active', parseInt(el.dataset.step, 10) === stepIndex);
+    });
+    dotEls.forEach(function(dot, i){
+      dot.classList.toggle('is-active', i === stepIndex);
+    });
+
+    ticking = false;
+  }
+
+  window.addEventListener('scroll', function(){
+    if(!ticking){
+      requestAnimationFrame(updateProgress);
+      ticking = true;
+    }
+  }, { passive: true });
+  updateProgress();
+
   var ro = new ResizeObserver(function(){
     var w = stage.clientWidth || 1, h = stage.clientHeight || 1;
     camera.aspect = w / h;
@@ -870,8 +955,8 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
   if('IntersectionObserver' in window){
     var io = new IntersectionObserver(function(entries){
       isVisible = entries[0].isIntersecting;
-    }, { threshold: 0.1 });
-    io.observe(stage);
+    }, { threshold: 0 });
+    io.observe(section);
   }
 
   var running = true;
@@ -879,10 +964,20 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
     running = !document.hidden;
   });
 
+  var idleAngle = 0;
   function animate(){
     requestAnimationFrame(animate);
     if(!running || !isVisible) return;
-    controls.update();
+    if(!reduceMotion){
+      idleAngle += 0.0015;
+    }
+    setCameraAtProgress(progress);
+    if(!reduceMotion){
+      // Léger flottement continu par-dessus la position pilotée par le scroll.
+      camera.position.x += Math.sin(idleAngle) * 0.04;
+      camera.position.y += Math.sin(idleAngle * 1.3) * 0.02;
+      camera.lookAt(target);
+    }
     renderer.render(scene, camera);
   }
   animate();

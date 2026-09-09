@@ -1,0 +1,88 @@
+name: Verify scroll-driven 3D + formation page (diagnostic, manual only)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Start local server
+        run: |
+          python3 -m http.server 8080 &
+          sleep 1
+
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-audit --no-fund playwright@1.48.0 >/dev/null 2>&1
+          npx playwright install --with-deps chromium >/dev/null 2>&1
+
+      - name: Check scroll3d section
+        run: |
+          cat > check.js << 'EOF'
+          const { chromium } = require('playwright');
+
+          async function thumb(page, clip) {
+            const buf = await page.screenshot({ clip, type: 'jpeg', quality: 35 });
+            return await page.evaluate(async (b64) => {
+              const img = new Image();
+              await new Promise((res) => { img.onload = res; img.src = 'data:image/jpeg;base64,' + b64; });
+              const canvas = document.createElement('canvas');
+              canvas.width = 280;
+              canvas.height = Math.round(280 * img.height / img.width);
+              canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+              return canvas.toDataURL('image/jpeg', 0.5).split(',')[1];
+            }, buf.toString('base64'));
+          }
+
+          (async () => {
+            const browser = await chromium.launch();
+            const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+            const consoleMsgs = [];
+            page.on('console', m => consoleMsgs.push(m.type() + ': ' + m.text()));
+            page.on('pageerror', e => consoleMsgs.push('pageerror: ' + e.message));
+
+            await page.goto('http://localhost:8080/index.html', { waitUntil: 'load', timeout: 30000 });
+
+            const sectionInfo = await page.evaluate(() => {
+              const el = document.getElementById('processus3d');
+              return el ? { height: el.offsetHeight, top: el.offsetTop } : null;
+            });
+            console.log('SECTION_INFO', JSON.stringify(sectionInfo));
+
+            if (sectionInfo) {
+              const positions = [0.05, 0.3, 0.6, 0.9];
+              for (const frac of positions) {
+                const y = sectionInfo.top + sectionInfo.height * frac - 450;
+                await page.evaluate((yy) => window.scrollTo(0, yy), Math.max(0, y));
+                await page.waitForTimeout(700);
+                const state = await page.evaluate(() => {
+                  const loading = document.getElementById('showcase3dLoading');
+                  const activeStep = document.querySelector('.scroll3d-step.is-active');
+                  const fill = document.getElementById('scroll3dProgressFill');
+                  return {
+                    loadingClasses: loading ? loading.className : 'MISSING',
+                    activeStep: activeStep ? activeStep.querySelector('h3').textContent : 'NONE',
+                    fillWidth: fill ? fill.style.width : 'MISSING'
+                  };
+                });
+                console.log('AT_FRAC', frac, JSON.stringify(state));
+                const t = await thumb(page, { x: 0, y: 0, width: 1440, height: 900 });
+                console.log('THUMB_' + frac + '_START');
+                console.log(t);
+                console.log('THUMB_' + frac + '_END');
+              }
+            }
+
+            console.log('CONSOLE_LOG', JSON.stringify(consoleMsgs.slice(0, 40), null, 2));
+            await browser.close();
+          })();
+          EOF
+          node check.js

@@ -10,26 +10,24 @@
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Fraunces:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   /*
-    Cette page assemble les "slides" transmises (PDF de formation) en une
-    présentation défilante et animée. Chaque diapositive est une <section
-    class="fslide"> autonome, alternant fond sombre / clair comme dans le
-    PDF source. Pour ajouter une nouvelle diapositive plus tard : dupliquer
-    un bloc <section class="fslide ...">…</section>, lui donner un id
-    unique et l'ajouter à la liste de points de navigation (.deck-dots).
+    Page Formation — mise en page magazine : bandeaux photo pleine largeur
+    (avec parallaxe) alternés avec des sections de contenu, compteurs
+    animés, et révélations au défilement. Chaque photo n'est utilisée
+    qu'une fois, associée au passage de texte le plus proche thématiquement.
   */
   :root{
-    --bg-0:#0F1F17;
-    --bg-1:#142A20;
-    --bg-2:#1B3527;
-    --line:#3A5942;
-    --line-soft:#26402F;
-    --ivory:#F2EEDF;
-    --ivory-dim:#C7C0A8;
+    --bg-0:#0B1912;
+    --bg-1:#122A1C;
+    --bg-2:#193A27;
+    --line:#3E6647;
+    --line-soft:#264936;
+    --ivory:#F7F3E4;
+    --ivory-dim:#CEC6A8;
     --ivory-faint:#8FA394;
-    --brass:#CDA05C;
-    --red:#B0453A;
-    --green:#3C7A52;
-    --green-dim:#2E6B45;
+    --brass:#EAAC3B;
+    --brass-bright:#FFCB5C;
+    --red:#E8482F;
+    --red-bright:#FF6B47;
 
     --paper:#FBFAF6;
     --paper-2:#F2F0E8;
@@ -46,240 +44,233 @@
   *,*::before,*::after{box-sizing:border-box;}
   html{scroll-behavior:smooth;}
   body{
-    margin:0;
-    background:var(--bg-0);
-    color:var(--ivory);
-    font-family:'Fraunces',Georgia,serif;
-    font-weight:400;
-    line-height:1.55;
-    -webkit-font-smoothing:antialiased;
+    margin:0;background:var(--bg-0);color:var(--ivory);
+    font-family:'Fraunces',Georgia,serif;font-weight:400;line-height:1.55;
+    -webkit-font-smoothing:antialiased;overflow-x:hidden;
   }
   h1,h2,h3,.display{
-    font-family:'Oswald',sans-serif;
-    font-weight:600;
-    letter-spacing:0.01em;
-    margin:0;
+    font-family:'Oswald',sans-serif;font-weight:600;letter-spacing:0.01em;margin:0;
   }
   p{margin:0 0 1em 0;}
   a{color:inherit;}
+  img{display:block;max-width:100%;}
   .mono{font-family:'JetBrains Mono',monospace;}
   .wrap{max-width:var(--maxw);margin:0 auto;padding:0 32px;}
-
   a:focus-visible,button:focus-visible{outline:2px solid var(--brass);outline-offset:3px;}
 
-  /* ---------- Top bar ---------- */
+  .eyebrow{
+    font-family:'JetBrains Mono',monospace;font-size:13px;letter-spacing:.02em;
+    color:var(--brass-bright);text-shadow:0 0 18px rgba(255,203,92,0.3);margin-bottom:14px;
+  }
+  .fsection.is-light .eyebrow{color:#B5761F;text-shadow:none;}
+
+  /* ---------- Barre du haut + progression ---------- */
   .deck-topbar{
     position:fixed;top:0;left:0;right:0;z-index:60;
     display:flex;align-items:center;justify-content:space-between;
-    padding:18px 28px;
-    pointer-events:none;
+    padding:16px 24px;pointer-events:none;
   }
   .deck-topbar > *{pointer-events:auto;}
   .back-link{
-    display:inline-flex;align-items:center;gap:8px;
-    text-decoration:none;color:var(--ivory-dim);
+    display:inline-flex;align-items:center;gap:8px;text-decoration:none;color:var(--ivory-dim);
     font-family:'Oswald',sans-serif;font-size:13px;font-weight:500;letter-spacing:.03em;
-    background:rgba(15,31,23,0.55);backdrop-filter:blur(6px);
-    border:1px solid var(--line-soft);border-radius:20px;
-    padding:8px 16px 8px 12px;
+    background:rgba(11,25,18,0.55);backdrop-filter:blur(6px);
+    border:1px solid var(--line-soft);border-radius:20px;padding:8px 16px 8px 12px;
     transition:border-color .2s ease, color .2s ease;
   }
   .back-link:hover{color:var(--ivory);border-color:var(--brass);}
   .back-link svg{width:14px;height:14px;flex-shrink:0;}
+  .toc-nav{
+    display:flex;gap:4px;background:rgba(11,25,18,0.55);backdrop-filter:blur(6px);
+    border:1px solid var(--line-soft);border-radius:20px;padding:4px;
+  }
+  .toc-nav a{
+    font-family:'Oswald',sans-serif;font-size:12.5px;font-weight:500;color:var(--ivory-dim);
+    text-decoration:none;padding:7px 13px;border-radius:16px;transition:background .2s ease, color .2s ease;
+  }
+  .toc-nav a:hover{color:var(--ivory);background:rgba(255,255,255,0.06);}
+  @media (max-width:820px){ .toc-nav{display:none;} }
 
-  .progress-track{
-    position:fixed;top:0;left:0;right:0;height:2px;z-index:70;
-    background:transparent;
-  }
-  .progress-fill{
-    height:100%;width:0%;background:var(--brass);
-    transition:width .1s linear;
-  }
+  .progress-track{position:fixed;top:0;left:0;right:0;height:2px;z-index:70;}
+  .progress-fill{height:100%;width:0%;background:linear-gradient(90deg, var(--red-bright), var(--brass-bright));transition:width .1s linear;}
 
-  /* ---------- Slide dots nav ---------- */
-  .deck-dots{
-    position:fixed;right:22px;top:50%;transform:translateY(-50%);
-    z-index:60;display:flex;flex-direction:column;gap:12px;
-  }
-  .deck-dots button{
-    width:9px;height:9px;border-radius:50%;padding:0;
-    background:transparent;border:1.5px solid var(--ivory-faint);
-    cursor:pointer;position:relative;
-    transition:background .2s ease, border-color .2s ease, transform .2s ease;
-  }
-  .deck-dots button::after{
-    content:attr(data-label);
-    position:absolute;right:20px;top:50%;transform:translateY(-50%);
-    font-family:'Oswald',sans-serif;font-size:11.5px;letter-spacing:.02em;
-    color:var(--ivory-dim);white-space:nowrap;
-    opacity:0;pointer-events:none;transition:opacity .15s ease;
-    background:rgba(15,31,23,0.85);padding:4px 9px;border-radius:4px;
-    border:1px solid var(--line-soft);
-  }
-  .deck-dots button:hover::after{opacity:1;}
-  .deck-dots button.is-active{background:var(--brass);border-color:var(--brass);transform:scale(1.25);}
-  @media (max-width:760px){ .deck-dots{display:none;} }
+  /* ---------- Révélation générique au défilement ---------- */
+  .rv{opacity:0;transform:translateY(24px);transition:opacity .7s cubic-bezier(.2,.7,.2,1), transform .7s cubic-bezier(.2,.7,.2,1);}
+  .rv.is-in{opacity:1;transform:translateY(0);}
+  .rv-d1{transition-delay:.08s;} .rv-d2{transition-delay:.16s;} .rv-d3{transition-delay:.24s;} .rv-d4{transition-delay:.32s;} .rv-d5{transition-delay:.4s;}
+  @media (prefers-reduced-motion:reduce){ .rv{transition:none;opacity:1;transform:none;} html{scroll-behavior:auto;} }
 
-  /* ---------- Slide base ---------- */
-  .fslide{
-    min-height:100vh;
-    display:flex;
-    align-items:center;
-    position:relative;
-    padding:120px 0 80px;
-    scroll-margin-top:0;
+  .btn{
+    display:inline-flex;align-items:center;gap:8px;
+    font-family:'Oswald',sans-serif;font-weight:600;font-size:14.5px;letter-spacing:.01em;
+    padding:14px 26px;border-radius:var(--radius-sm);text-decoration:none;cursor:pointer;
+    border:1.5px solid transparent;transition:background .2s ease, border-color .2s ease, color .2s ease, transform .15s ease, box-shadow .2s ease;
   }
-  .fslide-dark{background:var(--bg-0);color:var(--ivory);}
-  .fslide-light{background:var(--paper);color:var(--ink);}
-  .fslide-inner{width:100%;}
+  .btn:active{transform:translateY(1px);}
+  .btn-primary{background:linear-gradient(135deg, var(--red-bright), var(--red));color:var(--ivory);box-shadow:0 8px 22px -6px rgba(232,72,47,0.55);}
+  .btn-primary:hover{background:linear-gradient(135deg, var(--red), #C0331D);box-shadow:0 10px 28px -6px rgba(232,72,47,0.7);}
+  .btn-outline{background:transparent;color:var(--ivory);border-color:var(--line);}
+  .btn-outline:hover{border-color:var(--brass);color:var(--brass-bright);}
 
-  .eyebrow{
-    font-family:'JetBrains Mono',monospace;font-size:13px;letter-spacing:.02em;
-    color:var(--brass);margin-bottom:18px;
+  /* ---------- Hero ---------- */
+  .fhero{position:relative;min-height:100vh;display:flex;align-items:flex-end;overflow:hidden;}
+  .fhero-bg{
+    position:absolute;inset:-8% -8%;width:116%;height:116%;object-fit:cover;object-position:60% 30%;
+    will-change:transform;filter:saturate(1.05);
   }
-  .fslide-light .eyebrow{color:var(--green-dim);}
-
-  .fslide h2{font-size:clamp(30px,4.6vw,54px);line-height:1.08;margin-bottom:18px;}
-  .fslide-dark h2{color:var(--ivory);}
-  .fslide-light h2{color:var(--ink);}
-  .fslide .lead{
-    font-size:17px;max-width:56ch;
+  .fhero-overlay{
+    position:absolute;inset:0;
+    background:linear-gradient(0deg, rgba(11,25,18,0.98) 0%, rgba(11,25,18,0.75) 32%, rgba(11,25,18,0.35) 60%, rgba(11,25,18,0.5) 100%);
   }
-  .fslide-dark .lead{color:var(--ivory-dim);}
-  .fslide-light .lead{color:var(--ink-dim);}
-  .hr{border:none;border-top:1px dashed var(--line);margin:34px 0;}
-  .fslide-light .hr{border-top-color:var(--line-light);}
-
-  /* ---------- Reveal-on-scroll ---------- */
-  .rv{
-    opacity:0;
-    transform:translateY(26px);
-    transition:opacity .7s cubic-bezier(.2,.7,.2,1), transform .7s cubic-bezier(.2,.7,.2,1);
-    transition-delay:calc(var(--d, 0) * 90ms);
+  .fhero-inner{position:relative;z-index:2;padding:0 0 90px;max-width:680px;}
+  .fhero h1{font-size:clamp(36px,6vw,66px);line-height:1.05;margin:14px 0 20px;}
+  .fhero h1 em{
+    font-style:italic;font-family:'Fraunces',serif;font-weight:500;
+    background:linear-gradient(100deg, var(--brass-bright), var(--brass) 60%, var(--red-bright));
+    -webkit-background-clip:text;background-clip:text;color:transparent;
   }
-  .fslide.is-visible .rv{opacity:1;transform:translateY(0);}
-  @media (prefers-reduced-motion:reduce){
-    .rv{transition:none;opacity:1;transform:none;}
-    html{scroll-behavior:auto;}
-  }
-
-  /* ---------- Slide 01 — Hero ---------- */
-  .s-hero .hero-title{font-size:clamp(38px,6vw,68px);line-height:1.04;margin-bottom:24px;max-width:16ch;}
-  .s-hero .lead{font-size:19px;max-width:52ch;margin-bottom:36px;}
-  .s-hero .signature{display:flex;align-items:center;gap:18px;margin-top:44px;padding-top:22px;border-top:1px solid var(--line-soft);}
-  .s-hero .signature .name{font-family:'Oswald',sans-serif;font-weight:600;font-size:15px;}
-  .s-hero .signature .org{color:var(--ivory-faint);font-size:13.5px;}
-  .brandmark{
-    font-family:'Oswald',sans-serif;font-style:italic;font-weight:500;letter-spacing:.03em;
-    color:var(--ivory-faint);font-size:14px;position:absolute;right:32px;top:130px;
-    transform:rotate(-2deg);
-  }
-  @media (max-width:760px){ .brandmark{display:none;} }
+  .fhero .lead{font-size:18px;color:var(--ivory-dim);max-width:52ch;margin-bottom:32px;}
+  .fhero .cta-actions{display:flex;gap:14px;flex-wrap:wrap;}
   .scroll-cue{
-    position:absolute;bottom:36px;left:50%;transform:translateX(-50%);
+    position:absolute;bottom:28px;left:50%;transform:translateX(-50%);z-index:2;
     display:flex;flex-direction:column;align-items:center;gap:8px;
-    color:var(--ivory-faint);font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.08em;
+    color:var(--ivory-faint);font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.1em;
   }
   .scroll-cue svg{width:14px;height:14px;animation:bob 1.8s ease-in-out infinite;}
   @keyframes bob{0%,100%{transform:translateY(0);}50%{transform:translateY(6px);}}
-  @media (prefers-reduced-motion:reduce){ .scroll-cue svg{animation:none;} }
 
-  /* ---------- Slide 02 — Stats ---------- */
-  .stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin-top:10px;}
-  .stat-card{padding:26px 28px 26px 0;border-right:1px solid var(--line-light);}
+  /* ---------- Sections génériques ---------- */
+  .fsection{padding:100px 0;position:relative;}
+  .fsection.is-light{background:var(--paper);color:var(--ink);}
+  .fsection.is-light .lead,.fsection.is-light p{color:var(--ink-dim);}
+  .fsection h2{font-size:clamp(28px,3.6vw,42px);line-height:1.1;margin-bottom:16px;}
+  .fsection .lead{font-size:17px;color:var(--ivory-dim);max-width:56ch;}
+  .hr{border:none;border-top:1px dashed var(--line);margin:32px 0;}
+  .fsection.is-light .hr{border-top-color:var(--line-light);}
+  .closing-line{font-style:italic;font-size:16.5px;color:var(--ivory-dim);margin-top:30px;}
+  .fsection.is-light .closing-line{color:var(--ink-dim);}
+
+  /* ---------- Stats ---------- */
+  .stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin-top:28px;}
+  .stat-card{padding:22px 28px 0 0;border-right:1px solid var(--line-light);}
   .stat-card:last-child{border-right:none;}
-  .stat-num{font-family:'Oswald',sans-serif;font-weight:700;font-size:clamp(34px,4.6vw,52px);color:var(--green);margin-bottom:8px;}
+  .stat-num{
+    font-family:'Oswald',sans-serif;font-weight:700;font-size:clamp(36px,4.8vw,54px);
+    background:linear-gradient(100deg, #C97A12, var(--brass) 55%, #B5761F);
+    -webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:8px;
+  }
   .stat-label{font-family:'Oswald',sans-serif;font-weight:600;font-size:16.5px;margin-bottom:6px;color:var(--ink);}
   .stat-note{font-size:14px;color:var(--ink-dim);}
-  .closing-line{font-style:italic;font-size:16.5px;color:var(--ink-dim);margin-top:32px;}
   @media (max-width:760px){
     .stat-grid{grid-template-columns:1fr;gap:22px;}
-    .stat-card{border-right:none;border-bottom:1px solid var(--line-light);padding:0 0 22px;}
+    .stat-card{border-right:none;border-bottom:1px solid var(--line-light);padding:0 0 20px;}
   }
 
-  /* ---------- Slide 03 — Table rows ---------- */
-  .fact-row{display:grid;grid-template-columns:0.85fr 1.4fr;gap:28px;padding:26px 0;border-bottom:1px solid var(--line-soft);align-items:start;}
-  .fact-row:first-of-type{border-top:1px solid var(--line-soft);}
-  .fact-row h3{font-size:20px;color:var(--ivory);}
-  .fact-row p{color:var(--ivory-dim);font-size:15.5px;margin:0;}
-  @media (max-width:640px){ .fact-row{grid-template-columns:1fr;gap:8px;} }
+  /* ---------- Bandeaux photo pleine largeur (parallaxe) ---------- */
+  .photo-band{position:relative;height:78vh;min-height:460px;overflow:hidden;}
+  .photo-band-bg{
+    position:absolute;inset:-12% 0;height:124%;width:100%;
+    background-size:cover;background-position:center;will-change:transform;
+  }
+  .photo-band-overlay{
+    position:absolute;inset:0;
+    background:linear-gradient(0deg, rgba(11,25,18,0.9) 0%, rgba(11,25,18,0.15) 40%, rgba(11,25,18,0.05) 60%, rgba(11,25,18,0.55) 100%);
+  }
+  .photo-band-caption{position:absolute;left:0;right:0;bottom:48px;z-index:2;}
+  .photo-band-caption p{
+    font-family:'Fraunces',serif;font-style:italic;font-size:clamp(19px,2.4vw,27px);
+    color:var(--ivory);max-width:46ch;margin:0;
+    text-shadow:0 2px 20px rgba(0,0,0,0.5);
+  }
+  .photo-band-tag{
+    font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--brass-bright);
+    margin-bottom:12px;display:block;
+  }
 
-  /* ---------- Slide 04 — Split ---------- */
-  .split{display:grid;grid-template-columns:0.9fr 1.1fr;min-height:100vh;width:100%;}
-  .split-panel{display:flex;align-items:center;padding:120px 48px;}
-  .split-panel.panel-dark{background:var(--bg-0);}
-  .split-panel.panel-list{background:var(--paper);}
-  .split-panel h2{font-size:clamp(28px,3.6vw,44px);}
+  /* ---------- Faits (où se gagne l'argent) ---------- */
+  .facts-layout{display:grid;grid-template-columns:1.05fr 0.95fr;gap:56px;align-items:center;margin-top:36px;}
+  .facts-list{display:flex;flex-direction:column;}
+  .fact-row{padding:24px 0;border-bottom:1px solid var(--line-soft);}
+  .fact-row:first-child{border-top:1px solid var(--line-soft);}
+  .fact-row h3{font-size:19px;color:var(--ivory);margin-bottom:8px;}
+  .fact-row p{color:var(--ivory-dim);font-size:15px;margin:0;}
+  .facts-photo-frame{
+    border-radius:var(--radius-md);overflow:hidden;border:1px solid var(--line-soft);
+    box-shadow:0 24px 60px -20px rgba(0,0,0,0.6);
+  }
+  .facts-photo-frame img{width:100%;height:100%;object-fit:cover;aspect-ratio:3/4;}
+  @media (max-width:860px){ .facts-layout{grid-template-columns:1fr;gap:32px;} .facts-photo-frame img{aspect-ratio:16/10;} }
+
+  /* ---------- Accès / outils ---------- */
+  .access-split{display:grid;grid-template-columns:0.85fr 1.15fr;}
+  .access-panel{padding:90px 48px;}
+  .access-panel.is-dark{background:var(--bg-1);}
+  .access-panel.is-dark h2{color:var(--ivory);}
   .access-list{list-style:none;margin:0;padding:0;width:100%;}
-  .access-list li{padding:18px 0;border-bottom:1px solid var(--line-light);}
+  .access-list li{padding:20px 0;border-bottom:1px solid var(--line-light);}
   .access-list li:first-child{border-top:1px solid var(--line-light);}
   .access-list h3{font-family:'Oswald',sans-serif;font-weight:600;font-size:17.5px;color:var(--ink);margin-bottom:6px;}
   .access-list p{color:var(--ink-dim);font-size:14.5px;margin:0;}
-  @media (max-width:820px){
-    .split{grid-template-columns:1fr;}
-    .split-panel{padding:64px 28px;min-height:auto;}
-    .split-panel.panel-dark{padding-top:150px;}
-  }
+  @media (max-width:860px){ .access-split{grid-template-columns:1fr;} .access-panel{padding:60px 28px;} }
 
-  /* ---------- Slide 05 — Modules grid ---------- */
-  .module-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px;background:var(--line-light);border:1px solid var(--line-light);margin-top:8px;}
-  .module-card{background:var(--paper);padding:24px 26px;}
-  .module-card.is-key{background:var(--bg-0);}
+  /* ---------- Modules ---------- */
+  .module-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px;background:var(--line-light);border:1px solid var(--line-light);margin-top:32px;}
+  .module-card{background:var(--paper);padding:26px 28px;transition:transform .2s ease, box-shadow .2s ease;position:relative;}
+  .module-card:hover{transform:translateY(-3px);box-shadow:0 14px 30px -14px rgba(0,0,0,0.25);z-index:1;}
+  .module-card.is-key{background:linear-gradient(135deg, var(--bg-1), var(--bg-2));}
   .module-card h3{font-family:'Oswald',sans-serif;font-weight:600;font-size:18px;color:var(--ink);margin-bottom:8px;}
-  .module-card.is-key h3{color:var(--ivory);}
+  .module-card.is-key h3{
+    background:linear-gradient(100deg, var(--brass-bright), var(--brass));
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
   .module-card p{font-size:14.5px;color:var(--ink-dim);margin:0;}
   .module-card.is-key p{color:var(--ivory-dim);}
   @media (max-width:640px){ .module-grid{grid-template-columns:1fr;} }
 
-  /* ---------- Slide 06 — Two paths ---------- */
-  .path-panel h2{font-size:clamp(26px,3.4vw,40px);margin-bottom:22px;}
+  /* ---------- Deux voies ---------- */
+  .path-panel{padding:90px 48px;}
+  .path-split{display:grid;grid-template-columns:1fr 1fr;}
+  .path-split .path-panel.is-dark{background:var(--bg-1);}
+  .path-split .path-panel.is-dark h2{color:var(--ivory);}
   .path-list{list-style:none;margin:22px 0 0;padding:0;display:flex;flex-direction:column;gap:14px;}
   .path-list li{position:relative;padding-left:22px;font-size:15px;}
-  .split-panel.panel-list .path-list li{color:var(--ink-dim);}
-  .split-panel.panel-dark .path-list li{color:var(--ivory-dim);}
-  .path-list li::before{content:"";position:absolute;left:0;top:9px;width:6px;height:6px;border-radius:50%;background:var(--green);}
-  .split-panel.panel-dark .path-list li::before{background:var(--brass);}
+  .path-panel:not(.is-dark) .path-list li{color:var(--ink-dim);}
+  .path-panel.is-dark .path-list li{color:var(--ivory-dim);}
+  .path-list li::before{content:"";position:absolute;left:0;top:9px;width:6px;height:6px;border-radius:50%;background:var(--brass);}
+  @media (max-width:860px){ .path-split{grid-template-columns:1fr;} .path-panel{padding:60px 28px;} }
 
-  /* ---------- Slide 07 — Timeline ---------- */
-  .timeline{position:relative;margin-top:16px;padding-left:0;}
-  .tl-step{display:grid;grid-template-columns:56px 1fr;gap:0;position:relative;}
+  /* ---------- Timeline ---------- */
+  .timeline{position:relative;margin-top:20px;max-width:70ch;}
+  .tl-step{display:grid;grid-template-columns:56px 1fr;position:relative;}
   .tl-marker-col{display:flex;flex-direction:column;align-items:center;}
-  .tl-dot{width:16px;height:16px;border-radius:50%;background:var(--bg-0);border:2px solid var(--green);flex-shrink:0;margin-top:6px;}
+  .tl-dot{
+    width:16px;height:16px;border-radius:50%;background:var(--bg-0);border:2px solid var(--brass);
+    flex-shrink:0;margin-top:6px;box-shadow:0 0 12px -1px rgba(234,172,59,0.5);
+  }
   .tl-line{width:1px;flex:1;background:var(--line-light);min-height:56px;}
   .tl-step:last-child .tl-line{display:none;}
   .tl-body{padding:0 0 40px 22px;}
   .tl-body h3{font-family:'Oswald',sans-serif;font-weight:600;font-size:19px;color:var(--ink);margin-bottom:6px;}
   .tl-body p{color:var(--ink-dim);font-size:15px;margin:0;}
 
-  /* ---------- Slide 08 — Three cards ---------- */
+  /* ---------- Trio ---------- */
   .trio-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:32px;margin-top:36px;}
   .trio-card h3{font-family:'Oswald',sans-serif;font-weight:600;font-size:17.5px;color:var(--ink);margin-bottom:10px;}
   .trio-card p{color:var(--ink-dim);font-size:14.5px;margin:0;}
   @media (max-width:760px){ .trio-grid{grid-template-columns:1fr;gap:26px;} }
 
-  /* ---------- Slide 09 — CTA ---------- */
-  .s-cta h2{font-size:clamp(32px,5vw,56px);margin-bottom:28px;}
-  .cta-list{list-style:none;margin:0 0 40px;padding:0;display:flex;flex-direction:column;gap:16px;max-width:56ch;}
+  /* ---------- CTA final ---------- */
+  .cta-section{background:var(--bg-1);}
+  .cta-list{list-style:none;margin:0 0 36px;padding:0;display:flex;flex-direction:column;gap:16px;max-width:56ch;}
   .cta-list li{position:relative;padding-left:24px;font-size:16px;color:var(--ivory-dim);}
   .cta-list li::before{content:"—";position:absolute;left:0;color:var(--brass);}
-  .cta-actions{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:44px;}
-  .btn{
-    display:inline-flex;align-items:center;gap:8px;
-    font-family:'Oswald',sans-serif;font-weight:600;font-size:14.5px;letter-spacing:.01em;
-    padding:14px 26px;border-radius:var(--radius-sm);
-    text-decoration:none;cursor:pointer;border:1.5px solid transparent;
-    transition:background .2s ease, border-color .2s ease, color .2s ease, transform .15s ease;
+  .cta-foot{
+    display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:20px;
+    margin-top:40px;padding-top:26px;border-top:1px solid var(--line-soft);
   }
-  .btn:active{transform:translateY(1px);}
-  .btn-primary{background:var(--red);color:var(--ivory);border-color:var(--red);}
-  .btn-primary:hover{background:#8F362C;border-color:#8F362C;}
-  .btn-outline{background:transparent;color:var(--ivory);border-color:var(--line);}
-  .btn-outline:hover{border-color:var(--brass);color:var(--brass);}
-  .cta-foot{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:20px;
-    padding-top:26px;border-top:1px solid var(--line-soft);}
   .cta-foot .name{font-family:'Oswald',sans-serif;font-weight:600;font-size:15.5px;}
   .cta-foot .org{color:var(--ivory-faint);font-size:13.5px;}
-  .cta-foot .phone{font-family:'JetBrains Mono',monospace;font-size:16px;color:var(--brass);text-decoration:none;}
+  .cta-foot .phone{font-family:'JetBrains Mono',monospace;font-size:16px;color:var(--brass-bright);text-decoration:none;}
   .cta-foot .phone:hover{color:var(--ivory);}
 
 </style>
@@ -293,38 +284,27 @@
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>
     MOTORSPORT By TB
   </a>
+  <nav class="toc-nav" aria-label="Navigation rapide">
+    <a href="#resultats">Résultats</a>
+    <a href="#marche">Marché</a>
+    <a href="#modules">Modules</a>
+    <a href="#contact">Contact</a>
+  </nav>
 </div>
-
-<nav class="deck-dots" id="deckDots" aria-label="Navigation entre les diapositives">
-  <button data-target="slide-1" data-label="Intro"></button>
-  <button data-target="slide-2" data-label="Résultats"></button>
-  <button data-target="slide-3" data-label="Où se gagne l'argent"></button>
-  <button data-target="slide-4" data-label="Outils &amp; réseau"></button>
-  <button data-target="slide-5" data-label="Modules"></button>
-  <button data-target="slide-6" data-label="Formats"></button>
-  <button data-target="slide-7" data-label="Déroulé"></button>
-  <button data-target="slide-8" data-label="Étudiants"></button>
-  <button data-target="slide-9" data-label="Contact"></button>
-</nav>
 
 <main>
 
-  <!-- SLIDE 1 — Hero -->
-  <section id="slide-1" class="fslide fslide-dark s-hero">
-    <span class="brandmark">MOTORSPORT</span>
-    <div class="wrap fslide-inner">
-      <div class="eyebrow rv" style="--d:0">Formation et accompagnement</div>
-      <h1 class="hero-title rv" style="--d:1">Achat-revente et importation automobile</h1>
-      <p class="lead rv" style="--d:2">Apprendre le métier, obtenir les accès, et réaliser ses premières opérations accompagné.</p>
-      <div class="cta-actions rv" style="--d:3">
-        <a href="#slide-9" class="btn btn-primary">On en parle</a>
-        <a href="#slide-5" class="btn btn-outline">Voir les modules</a>
-      </div>
-      <div class="signature rv" style="--d:4">
-        <div>
-          <div class="name">Thomas Bona</div>
-          <div class="org">French Consulting — MOTORSPORT by TB</div>
-        </div>
+  <!-- HERO -->
+  <section class="fhero" id="hero">
+    <img class="fhero-bg" id="heroParallax" src="images/formation/portrait-lamborghini.jpg" alt="Thomas Bona, French Consulting — MOTORSPORT by TB, devant une Lamborghini Murciélago">
+    <div class="fhero-overlay"></div>
+    <div class="wrap fhero-inner">
+      <div class="eyebrow rv">Formation et accompagnement</div>
+      <h1 class="rv rv-d1">Achat-revente et <em>importation</em> automobile</h1>
+      <p class="lead rv rv-d2">Apprendre le métier, obtenir les accès, et réaliser ses premières opérations accompagné.</p>
+      <div class="cta-actions rv rv-d3">
+        <a href="#contact" class="btn btn-primary">On en parle</a>
+        <a href="#modules" class="btn btn-outline">Voir les modules</a>
       </div>
     </div>
     <div class="scroll-cue">
@@ -333,180 +313,194 @@
     </div>
   </section>
 
-  <!-- SLIDE 2 — Ce que j'ai construit -->
-  <section id="slide-2" class="fslide fslide-light">
-    <div class="wrap fslide-inner">
-      <div class="eyebrow rv" style="--d:0">Ce que j'ai construit</div>
-      <h2 class="rv" style="--d:1">Avant de former, j'ai fait tourner l'activité.</h2>
-      <p class="lead rv" style="--d:2">Trois repères, sur six ans de terrain.</p>
-      <hr class="hr rv" style="--d:2">
+  <!-- STATS -->
+  <section class="fsection is-light" id="resultats">
+    <div class="wrap">
+      <div class="eyebrow rv">Ce que j'ai construit</div>
+      <h2 class="rv rv-d1">Avant de former, j'ai fait tourner l'activité.</h2>
+      <p class="lead rv rv-d2">Trois repères, sur six ans de terrain.</p>
+      <hr class="hr">
       <div class="stat-grid">
-        <div class="stat-card rv" style="--d:3">
-          <div class="stat-num">600 000 €</div>
+        <div class="stat-card rv rv-d1">
+          <div class="stat-num" data-count="600000" data-suffix=" €">0 €</div>
           <div class="stat-label">de chiffre d'affaires</div>
           <div class="stat-note">Réalisés dès la première année d'activité.</div>
         </div>
-        <div class="stat-card rv" style="--d:4">
-          <div class="stat-num">4</div>
+        <div class="stat-card rv rv-d2">
+          <div class="stat-num" data-count="4">0</div>
           <div class="stat-label">sociétés créées</div>
           <div class="stat-note">En six ans, dans plusieurs pays.</div>
         </div>
-        <div class="stat-card rv" style="--d:5">
-          <div class="stat-num">30</div>
+        <div class="stat-card rv rv-d3">
+          <div class="stat-num" data-count="30">0</div>
           <div class="stat-label">véhicules importés</div>
           <div class="stat-note">Tous immatriculés, aucun bloqué administrativement.</div>
         </div>
       </div>
-      <p class="closing-line rv" style="--d:6">Ce que je transmets, ce sont les méthodes qui ont produit ces résultats.</p>
+      <p class="closing-line rv rv-d4">Ce que je transmets, ce sont les méthodes qui ont produit ces résultats.</p>
     </div>
   </section>
 
-  <!-- SLIDE 3 — Où se gagne l'argent -->
-  <section id="slide-3" class="fslide fslide-dark">
-    <div class="wrap fslide-inner">
-      <div class="eyebrow rv" style="--d:0">Où se gagne l'argent</div>
-      <h2 class="rv" style="--d:1">Trois réalités du métier</h2>
-      <p class="lead rv" style="--d:2">À comprendre avant de se lancer.</p>
-      <div style="margin-top:34px;">
-        <div class="fact-row rv" style="--d:3">
-          <h3>La marge se fait à l'achat</h3>
-          <p>Un véhicule bien acheté est déjà à moitié revendu. Tout se joue sur le sourcing et l'estimation, pas sur la négociation finale.</p>
+  <!-- BANDEAU PHOTO — résultat livré -->
+  <section class="photo-band">
+    <div class="photo-band-bg" data-parallax style="background-image:url('images/formation/porsche-911-livraison.jpg')"></div>
+    <div class="photo-band-overlay"></div>
+    <div class="wrap photo-band-caption rv">
+      <span class="photo-band-tag">Livraison client</span>
+      <p>« Une recherche réussie se termine ici : les clés remises, la plaque MOTORSPORT posée. »</p>
+    </div>
+  </section>
+
+  <!-- OÙ SE GAGNE L'ARGENT -->
+  <section class="fsection" id="marche">
+    <div class="wrap">
+      <div class="eyebrow rv">Où se gagne l'argent</div>
+      <h2 class="rv rv-d1">Trois réalités du métier</h2>
+      <p class="lead rv rv-d2">À comprendre avant de se lancer.</p>
+      <div class="facts-layout">
+        <div class="facts-list">
+          <div class="fact-row rv rv-d1">
+            <h3>La marge se fait à l'achat</h3>
+            <p>Un véhicule bien acheté est déjà à moitié revendu. Tout se joue sur le sourcing et l'estimation, pas sur la négociation finale.</p>
+          </div>
+          <div class="fact-row rv rv-d2">
+            <h3>L'import ouvre le marché</h3>
+            <p>Acheter en Europe et revendre en France, c'est ce qui crée l'écart de prix. Encore faut-il savoir gérer les démarches.</p>
+          </div>
+          <div class="fact-row rv rv-d3">
+            <h3>Le commercial fait la vente</h3>
+            <p>À véhicule égal, c'est l'approche et la confiance qui décident le client, et qui protègent ta marge.</p>
+          </div>
         </div>
-        <div class="fact-row rv" style="--d:4">
-          <h3>L'import ouvre le marché</h3>
-          <p>Acheter en Europe et revendre en France, c'est ce qui crée l'écart de prix. Encore faut-il savoir gérer les démarches.</p>
-        </div>
-        <div class="fact-row rv" style="--d:5">
-          <h3>Le commercial fait la vente</h3>
-          <p>À véhicule égal, c'est l'approche et la confiance qui décident le client, et qui protègent ta marge.</p>
+        <div class="facts-photo-frame rv rv-d2">
+          <img src="images/formation/bmw-z4-transport.jpg" alt="Transport d'une BMW Z4 sur plateau, préparation pour l'importation">
         </div>
       </div>
     </div>
   </section>
 
-  <!-- SLIDE 4 — Pas seulement de la théorie -->
-  <section id="slide-4" class="fslide fslide-light" style="padding:0;">
-    <div class="split fslide-inner">
-      <div class="split-panel panel-dark">
-        <div class="rv" style="--d:0">
-          <div class="eyebrow" style="color:var(--brass);">Pas seulement de la théorie</div>
-          <h2 style="color:var(--ivory);">Les outils et le réseau que j'utilise au quotidien, mis à ta disposition.</h2>
-        </div>
-      </div>
-      <div class="split-panel panel-list">
-        <ul class="access-list">
-          <li class="rv" style="--d:1"><h3>Les logiciels</h3><p>Ceux qui me servent à estimer, sourcer et suivre mes véhicules.</p></li>
-          <li class="rv" style="--d:2"><h3>Mes contacts</h3><p>Le carnet d'adresses qui fait gagner des mois de tâtonnement.</p></li>
-          <li class="rv" style="--d:3"><h3>Le parrainage</h3><p>L'accès aux plateformes et aux enchères pro, partout en Europe.</p></li>
-          <li class="rv" style="--d:4"><h3>Le garantisseur</h3><p>Mon partenaire qui garantit les véhicules que tu revends.</p></li>
-        </ul>
-      </div>
+  <!-- OUTILS ET RÉSEAU -->
+  <section class="access-split">
+    <div class="access-panel is-dark">
+      <div class="eyebrow rv">Pas seulement de la théorie</div>
+      <h2 class="rv rv-d1">Les outils et le réseau que j'utilise au quotidien, mis à ta disposition.</h2>
+    </div>
+    <div class="access-panel is-light">
+      <ul class="access-list">
+        <li class="rv rv-d1"><h3>Les logiciels</h3><p>Ceux qui me servent à estimer, sourcer et suivre mes véhicules.</p></li>
+        <li class="rv rv-d2"><h3>Mes contacts</h3><p>Le carnet d'adresses qui fait gagner des mois de tâtonnement.</p></li>
+        <li class="rv rv-d3"><h3>Le parrainage</h3><p>L'accès aux plateformes et aux enchères pro, partout en Europe.</p></li>
+        <li class="rv rv-d4"><h3>Le garantisseur</h3><p>Mon partenaire qui garantit les véhicules que tu revends.</p></li>
+      </ul>
     </div>
   </section>
 
-  <!-- SLIDE 5 — Les modules -->
-  <section id="slide-5" class="fslide fslide-light">
-    <div class="wrap fslide-inner">
-      <div class="eyebrow rv" style="--d:0">Les modules</div>
-      <h2 class="rv" style="--d:1">Chaque bloc peut être pris seul</h2>
-      <p class="lead rv" style="--d:2">Ou dans le cadre du programme complet.</p>
+  <!-- MODULES -->
+  <section class="fsection is-light" id="modules">
+    <div class="wrap">
+      <div class="eyebrow rv">Les modules</div>
+      <h2 class="rv rv-d1">Chaque bloc peut être pris seul</h2>
+      <p class="lead rv rv-d2">Ou dans le cadre du programme complet.</p>
       <div class="module-grid">
-        <div class="module-card rv" style="--d:3"><h3>Commercial</h3><p>Approche client, posture, négociation, closing.</p></div>
-        <div class="module-card rv" style="--d:3"><h3>Juridique et fiscal</h3><p>Quelle structure choisir, et comment l'utiliser.</p></div>
-        <div class="module-card rv" style="--d:4"><h3>Achat-revente</h3><p>Sourcing, estimation, calcul de la marge réelle.</p></div>
-        <div class="module-card rv" style="--d:4"><h3>Dépôt-vente</h3><p>Contrat, commission, gestion du stock.</p></div>
-        <div class="module-card is-key rv" style="--d:5"><h3>Importation</h3><p>Toutes les démarches administratives, de A à Z.</p></div>
-        <div class="module-card rv" style="--d:5"><h3>Accès et réseau</h3><p>Logiciels, contacts, parrainages, garantisseur.</p></div>
+        <div class="module-card rv rv-d1"><h3>Commercial</h3><p>Approche client, posture, négociation, closing.</p></div>
+        <div class="module-card rv rv-d1"><h3>Juridique et fiscal</h3><p>Quelle structure choisir, et comment l'utiliser.</p></div>
+        <div class="module-card rv rv-d2"><h3>Achat-revente</h3><p>Sourcing, estimation, calcul de la marge réelle.</p></div>
+        <div class="module-card rv rv-d2"><h3>Dépôt-vente</h3><p>Contrat, commission, gestion du stock.</p></div>
+        <div class="module-card is-key rv rv-d3"><h3>Importation</h3><p>Toutes les démarches administratives, de A à Z.</p></div>
+        <div class="module-card rv rv-d3"><h3>Accès et réseau</h3><p>Logiciels, contacts, parrainages, garantisseur.</p></div>
       </div>
-      <p class="closing-line rv" style="--d:6">L'importation est le module qui change tout : c'est lui qui crée la marge.</p>
+      <p class="closing-line rv rv-d4">L'importation est le module qui change tout : c'est lui qui crée la marge.</p>
     </div>
   </section>
 
-  <!-- SLIDE 6 — Deux façons d'avancer -->
-  <section id="slide-6" class="fslide fslide-light" style="padding:0;">
-    <div class="split fslide-inner">
-      <div class="split-panel panel-list">
-        <div class="path-panel rv" style="--d:0">
-          <div class="eyebrow">Deux façons d'avancer</div>
-          <h2>À la carte</h2>
-          <p class="lead" style="margin-top:14px;">On choisit ensemble, selon ton objectif et le temps que tu peux y consacrer.</p>
-          <ul class="path-list">
-            <li>Tu choisis les modules qui t'intéressent</li>
-            <li>Format court, on va droit au but</li>
-            <li>Idéal si tu as déjà des bases sur le reste</li>
-          </ul>
-        </div>
-      </div>
-      <div class="split-panel panel-dark">
-        <div class="path-panel rv" style="--d:1">
-          <h2 style="color:var(--ivory);">Le programme complet</h2>
-          <ul class="path-list">
-            <li>Tous les modules, dans l'ordre logique</li>
-            <li>Une série d'appels, autant qu'il en faut</li>
-            <li>Un accompagnement sur tes premières voitures</li>
-            <li>Tous les accès : outils, contacts, garantisseur</li>
-          </ul>
-        </div>
-      </div>
+  <!-- BANDEAU PHOTO — passion / lifestyle -->
+  <section class="photo-band">
+    <div class="photo-band-bg" data-parallax style="background-image:url('images/formation/portrait-vignoble.jpg')"></div>
+    <div class="photo-band-overlay"></div>
+    <div class="wrap photo-band-caption rv">
+      <span class="photo-band-tag">Thomas Bona</span>
+      <p>« Ce métier, je le fais depuis six ans. Ce que je transmets, c'est du vécu — pas de la théorie. »</p>
     </div>
   </section>
 
-  <!-- SLIDE 7 — Comment ça se passe -->
-  <section id="slide-7" class="fslide fslide-light">
-    <div class="wrap fslide-inner">
-      <div class="eyebrow rv" style="--d:0">Comment ça se passe</div>
-      <h2 class="rv" style="--d:1">Le déroulé du programme complet</h2>
-      <div class="timeline" style="margin-top:40px;max-width:70ch;">
-        <div class="tl-step rv" style="--d:2">
+  <!-- DEUX FAÇONS D'AVANCER -->
+  <section class="path-split">
+    <div class="path-panel">
+      <div class="eyebrow rv">Deux façons d'avancer</div>
+      <h2 class="rv rv-d1">À la carte</h2>
+      <p class="lead rv rv-d2" style="color:var(--ink-dim);margin-top:14px;">On choisit ensemble, selon ton objectif et le temps que tu peux y consacrer.</p>
+      <ul class="path-list rv rv-d3">
+        <li>Tu choisis les modules qui t'intéressent</li>
+        <li>Format court, on va droit au but</li>
+        <li>Idéal si tu as déjà des bases sur le reste</li>
+      </ul>
+    </div>
+    <div class="path-panel is-dark">
+      <h2 class="rv">Le programme complet</h2>
+      <ul class="path-list rv rv-d1">
+        <li>Tous les modules, dans l'ordre logique</li>
+        <li>Une série d'appels, autant qu'il en faut</li>
+        <li>Un accompagnement sur tes premières voitures</li>
+        <li>Tous les accès : outils, contacts, garantisseur</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- COMMENT ÇA SE PASSE -->
+  <section class="fsection is-light">
+    <div class="wrap">
+      <div class="eyebrow rv">Comment ça se passe</div>
+      <h2 class="rv rv-d1">Le déroulé du programme complet</h2>
+      <div class="timeline">
+        <div class="tl-step rv rv-d1">
           <div class="tl-marker-col"><div class="tl-dot"></div><div class="tl-line"></div></div>
           <div class="tl-body"><h3>On fait le point</h3><p>Ton objectif, ton temps disponible, ton niveau de départ.</p></div>
         </div>
-        <div class="tl-step rv" style="--d:3">
+        <div class="tl-step rv rv-d2">
           <div class="tl-marker-col"><div class="tl-dot"></div><div class="tl-line"></div></div>
           <div class="tl-body"><h3>Les fondations</h3><p>Le commercial, puis l'achat-revente et l'importation.</p></div>
         </div>
-        <div class="tl-step rv" style="--d:4">
+        <div class="tl-step rv rv-d3">
           <div class="tl-marker-col"><div class="tl-dot"></div><div class="tl-line"></div></div>
           <div class="tl-body"><h3>La structure</h3><p>Le cadre juridique et fiscal, pour travailler proprement.</p></div>
         </div>
-        <div class="tl-step rv" style="--d:5">
+        <div class="tl-step rv rv-d4">
           <div class="tl-marker-col"><div class="tl-dot"></div></div>
           <div class="tl-body"><h3>Le terrain</h3><p>Je t'accompagne sur tes premières voitures, de l'achat à la revente.</p></div>
         </div>
       </div>
-      <p class="closing-line rv" style="--d:6">À la carte, même principe : on isole l'étape qui t'intéresse.</p>
+      <p class="closing-line rv rv-d5">À la carte, même principe : on isole l'étape qui t'intéresse.</p>
     </div>
   </section>
 
-  <!-- SLIDE 8 — En parallèle de tes études -->
-  <section id="slide-8" class="fslide fslide-light">
-    <div class="wrap fslide-inner">
-      <div class="eyebrow rv" style="--d:0">En parallèle de tes études</div>
-      <h2 class="rv" style="--d:1">Commencer à côté de tes cours, et apprendre à en vivre.</h2>
+  <!-- EN PARALLÈLE DES ÉTUDES -->
+  <section class="fsection is-light">
+    <div class="wrap">
+      <div class="eyebrow rv">En parallèle de tes études</div>
+      <h2 class="rv rv-d1">Commencer à côté de tes cours, et apprendre à en vivre.</h2>
       <div class="trio-grid">
-        <div class="trio-card rv" style="--d:2"><h3>Ton rythme</h3><p>On cale les séances sur ton emploi du temps, pas l'inverse.</p></div>
-        <div class="trio-card rv" style="--d:3"><h3>Sans pression</h3><p>Tu avances à ta vitesse, sans te mettre en difficulté.</p></div>
-        <div class="trio-card rv" style="--d:4"><h3>Les parents dans la boucle</h3><p>Ils sont les bienvenus, autant que tout soit clair.</p></div>
+        <div class="trio-card rv rv-d1"><h3>Ton rythme</h3><p>On cale les séances sur ton emploi du temps, pas l'inverse.</p></div>
+        <div class="trio-card rv rv-d2"><h3>Sans pression</h3><p>Tu avances à ta vitesse, sans te mettre en difficulté.</p></div>
+        <div class="trio-card rv rv-d3"><h3>Les parents dans la boucle</h3><p>Ils sont les bienvenus, autant que tout soit clair.</p></div>
       </div>
     </div>
   </section>
 
-  <!-- SLIDE 9 — CTA / Contact -->
-  <section id="slide-9" class="fslide fslide-dark s-cta">
-    <span class="brandmark">MOTORSPORT</span>
-    <div class="wrap fslide-inner">
-      <div class="eyebrow rv" style="--d:0">La prochaine étape</div>
-      <h2 class="rv" style="--d:1">On en parle, sans engagement</h2>
-      <ul class="cta-list rv" style="--d:2">
+  <!-- CTA FINAL -->
+  <section class="fsection cta-section" id="contact">
+    <div class="wrap">
+      <div class="eyebrow rv">La prochaine étape</div>
+      <h2 class="rv rv-d1" style="font-size:clamp(30px,4.6vw,52px);">On en parle, sans engagement</h2>
+      <ul class="cta-list rv rv-d2">
         <li>Un premier échange gratuit, en visio ou en direct</li>
         <li>Je réponds à toutes les questions, les tiennes et celles de tes parents</li>
         <li>On voit ce qui te correspond, et on décide seulement après</li>
       </ul>
-      <div class="cta-actions rv" style="--d:3">
+      <div class="cta-actions rv rv-d3" style="display:flex;gap:14px;flex-wrap:wrap;">
         <a href="tel:+33652871194" class="btn btn-primary">Appeler +33 6 52 87 11 94</a>
         <a href="index.html" class="btn btn-outline">Revenir au site</a>
       </div>
-      <div class="cta-foot rv" style="--d:4">
+      <div class="cta-foot rv rv-d4">
         <div>
           <div class="name">Thomas Bona</div>
           <div class="org">French Consulting — MOTORSPORT by TB</div>
@@ -520,53 +514,92 @@
 
 <script>
 (function(){
-  var slides = Array.prototype.slice.call(document.querySelectorAll('.fslide'));
-  var dots = Array.prototype.slice.call(document.querySelectorAll('.deck-dots button'));
+  // ---- Barre de progression globale ----
   var progressFill = document.getElementById('progressFill');
-
-  // Reveal-on-scroll for each slide's contents
-  if('IntersectionObserver' in window){
-    var revealObserver = new IntersectionObserver(function(entries){
-      entries.forEach(function(entry){
-        if(entry.isIntersecting){
-          entry.target.classList.add('is-visible');
-        }
-      });
-    }, {threshold:0.28});
-    slides.forEach(function(slide){ revealObserver.observe(slide); });
-
-    // Active dot tracking
-    var activeObserver = new IntersectionObserver(function(entries){
-      entries.forEach(function(entry){
-        if(entry.isIntersecting){
-          dots.forEach(function(d){ d.classList.remove('is-active'); });
-          var match = dots.filter(function(d){ return d.getAttribute('data-target') === entry.target.id; })[0];
-          if(match){ match.classList.add('is-active'); }
-        }
-      });
-    }, {threshold:0.5});
-    slides.forEach(function(slide){ activeObserver.observe(slide); });
-  } else {
-    slides.forEach(function(slide){ slide.classList.add('is-visible'); });
-  }
-
-  dots.forEach(function(dot){
-    dot.addEventListener('click', function(){
-      var target = document.getElementById(dot.getAttribute('data-target'));
-      if(target){ target.scrollIntoView({behavior:'smooth', block:'start'}); }
-    });
-  });
-
-  // Scroll progress bar
   function updateProgress(){
     var scrollTop = window.scrollY || document.documentElement.scrollTop;
     var docHeight = document.documentElement.scrollHeight - window.innerHeight;
-    var pct = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
-    progressFill.style.width = pct + '%';
+    progressFill.style.width = (docHeight > 0 ? (scrollTop / docHeight) * 100 : 0) + '%';
   }
   window.addEventListener('scroll', updateProgress, {passive:true});
   window.addEventListener('resize', updateProgress);
   updateProgress();
+
+  // ---- Révélation générique au défilement ----
+  var revealEls = document.querySelectorAll('.rv');
+  if('IntersectionObserver' in window){
+    var revealObserver = new IntersectionObserver(function(entries){
+      entries.forEach(function(entry){
+        if(entry.isIntersecting){
+          entry.target.classList.add('is-in');
+          revealObserver.unobserve(entry.target);
+        }
+      });
+    }, {threshold:0.15, rootMargin:'0px 0px -8% 0px'});
+    revealEls.forEach(function(el){ revealObserver.observe(el); });
+  } else {
+    revealEls.forEach(function(el){ el.classList.add('is-in'); });
+  }
+
+  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // ---- Parallaxe sur le hero et les bandeaux photo ----
+  var heroImg = document.getElementById('heroParallax');
+  var bandImgs = document.querySelectorAll('.photo-band-bg');
+  var ticking = false;
+  function updateParallax(){
+    var y = window.scrollY || document.documentElement.scrollTop;
+    if(heroImg && !reduceMotion){
+      heroImg.style.transform = 'translateY(' + (y * 0.25) + 'px)';
+    }
+    if(!reduceMotion){
+      bandImgs.forEach(function(el){
+        var rect = el.parentElement.getBoundingClientRect();
+        var center = rect.top + rect.height / 2 - window.innerHeight / 2;
+        el.style.transform = 'translateY(' + (center * -0.18) + 'px)';
+      });
+    }
+    ticking = false;
+  }
+  window.addEventListener('scroll', function(){
+    if(!ticking){ requestAnimationFrame(updateParallax); ticking = true; }
+  }, {passive:true});
+  updateParallax();
+
+  // ---- Compteurs animés ----
+  var counters = document.querySelectorAll('.stat-num[data-count]');
+  function animateCounter(el){
+    var target = parseInt(el.getAttribute('data-count'), 10) || 0;
+    var suffix = el.getAttribute('data-suffix') || '';
+    var duration = 1400;
+    var start = null;
+    if(reduceMotion){
+      el.textContent = target.toLocaleString('fr-FR') + suffix;
+      return;
+    }
+    function step(ts){
+      if(start === null) start = ts;
+      var progress = Math.min(1, (ts - start) / duration);
+      var eased = 1 - Math.pow(1 - progress, 3);
+      var value = Math.round(target * eased);
+      el.textContent = value.toLocaleString('fr-FR') + suffix;
+      if(progress < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+  if('IntersectionObserver' in window){
+    var counterObserver = new IntersectionObserver(function(entries){
+      entries.forEach(function(entry){
+        if(entry.isIntersecting){
+          animateCounter(entry.target);
+          counterObserver.unobserve(entry.target);
+        }
+      });
+    }, {threshold:0.5});
+    counters.forEach(function(el){ counterObserver.observe(el); });
+  } else {
+    counters.forEach(animateCounter);
+  }
 })();
 </script>
 
