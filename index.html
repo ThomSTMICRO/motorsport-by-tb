@@ -1177,44 +1177,47 @@ initScroll3D({
   progressFillId: 'pageProgressFill',
   fov: 30,
   bloom: true,
-  bloomParams: { strength: 0.6, radius: 0.4, threshold: 0.9 },
+  bloomParams: { strength: 0.4, radius: 0.3, threshold: 0.95 },
   vehicles: [
     {
-      // Porsche 918 Spyder — modèle d'environ 4,65 m de long.
+      // Porsche 918 Spyder — modèle d'environ 4,65 m de long. Feux éteints : pas de
+      // headlightMaterialNames/headlightGlowRange, et un emissiveClamp très bas pour que
+      // TOUT élément émissif du modèle (phares, feux, écrans) reste sombre en permanence.
       modelPath: 'models/porsche-918-spyder.glb',
       modelScale: 3.2,
       position: { x: -3.2, y: 0, z: 0 },
       rotationY: 20,
-      emissiveClamp: 6,
-      headlightMaterialNames: ['Glass_Bumped_2'],
-      // S'allume tôt (autour du gros plan Instagram) puis reste allumée pour le reste du parcours.
-      headlightGlowRange: [0.15, 0.32]
+      emissiveClamp: 0.15
     },
     {
       // BMW S1000 RR — modèle d'environ 2,05 m de long, mis à l'échelle proportionnellement.
+      // Feux éteints également.
       modelPath: 'models/bmw-s1000rr.glb',
       modelScale: 1.4,
       position: { x: 3.2, y: 0, z: 0.3 },
       rotationY: -15,
-      emissiveClamp: 6,
-      headlightMaterialNames: ['vehicle_generic_smallspecmap.024', 'vehicle_generic_smallspecmap.025'],
-      // Ne s'allume qu'au tout dernier moment, pour le gros plan final.
-      headlightGlowRange: [0.85, 1]
+      emissiveClamp: 0.15
     }
   ],
-  // Approche volontairement "back-loaded" : les véhicules restent discrets (grand rayon)
-  // sur toute la partie centrale de la page pour ne jamais gêner la lecture des sections
-  // sans fond opaque (Catalogue, Detailing), avec un recul de révélation au milieu du
-  // parcours, puis un resserrement net sur le dernier quart pour le final sur la BMW.
+  // Deux tours complets à faible distance, un par véhicule : la caméra tourne à 360°
+  // autour de la Porsche (profil, arrière, profil opposé, avant) en se rapprochant sur un
+  // détail, recule un instant pour révéler les deux véhicules ensemble, puis fait le même
+  // tour complet autour de la BMW en terminant sur un plan macro très rapproché.
   checkpoints: [
-    { theta: 195, phi: 80, radius: 24,   target: { x: 0,    y: 0.45, z: 0 },    fov: 26 }, // Tout en haut : les deux au loin
-    { theta: 203, phi: 79, radius: 16,   target: { x: -1.0, y: 0.48, z: 0 },    fov: 28 }, // Première apparition, dérive vers la Porsche
-    { theta: 210, phi: 78, radius: 7,    target: { x: -3.0, y: 0.42, z: 0 },    fov: 30 }, // Instagram : gros plan Porsche, phares
-    { theta: 218, phi: 77, radius: 15,   target: { x: -0.3, y: 0.48, z: 0.05 }, fov: 34 }, // Catalogue : recul, révélation des deux
-    { theta: 226, phi: 76, radius: 13,   target: { x: 0.8,  y: 0.50, z: 0.1 },  fov: 33 }, // Detailing : dérive vers la BMW
-    { theta: 234, phi: 75, radius: 9,    target: { x: 2.0,  y: 0.55, z: 0.2 },  fov: 31 }, // Recherche
-    { theta: 242, phi: 76, radius: 3.5,  target: { x: 3.0,  y: 0.60, z: 0.28 }, fov: 27 }, // Actualités : approche finale BMW
-    { theta: 248, phi: 77, radius: 0.95, target: { x: 3.2,  y: 0.62, z: 0.3 },  fov: 24 }  // Tout en bas : gros plan phare BMW
+    { theta: 160,  phi: 78, radius: 4.4, target: { x: -3.2, y: 0.42, z: 0 },    fov: 38 }, // Porsche 3/4 avant
+    { theta: 250,  phi: 74, radius: 3.6, target: { x: -3.2, y: 0.48, z: 0 },    fov: 32 }, // profil
+    { theta: 340,  phi: 80, radius: 3.4, target: { x: -3.2, y: 0.50, z: 0 },    fov: 30 }, // 3/4 arrière
+    { theta: 430,  phi: 72, radius: 3.2, target: { x: -3.2, y: 0.46, z: 0 },    fov: 28 }, // profil opposé
+    { theta: 520,  phi: 76, radius: 3.6, target: { x: -3.2, y: 0.44, z: 0 },    fov: 32 }, // retour 3/4 avant (tour complet)
+    { theta: 560,  phi: 68, radius: 2.3, target: { x: -3.2, y: 0.36, z: 0 },    fov: 22 }, // gros plan détail (calandre/phares)
+    { theta: 610,  phi: 76, radius: 9.0, target: { x: 0,    y: 0.50, z: 0.10 }, fov: 34 }, // recul, révélation des deux véhicules
+    { theta: 650,  phi: 78, radius: 5.0, target: { x: 3.2,  y: 0.58, z: 0.30 }, fov: 34 }, // arrivée BMW, vue d'ensemble
+    { theta: 740,  phi: 74, radius: 2.8, target: { x: 3.2,  y: 0.62, z: 0.30 }, fov: 28 }, // profil
+    { theta: 830,  phi: 80, radius: 2.5, target: { x: 3.2,  y: 0.64, z: 0.30 }, fov: 26 }, // arrière
+    { theta: 920,  phi: 72, radius: 2.3, target: { x: 3.2,  y: 0.60, z: 0.30 }, fov: 24 }, // profil opposé
+    { theta: 1010, phi: 76, radius: 2.7, target: { x: 3.2,  y: 0.62, z: 0.30 }, fov: 28 }, // retour (tour complet)
+    { theta: 1050, phi: 68, radius: 1.5, target: { x: 3.2,  y: 0.68, z: 0.30 }, fov: 20 }, // gros plan détail (phare/té de fourche)
+    { theta: 1090, phi: 72, radius: 1.1, target: { x: 3.2,  y: 0.63, z: 0.30 }, fov: 16 }  // macro final, cockpit/compteurs
   ]
 });
 
