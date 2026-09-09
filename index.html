@@ -9,22 +9,29 @@
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Fraunces:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg-0:#0B1912;
-    --bg-1:#122A1C;
-    --bg-2:#193A27;
-    --bg-2-hover:#1F4A30;
-    --line:#3E6647;
-    --line-soft:#264936;
-    --ivory:#F7F3E4;
-    --ivory-dim:#CEC6A8;
-    --ivory-faint:#8FA394;
-    --brass:#EAAC3B;
-    --brass-bright:#FFCB5C;
-    --brass-dim:#A8752A;
-    --red:#E8482F;
+    --bg-0:#FFFFFF;
+    --bg-1:#F5F2E8;
+    --bg-2:#FBFAF5;
+    --bg-2-hover:#EFEAD9;
+    --line:#E1DACB;
+    --line-soft:#ECE7DA;
+    --ivory:#17241C;
+    --ivory-dim:#4C574E;
+    --ivory-faint:#838C81;
+    --brass:#8C5D18;
+    --brass-bright:#B27A1E;
+    --brass-dim:#6B4712;
+    --red:#D5402A;
     --red-bright:#FF6B47;
-    --red-hover:#C0331D;
-    --green-accent:#3ECB7A;
+    --red-hover:#A82C17;
+    --green-accent:#1E7A45;
+    /* Zones volontairement sombres (hero, CTA, panneaux de contraste) et leurs tons associés. */
+    --dark-0:#12201A;
+    --dark-1:#1C3226;
+    --on-dark:#F7F3E4;
+    --on-dark-dim:#CEC6A8;
+    --on-dark-faint:#8FA394;
+    --brass-on-dark:#FFCB5C;
     --radius-sm:3px;
     --radius-md:6px;
     --maxw:1180px;
@@ -77,7 +84,7 @@
   /* ---------- Header ---------- */
   .site-header{
     position:sticky;top:0;z-index:50;
-    background:rgba(15,31,23,0.92);
+    background:rgba(255,255,255,0.92);
     backdrop-filter:blur(6px);
     border-bottom:1px solid var(--line-soft);
   }
@@ -114,7 +121,7 @@
   .btn:active{transform:translateY(1px);}
   .btn-primary{
     background:linear-gradient(135deg, var(--red-bright), var(--red));
-    color:var(--ivory);border-color:transparent;
+    color:#fff;border-color:transparent;
     box-shadow:0 8px 22px -6px rgba(232,72,47,0.55);
   }
   .btn-primary:hover{
@@ -147,7 +154,7 @@
     min-height:620px;
     display:flex;
     align-items:center;
-    background:var(--bg-0);
+    background:var(--dark-0);
   }
   .hero-video{
     position:absolute;inset:0;
@@ -157,12 +164,14 @@
   }
   .hero-overlay{
     position:absolute;inset:0;
-    background:linear-gradient(100deg, rgba(15,31,23,0.95) 0%, rgba(15,31,23,0.86) 30%, rgba(15,31,23,0.55) 58%, rgba(15,31,23,0.22) 100%);
+    background:linear-gradient(100deg, rgba(18,32,26,0.95) 0%, rgba(18,32,26,0.86) 30%, rgba(18,32,26,0.55) 58%, rgba(18,32,26,0.22) 100%);
     z-index:1;
   }
-  .hero-inner{position:relative;z-index:2;max-width:640px;}
+  /* Le hero reste une zone volontairement sombre (vidéo) : texte clair explicite,
+     indépendant de la palette claire du reste du site. */
+  .hero-inner{position:relative;z-index:2;max-width:640px;color:var(--on-dark);}
   .hero-eyebrow{
-    font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--brass-bright);
+    font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--brass-on-dark);
     margin-bottom:18px;text-shadow:0 0 18px rgba(255,203,92,0.35);
     display:inline-flex;align-items:center;gap:8px;
   }
@@ -174,16 +183,20 @@
     font-size:clamp(34px,5vw,58px);
     line-height:1.06;
     margin-bottom:22px;
+    color:var(--on-dark);
   }
   .hero h1 em{
     font-style:italic;font-family:'Fraunces',serif;font-weight:500;
-    background:linear-gradient(100deg, var(--brass-bright), var(--brass) 60%, var(--red-bright));
+    background:linear-gradient(100deg, var(--brass-on-dark), var(--brass) 60%, var(--red-bright));
     -webkit-background-clip:text;background-clip:text;color:transparent;
   }
   .hero p.lead{
-    font-size:18px;color:var(--ivory-dim);max-width:52ch;margin-bottom:34px;
+    font-size:18px;color:var(--on-dark-dim);max-width:52ch;margin-bottom:34px;
   }
   .hero-actions{display:flex;gap:14px;flex-wrap:wrap;}
+  .hero-actions .btn-outline{color:var(--on-dark);border-color:rgba(247,243,228,0.4);}
+  .hero-actions .btn-outline:hover{border-color:var(--brass-on-dark);color:var(--brass-on-dark);box-shadow:0 0 0 1px var(--brass-on-dark) inset;}
+  .hero-actions .btn-primary{color:#fff;}
 
   .reveal{opacity:0;transform:translateY(14px);animation:reveal .7s ease forwards;}
   .reveal-1{animation-delay:.05s;}
@@ -206,7 +219,7 @@
     .tilt{transition:none;}
     html{scroll-behavior:auto;}
     .hero-video{display:none;}
-    .hero-overlay{background:var(--bg-0);}
+    .hero-overlay{background:var(--dark-0);}
   }
 
   /* ---------- Section heads ---------- */
@@ -242,19 +255,19 @@
     max-width:56ch;margin:0 auto;padding:0 32px;
   }
   .eyebrow-mono{
-    font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--brass-bright);
-    text-shadow:0 0 18px rgba(255,203,92,0.35);margin-bottom:10px;
+    font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--brass);
+    margin-bottom:10px;
   }
-  .scroll3d-head p{color:var(--ivory-dim);font-size:16px;margin:0;text-shadow:0 2px 12px rgba(0,0,0,0.6);}
+  .scroll3d-head p{color:var(--ivory-dim);font-size:16px;margin:0;}
 
   /* Les fiches d'étape sont ancrées de part et d'autre de la voiture, jamais dessus. */
   .scroll3d-steps{position:absolute;inset:0;}
   .scroll3d-step{
     position:absolute;top:50%;width:min(320px, 40vw);
     padding:22px 24px;border-radius:var(--radius-md);
-    background:rgba(8,18,13,0.68);backdrop-filter:blur(10px);
-    border:1px solid rgba(255,255,255,0.09);
-    box-shadow:0 20px 44px -18px rgba(0,0,0,0.6);
+    background:rgba(255,255,255,0.86);backdrop-filter:blur(10px);
+    border:1px solid var(--line-soft);
+    box-shadow:0 20px 44px -18px rgba(23,36,28,0.22);
     opacity:0;transition:opacity .55s ease, transform .55s ease;
   }
   .scroll3d-step[data-side="left"]{left:5%;transform:translateY(-50%) translateX(-22px);}
@@ -262,8 +275,8 @@
   .scroll3d-step.is-active{opacity:1;}
   .scroll3d-step.is-active[data-side="left"]{transform:translateY(-50%) translateX(0);}
   .scroll3d-step.is-active[data-side="right"]{transform:translateY(-50%) translateX(0);}
-  .scroll3d-step h3{font-size:21px;margin:0 0 10px;color:var(--ivory);text-shadow:0 2px 10px rgba(0,0,0,0.6);}
-  .scroll3d-step p{color:var(--ivory-dim);font-size:15px;margin:0;text-shadow:0 2px 10px rgba(0,0,0,0.6);}
+  .scroll3d-step h3{font-size:21px;margin:0 0 10px;color:var(--ivory);}
+  .scroll3d-step p{color:var(--ivory-dim);font-size:15px;margin:0;}
   .scroll3d-step .btn{pointer-events:auto;margin-top:16px;}
 
   .scroll3d-dots{
@@ -278,7 +291,7 @@
     background:var(--brass-bright);transform:scale(1.3);
     box-shadow:0 0 10px 2px rgba(255,203,92,0.6);
   }
-  .scroll3d-progress-track{position:absolute;left:0;right:0;bottom:0;height:3px;background:rgba(255,255,255,0.06);z-index:3;}
+  .scroll3d-progress-track{position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--line-soft);z-index:3;}
   .scroll3d-progress-fill{
     height:100%;width:0%;
     background:linear-gradient(90deg, var(--red-bright), var(--brass-bright));
@@ -440,7 +453,7 @@
     .field-row{grid-template-columns:1fr;}
     .footer-grid{grid-template-columns:1fr;gap:32px;}
     .hero{padding:100px 0 70px;min-height:520px;}
-    .hero-overlay{background:linear-gradient(180deg, rgba(15,31,23,0.75) 0%, rgba(15,31,23,0.88) 55%, rgba(15,31,23,0.95) 100%);}
+    .hero-overlay{background:linear-gradient(180deg, rgba(18,32,26,0.75) 0%, rgba(18,32,26,0.88) 55%, rgba(18,32,26,0.95) 100%);}
   }
 
 </style>
@@ -957,7 +970,10 @@ function initScroll3D(config){
   stage.insertBefore(renderer.domElement, stage.firstChild);
 
   var scene = new THREE.Scene();
-  scene.fog = new THREE.Fog(0x0b1912, 9, 27);
+  // Fond opaque explicite (plutôt que de compter sur la transparence du canvas) : le composer
+  // de post-traitement (bloom) ne préserve pas toujours l'alpha jusqu'au rendu final.
+  scene.background = new THREE.Color(0xf5f2e8);
+  scene.fog = new THREE.Fog(0xf5f2e8, 9, 27);
 
   // Environnement studio doux, pour des reflets réalistes sur la carrosserie.
   var pmrem = new THREE.PMREMGenerator(renderer);
@@ -990,7 +1006,7 @@ function initScroll3D(config){
   scene.add(rim);
   scene.add(new THREE.AmbientLight(0xc7c0a8, 0.35));
 
-  var grid = new THREE.GridHelper(30, 30, 0x3e6647, 0x264936);
+  var grid = new THREE.GridHelper(30, 30, 0xe1dacb, 0xece7da);
   grid.position.y = -0.01;
   scene.add(grid);
 
