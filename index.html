@@ -122,7 +122,7 @@
   .btn-ghost{background:transparent;color:var(--brass);border-color:transparent;padding:12px 4px;}
   .btn-ghost:hover{color:var(--ivory);}
 
-  .nav-cta{display:flex;}
+  .nav-cta{display:flex;gap:10px;flex-wrap:wrap;}
   .hamburger{
     display:none;background:none;border:1px solid var(--line);
     width:42px;height:42px;border-radius:var(--radius-sm);
@@ -371,6 +371,7 @@
   }
   .confirm-recap div{display:flex;justify-content:space-between;padding:4px 0;}
   .confirm-recap span:last-child{color:var(--ivory);font-family:'JetBrains Mono',monospace;font-size:12.5px;}
+  .confirm-actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:16px;}
 
   /* ---------- News ---------- */
   .news-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:2px;background:var(--line-soft);border:1px solid var(--line-soft);}
@@ -379,6 +380,21 @@
   .news-date{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--brass);margin-bottom:12px;display:block;}
   .news-card h3{font-size:17px;margin-bottom:10px;line-height:1.3;}
   .news-card p{color:var(--ivory-dim);font-size:14.5px;margin:0;}
+
+  /* ---------- Avis clients ---------- */
+  .is-tint{background:var(--bg-1);}
+  .rating-badge{font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--brass);letter-spacing:0.02em;}
+  .rating-badge strong{color:var(--ivory);font-size:16px;}
+  .testi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px;margin-bottom:32px;}
+  .testi-card{
+    background:var(--bg-0);border:1px solid var(--line-soft);border-radius:var(--radius-md);
+    padding:24px 26px;margin:0;box-shadow:0 20px 44px -30px rgba(23,36,28,0.18);
+  }
+  .testi-stars{color:var(--brass-bright);font-size:13px;letter-spacing:2px;margin-bottom:12px;}
+  .testi-card blockquote{margin:0 0 16px;font-style:italic;color:var(--ivory-dim);font-size:15px;line-height:1.5;}
+  .testi-card figcaption{font-family:'Oswald',sans-serif;font-size:13.5px;font-weight:500;color:var(--ivory);}
+  .testi-card figcaption span{font-family:'Fraunces',Georgia,serif;font-weight:400;font-style:italic;color:var(--ivory-faint);}
+  .testi-cta{display:inline-block;}
 
   /* ---------- Footer ---------- */
   .site-footer{background:var(--bg-1);border-top:1px solid var(--line-soft);padding:64px 0 32px;}
@@ -461,7 +477,8 @@
         <li><a href="#contact">Contact</a></li>
       </ul>
       <div class="nav-cta">
-        <a href="#recherche" class="btn btn-primary">Demander une recherche</a>
+        <a href="#recherche" class="btn btn-outline">Demander une recherche</a>
+        <a href="formation.html" class="btn btn-primary">Découvrir la formation</a>
       </div>
     </nav>
     <button class="hamburger" id="hamburgerBtn" aria-label="Ouvrir le menu" aria-expanded="false">
@@ -675,10 +692,14 @@
 
           <div class="confirm-panel" id="confirmPanel">
             <div class="confirm-mark">✓</div>
-            <h3>Demande bien reçue</h3>
-            <p>Merci — l'équipe MOTORSPORT By TB commence la recherche. Vous serez recontacté sous 48h ouvrées.</p>
+            <h3>Dernière étape : envoyez votre demande</h3>
+            <p>Voici le récapitulatif — envoyez-le par WhatsApp ou par téléphone pour que la recherche démarre.</p>
             <div class="confirm-recap" id="confirmRecap"></div>
-            <button class="btn btn-outline" id="resetFormBtn" type="button">Envoyer une nouvelle demande</button>
+            <div class="confirm-actions">
+              <a class="btn btn-primary" id="whatsappSendBtn" href="#" target="_blank" rel="noopener">Envoyer par WhatsApp</a>
+              <a class="btn btn-outline" href="tel:+33652871194">Appeler +33 6 52 87 11 94</a>
+            </div>
+            <button class="btn btn-ghost" id="resetFormBtn" type="button">Envoyer une nouvelle demande</button>
           </div>
         </div>
       </div>
@@ -718,6 +739,49 @@
     </div>
   </section>
 
+  <!-- AVIS CLIENTS -->
+  <section id="avis" class="section-pad is-tint">
+    <div class="wrap">
+      <div class="section-head rv">
+        <h2>Ils nous font confiance</h2>
+        <p class="rating-badge">★★★★★ <strong>5,0</strong> sur 18 avis Google</p>
+      </div>
+      <div class="testi-grid">
+        <figure class="testi-card rv">
+          <div class="testi-stars">★★★★★</div>
+          <blockquote>Grâce à Thomas, j'ai pu acheter la voiture de mes rêves&nbsp;! Il m'a beaucoup conseillé concernant la motorisation et les éventuelles maladies de chaque modèle.</blockquote>
+          <figcaption>Mélanie Sanchez <span>· déc. 2025</span></figcaption>
+        </figure>
+        <figure class="testi-card rv">
+          <div class="testi-stars">★★★★★</div>
+          <blockquote>Très bonne expérience, je suis très satisfaite. Service professionnel, réactif, personnalisé et toujours à l'écoute. Vraiment excellent&nbsp;!</blockquote>
+          <figcaption>Sonia C. <span>· déc. 2025</span></figcaption>
+        </figure>
+        <figure class="testi-card rv">
+          <div class="testi-stars">★★★★★</div>
+          <blockquote>Thomas est un conseiller sérieux, disponible et très compétent. Achat réalisé en toute confiance. Je recommande sans hésiter&nbsp;!</blockquote>
+          <figcaption>Lea Mangione <span>· sept. 2025</span></figcaption>
+        </figure>
+        <figure class="testi-card rv">
+          <div class="testi-stars">★★★★★</div>
+          <blockquote>Top service&nbsp;! Thomas est super sérieux et hyper réactif&nbsp;!</blockquote>
+          <figcaption>Thomas Ezanno <span>· déc. 2025</span></figcaption>
+        </figure>
+        <figure class="testi-card rv">
+          <div class="testi-stars">★★★★★</div>
+          <blockquote>Un professionnel très sérieux. Notre achat s'est déroulé dans les meilleures conditions d'accueil, d'écoute, de respect des délais et des engagements.</blockquote>
+          <figcaption>David Genre <span>· avr. 2026</span></figcaption>
+        </figure>
+        <figure class="testi-card rv">
+          <div class="testi-stars">★★★★★</div>
+          <blockquote>Great service and fantastic car — very client oriented, can recommend to everyone&nbsp;!</blockquote>
+          <figcaption>Annette Kastelein <span>· avr. 2026</span></figcaption>
+        </figure>
+      </div>
+      <a class="btn btn-outline testi-cta rv" href="https://www.google.com/search?q=MOTORSPORT+BY+TB+avis+Cagnes-sur-Mer" target="_blank" rel="noopener">Voir tous les avis Google</a>
+    </div>
+  </section>
+
 </main>
 
 <footer class="site-footer" id="contact">
@@ -735,20 +799,21 @@
           <li><a href="#recherche">Recherche personnalisée</a></li>
           <li><a href="formation.html">Formation</a></li>
           <li><a href="#actus">Actualités</a></li>
+          <li><a href="#avis">Avis clients</a></li>
         </ul>
       </div>
       <div class="footer-col rv rv-d2">
         <h4>Contact</h4>
         <ul>
-          <li><a href="mailto:contact@motorsportbytb.exemple">contact@motorsportbytb.exemple</a></li>
-          <li><a href="tel:+33000000000">+33 (0)0 00 00 00 00</a></li>
+          <li><a href="tel:+33652871194">+33 6 52 87 11 94</a></li>
+          <li><a href="https://wa.me/33652871194" target="_blank" rel="noopener">WhatsApp</a></li>
         </ul>
         <div class="footer-plate">MOTORSPORT · BY TB</div>
       </div>
     </div>
     <div class="footer-bottom">
-      <span>© 2026 MOTORSPORT By TB. Coordonnées et mentions légales à compléter.</span>
-      <span>Site à personnaliser avec vos contenus réels.</span>
+      <span>© 2026 MOTORSPORT By TB — MTSPRT (SASU)</span>
+      <span><a href="mentions-legales.html">Mentions légales</a> · <a href="politique-confidentialite.html">Politique de confidentialité</a></span>
     </div>
   </div>
 </footer>
@@ -819,11 +884,15 @@
     });
   });
 
-  // Request form submission (client-side demo — à connecter à un email/CRM réel)
+  // Le site est statique (pas de serveur) : ce formulaire ne transmet rien tout
+  // seul. Il prépare un récapitulatif que le visiteur envoie lui-même par
+  // WhatsApp (lien wa.me pré-rempli) ou par téléphone.
   var form = document.getElementById('requestForm');
   var dossier = document.getElementById('dossierForm');
   var confirmPanel = document.getElementById('confirmPanel');
   var confirmRecap = document.getElementById('confirmRecap');
+  var whatsappSendBtn = document.getElementById('whatsappSendBtn');
+  var WHATSAPP_NUMBER = '33652871194';
 
   form.addEventListener('submit', function(e){
     e.preventDefault();
@@ -833,13 +902,33 @@
     }
     var marque = document.getElementById('marque').value;
     var modele = document.getElementById('modele').value;
+    var annee = document.getElementById('annee').value;
+    var km = document.getElementById('km').value;
     var budget = document.getElementById('budget').value;
     var pays = document.getElementById('pays').selectedOptions[0].text;
+    var message = document.getElementById('message').value;
+    var nom = document.getElementById('nom').value;
+    var email = document.getElementById('email').value;
+    var telephone = document.getElementById('telephone').value;
 
     confirmRecap.innerHTML =
       '<div><span>Véhicule</span><span>'+marque+' '+modele+'</span></div>' +
       '<div><span>Budget max.</span><span>'+(budget ? budget+' €' : '—')+'</span></div>' +
       '<div><span>Zone</span><span>'+pays+'</span></div>';
+
+    var waLines = [
+      'Nouvelle demande de recherche — ' + marque + ' ' + modele,
+      'Année min. : ' + (annee || '—'),
+      'Kilométrage max. : ' + (km || '—'),
+      'Budget max. : ' + (budget ? budget + ' €' : '—'),
+      'Zone : ' + pays,
+      'Précisions : ' + (message || '—'),
+      '',
+      'Nom : ' + nom,
+      'Email : ' + email,
+      'Téléphone : ' + (telephone || '—')
+    ];
+    whatsappSendBtn.href = 'https://wa.me/' + WHATSAPP_NUMBER + '?text=' + encodeURIComponent(waLines.join('\n'));
 
     dossier.classList.add('is-submitted');
     confirmPanel.classList.add('is-visible');
