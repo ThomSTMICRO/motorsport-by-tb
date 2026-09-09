@@ -34,9 +34,14 @@ jobs:
 
             await page.goto('http://localhost:8080/index.html', { waitUntil: 'domcontentloaded', timeout: 60000 });
 
-            // Ferrari scene sanity check (must still work, no bloom)
+            // Mesurer TOUTES les positions absolues avant tout scroll (boundingBox() est
+            // relatif au viewport courant, donc invalide après un premier scroll).
             const ferrariSection = await page.$('#processus3d');
             const ferrariBox = await ferrariSection.boundingBox();
+            const igSection = await page.$('#instagram3d');
+            const igBox = await igSection.boundingBox();
+
+            // Ferrari scene sanity check (must still work, no bloom)
             await page.evaluate((y) => window.scrollTo(0, y), ferrariBox.y + ferrariBox.height/2 - 450);
             await page.waitForFunction(() => {
               const l = document.querySelector('#processus3d .showcase3d-loading');
@@ -52,9 +57,6 @@ jobs:
             await page.screenshot({ path: '/tmp/lights_ferrari.jpg', type: 'jpeg', quality: 60 });
 
             // Porsche scene: rear view (taillight glow) + final zoom (headlight glow)
-            const igSection = await page.$('#instagram3d');
-            const igBox = await igSection.boundingBox();
-
             await page.evaluate((y) => window.scrollTo(0, y), igBox.y);
             await page.waitForFunction(() => {
               const l = document.querySelector('#instagram3d .showcase3d-loading');
