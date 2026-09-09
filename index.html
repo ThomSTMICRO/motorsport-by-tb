@@ -319,6 +319,22 @@
   }
   @media (max-width:640px){ .insta-head{flex-direction:column;align-items:stretch;} }
 
+  /* Entrée en 3D des 3 photos au défilement : chacune pivote depuis un angle
+     différent et converge à plat, comme si elles se mettaient en place dans
+     l'espace. Remplace l'entrée générique (.rv) pour ce trio uniquement. */
+  .caf-grid{perspective:1400px;}
+  .caf-grid figure.rv{
+    opacity:0;transform:none;
+    transition:opacity .9s cubic-bezier(.2,.7,.2,1), transform .9s cubic-bezier(.2,.7,.2,1);
+  }
+  .caf-photo-main.rv{transform:rotateY(-22deg) rotateX(3deg) translateZ(-80px) scale(0.92);}
+  .caf-photo-a.rv{transform:rotateY(18deg) rotateX(-6deg) translateZ(-60px) scale(0.92);}
+  .caf-photo-b.rv{transform:rotateY(18deg) rotateX(6deg) translateZ(-60px) scale(0.92);}
+  .caf-grid figure.rv.is-in{opacity:1;transform:rotateY(0) rotateX(0) translateZ(0) scale(1);}
+  @media (prefers-reduced-motion:reduce){
+    .caf-grid figure.rv{transition:none;opacity:1;transform:none;}
+  }
+
   /* ---------- Process (marqueur réutilisé par le parcours 3D) ---------- */
   .process-marker{
     width:40px;height:40px;border-radius:50%;
