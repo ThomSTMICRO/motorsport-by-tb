@@ -14,7 +14,7 @@ jobs:
         run: |
           npm init -y >/dev/null 2>&1
           npm install playwright@1.47.0 >/dev/null 2>&1
-          npx playwright install --with-deps chromium
+          npx playwright install chromium
 
       - name: Serve site
         run: |
