@@ -705,13 +705,6 @@
       </div>
       <div class="news-grid">
         <article class="news-card tilt rv">
-          <img class="news-card-img" src="images/actualites/bmw-m5-teaser.jpg" alt="Vue moteur du V8 M biturbo d'une BMW M5, capot ouvert" loading="lazy">
-          <span class="news-date">Nouveau</span>
-          <h3>La BMW M5 en présentation interactive</h3>
-          <p>Le V8 M biturbo, l'éclairage signature, l'allure — une expérience filmée qui se dévoile au fil de votre défilement.</p>
-          <p><a href="m5-showcase.html" class="btn btn-outline">Découvrir</a></p>
-        </article>
-        <article class="news-card tilt rv">
           <img class="news-card-img" src="images/actualites/ferrari-sf90-eze.jpg" alt="Ferrari SF90 Stradale rouge, capot ouvert, devant le village perché d'Èze" loading="lazy">
           <span class="news-date">Août 2026</span>
           <h3>Une SF90 Stradale livrée sur la Côte d'Azur</h3>
@@ -909,7 +902,7 @@ function initScroll3D(config){
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
   renderer.setSize(width, height);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.15;
+  renderer.toneMappingExposure = 1.35;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   stage.insertBefore(renderer.domElement, stage.firstChild);
 
@@ -925,16 +918,21 @@ function initScroll3D(config){
   var camera = new THREE.PerspectiveCamera(config.fov || 35, width / height, 0.1, 200);
 
   // Éclairage "lunaire" : un soleil franc et blanc (pas d'atmosphère pour diffuser la
-  // lumière), un contre-jour bleuté (lumière cendrée) et une lumière d'ambiance ciel/sol
-  // (HemisphereLight, moins plate qu'une simple ambiante) pour que la Porsche se détache
-  // clairement du décor sombre plutôt que de rester sous-exposée.
-  var key = new THREE.DirectionalLight(0xffffff, 2.0);
+  // lumière), un contre-jour bleuté (lumière cendrée), une troisième lumière de
+  // remplissage à l'opposé (la caméra tourne à 360° autour de la voiture — sans elle,
+  // la face non éclairée par le soleil restait sombre sur la moitié du tour) et une
+  // lumière d'ambiance ciel/sol (HemisphereLight, indépendante de l'angle de vue) bien
+  // relevée pour que la Porsche se détache clairement du décor sombre.
+  var key = new THREE.DirectionalLight(0xffffff, 2.6);
   key.position.set(5, 8, 4);
   scene.add(key);
-  var rim = new THREE.DirectionalLight(0x88a6ff, 0.7);
+  var rim = new THREE.DirectionalLight(0x88a6ff, 1.0);
   rim.position.set(-6, 3, -5);
   scene.add(rim);
-  scene.add(new THREE.HemisphereLight(0x1a2438, 0x8f8b83, 0.55));
+  var fill = new THREE.DirectionalLight(0xfff4e0, 0.9);
+  fill.position.set(-4, 4, 6);
+  scene.add(fill);
+  scene.add(new THREE.HemisphereLight(0x2c3a52, 0xb5b0a6, 1.0));
 
   // ---- Sol lunaire cratérisé (remplace la grille studio) + champ d'étoiles ----
   function makeCraterTexture(){
@@ -1090,16 +1088,15 @@ function initScroll3D(config){
 
       // Les valeurs d'émissivité venant du fichier peuvent être très élevées (ex. 50) : on les
       // plafonne (emissiveClamp) pour que les phares/feux/écrans restent sombres en permanence.
-      // envMapIntensity à 0.8 : suffisant pour des reflets naturels sur la carrosserie (le
-      // décor reflété est désormais sombre, donc plus de risque de reflets "cassés" comme
-      // avec l'ancien studio clair) sans revenir à un effet miroir trop appuyé.
+      // envMapIntensity à 1 (pleine intensité) : le décor reflété est sombre, donc pas de
+      // risque de reflets "cassés" comme avec l'ancien studio clair.
       var clamp = spec.emissiveClamp != null ? spec.emissiveClamp : (config.emissiveClamp || 6);
       model.traverse(function(node){
         if(!node.isMesh || !node.material) return;
         var mats = Array.isArray(node.material) ? node.material : [node.material];
         mats.forEach(function(mat){
           if(typeof mat.emissiveIntensity === 'number') mat.emissiveIntensity = Math.min(mat.emissiveIntensity, clamp);
-          if(typeof mat.envMapIntensity === 'number') mat.envMapIntensity = 0.8;
+          if(typeof mat.envMapIntensity === 'number') mat.envMapIntensity = 1.0;
         });
       });
 
