@@ -1,0 +1,42 @@
+name: Generate SEO assets (favicons + OG images)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install imagemagick + rsvg
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq imagemagick librsvg2-bin
+
+      - name: Rasterize favicon PNG sizes + ICO
+        run: |
+          rsvg-convert -w 512 -h 512 favicon.svg -o icon-512.png
+          rsvg-convert -w 192 -h 192 favicon.svg -o icon-192.png
+          rsvg-convert -w 180 -h 180 favicon.svg -o apple-touch-icon.png
+          rsvg-convert -w 32 -h 32 favicon.svg -o favicon-32.png
+          rsvg-convert -w 16 -h 16 favicon.svg -o favicon-16.png
+          convert favicon-16.png favicon-32.png favicon.ico
+          ls -la *.png *.ico
+
+      - name: Crop Open Graph images (1200x630)
+        run: |
+          mkdir -p images/og
+          convert images/cars-and-friends/cercle-motorsport.jpg -resize 1200x630^ -gravity center -extent 1200x630 -quality 82 images/og/home.jpg
+          convert images/formation/porsche-911-livraison.jpg -resize 1200x630^ -gravity center -extent 1200x630 -quality 82 images/og/formation.jpg
+          ls -la images/og/
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add favicon-16.png favicon-32.png favicon.ico apple-touch-icon.png icon-192.png icon-512.png images/og
+          git status --short
+          git commit -m "Génère les favicons et images Open Graph"
+          git push
