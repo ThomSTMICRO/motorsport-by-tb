@@ -17,7 +17,7 @@ jobs:
           npm install --no-save playwright@1.48.0
           npx playwright install chromium --with-deps
 
-      - name: Capture fields/source JSON and dump relevant rules
+      - name: Capture fields JSON
         timeout-minutes: 3
         run: |
           node <<'EOF'
@@ -27,7 +27,6 @@ jobs:
             const browser = await chromium.launch();
             const page = await browser.newPage();
             let counter = 0;
-
             page.on('response', async (res) => {
               if (res.url().includes('/Default/fields') || res.url().includes('/Default/source')) {
                 try {
@@ -35,11 +34,9 @@ jobs:
                   counter++;
                   const fname = res.url().includes('fields') ? `fields_full_${counter}.json` : `source_${counter}.json`;
                   fs.writeFileSync(fname, body);
-                  console.log('SAVED', fname, 'bytes:', body.length, 'url:', res.url());
-                } catch (e) { console.log('capture error', e.message); }
+                } catch (e) {}
               }
             });
-
             await page.goto('https://www.service-public.gouv.fr/simulateur/calcul/cout-certificat-immatriculation', { waitUntil: 'networkidle', timeout: 45000 });
             await page.waitForTimeout(1000);
             try { await page.click('button:has-text("Accepter")', { timeout: 3000 }); } catch (e) {}
@@ -49,37 +46,35 @@ jobs:
             if (franceOuImportImporte) { await franceOuImportImporte.click().catch(()=>{}); }
             await page.waitForTimeout(1500);
             await browser.close();
-
-            console.log('\n\n=== RAW CONTENT OF SMALL source_*.json FILES ===');
-            const files = fs.readdirSync('.').filter(f => f.startsWith('fields_full_') || f.startsWith('source_'));
-            for (const f of files.filter(f => f.startsWith('source_'))) {
-              console.log('--- ' + f + ' ---');
-              console.log(fs.readFileSync(f, 'utf8'));
-            }
-
-            const keywords = ['malus','co2','poids','departement','région','region','cheval','tarif','bareme','barème','taxe','coefficient','masse','énergie','energie','abattement','plafond','seuil','tmom','regional','régional'];
-            for (const f of files.filter(f => f.startsWith('fields_full_'))) {
-              const json = JSON.parse(fs.readFileSync(f, 'utf8'));
-              console.log('\n\n=== FIELD-LEVEL INFO FROM ' + f + ' ===');
-              console.log('top name/label/category:', json.name, '|', json.label, '|', json.category);
-              console.log('step:', JSON.stringify(json.step).slice(0,1000));
-              console.log('sources keys:', JSON.stringify(Object.keys(json.sources || {})));
-              console.log('datas keys:', JSON.stringify(Object.keys(json.datas || {})).slice(0,2000));
-
-              const rules = json.rules || [];
-              console.log('TOTAL RULES:', rules.length);
-              const matched = rules.filter(r => {
-                const blob = JSON.stringify(r).toLowerCase();
-                return keywords.some(k => blob.includes(k));
-              });
-              console.log('MATCHED RULES:', matched.length, '/ ', rules.length);
-              matched.forEach((r, i) => {
-                console.log(`--- RULE ${i} ---`);
-                console.log(JSON.stringify(r, null, 1));
-              });
-            }
           })().catch(e => { console.error('SCRIPT_ERROR', e); process.exit(1); });
           EOF
+          ls -la *.json
+
+      - name: Split evaluate field into files (avoid log truncation)
+        run: |
+          node <<'EOF'
+          const fs = require('fs');
+          const json = JSON.parse(fs.readFileSync('fields_full_1.json', 'utf8'));
+          fs.writeFileSync('evaluate.txt', json.evaluate || '');
+          fs.writeFileSync('datas.json', JSON.stringify(json.datas || {}, null, 1));
+          fs.writeFileSync('step.json', JSON.stringify(json.step || {}, null, 1));
+          console.log('evaluate length:', (json.evaluate||'').length);
+          console.log('datas length:', JSON.stringify(json.datas||{}).length);
+          console.log('step length:', JSON.stringify(json.step||{}).length);
+          EOF
+
+      - name: Print evaluate.txt in chunks (chunk markers for easy reassembly)
+        run: |
+          node -e "
+          const fs = require('fs');
+          const s = fs.readFileSync('evaluate.txt', 'utf8');
+          const CH = 6000;
+          for (let i = 0; i < s.length; i += CH) {
+            console.log('===CHUNK ' + (i/CH) + ' START===');
+            console.log(s.slice(i, i+CH));
+            console.log('===CHUNK ' + (i/CH) + ' END===');
+          }
+          "
 
       - name: Upload artifacts
         if: always()
@@ -89,3 +84,6 @@ jobs:
           path: |
             fields_full_*.json
             source_*.json
+            evaluate.txt
+            datas.json
+            step.json
