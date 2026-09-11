@@ -1,0 +1,59 @@
+name: Research malus/carte grise official data
+
+on:
+  workflow_dispatch:
+
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Search data.gouv.fr for official datasets
+        run: |
+          echo "=== data.gouv.fr search: malus ecologique ==="
+          curl -s "https://www.data.gouv.fr/api/1/datasets/?q=malus%20ecologique" | python3 -m json.tool | head -200
+          echo "=== data.gouv.fr search: bareme malus ==="
+          curl -s "https://www.data.gouv.fr/api/1/datasets/?q=bareme%20malus" | python3 -m json.tool | head -200
+          echo "=== data.gouv.fr search: taxe certificats immatriculation ==="
+          curl -s "https://www.data.gouv.fr/api/1/datasets/?q=taxe%20certificats%20immatriculation" | python3 -m json.tool | head -200
+          echo "=== data.gouv.fr search: cheval fiscal region ==="
+          curl -s "https://www.data.gouv.fr/api/1/datasets/?q=cheval%20fiscal" | python3 -m json.tool | head -200
+
+      - name: Fetch service-public.fr page (raw)
+        run: |
+          curl -sL -A "Mozilla/5.0 (research)" "https://www.service-public.fr/particuliers/vosdroits/F34811" -o sp_malus.html
+          echo "bytes: $(wc -c < sp_malus.html)"
+          echo "=== grep for euro amounts / g/km table markers ==="
+          grep -oE '[0-9]+[ ]?(€|euros)' sp_malus.html | sort -u | head -100
+
+      - name: Fetch legifrance article (base malus CO2 table, CGI art 1012 ter)
+        run: |
+          curl -sL -A "Mozilla/5.0 (research)" "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000047345363" -o lf_1012ter.html
+          echo "bytes: $(wc -c < lf_1012ter.html)"
+          python3 - <<'EOF'
+          import re
+          html = open('lf_1012ter.html', encoding='utf-8', errors='replace').read()
+          text = re.sub('<[^>]+>', ' ', html)
+          text = re.sub(r'\s+', ' ', text)
+          print(text[:6000])
+          EOF
+
+      - name: Fetch a simulator page raw (fallback source)
+        run: |
+          curl -sL -A "Mozilla/5.0 (research)" "https://www.malus-ecologique.fr/grille-malus/2026" -o sim1.html
+          echo "bytes: $(wc -c < sim1.html)"
+          python3 - <<'EOF'
+          import re
+          html = open('sim1.html', encoding='utf-8', errors='replace').read()
+          text = re.sub('<[^>]+>', ' ', html)
+          text = re.sub(r'\s+', ' ', text)
+          print(text[:8000])
+          EOF
+
+      - name: Upload raw pages as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: research-raw-pages
+          path: |
+            sp_malus.html
+            lf_1012ter.html
+            sim1.html
