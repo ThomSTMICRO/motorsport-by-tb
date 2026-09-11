@@ -85,27 +85,35 @@ jobs:
             await set('dateMiseEnCirculation', '2020-06-15', false);
             await set('PuissanceAdmSaisie', '6', false);
             await chooseRadio('vehiculeElectric_2');
-            await page.waitForTimeout(500);
-            await set('energie', '1', true); // Essence
-            await page.waitForTimeout(500);
-            await chooseRadio('Autonomie50Km_2');
-            await chooseRadio('invalidite_2');
-            await chooseRadio('receptionCommunautaire_2');
-            await set('TauxCO2Saisi', '130', false);
-            await chooseRadio('vehicule_8Places_2');
-            await chooseRadio('PersonMoraleLocataireOuProprietaire_2');
-            await chooseRadio('personneMorale_2');
-            await set('poidsSaisi', '1400', false);
-            await chooseRadio('vehiculeElectric_2');
-            await set('departement', '06 - Alpes-Maritimes', true);
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(800);
 
-            console.log('=== RECAP CHECK (fields with values) ===');
-            const filled = await page.evaluate(() => {
+            console.log('=== VISIBLE TEXT RIGHT AFTER vehiculeElectric ===');
+            console.log((await page.evaluate(() => document.body.innerText)).slice(-2500));
+
+            console.log('=== VISIBLE (on-screen) CONTROLS AT THIS POINT ===');
+            const visNow = await page.evaluate(() => {
               const els = Array.from(document.querySelectorAll('input,select'));
-              return els.filter(el => el.id && el.value).map(el => el.id + '=' + el.value);
+              return els.filter(el => {
+                const r = el.getClientRects();
+                return r.length > 0 && el.type !== 'hidden';
+              }).map(el => ({ id: el.id, name: el.name, type: el.type || el.tagName }));
             });
-            console.log(JSON.stringify(filled));
+            console.log(JSON.stringify(visNow));
+
+            await set('departement', '06 - Alpes-Maritimes', true);
+            await page.waitForTimeout(1500);
+
+            console.log('=== VISIBLE TEXT AFTER département TOO ===');
+            console.log((await page.evaluate(() => document.body.innerText)).slice(-2500));
+            console.log('=== VISIBLE CONTROLS AFTER département ===');
+            const visNow2 = await page.evaluate(() => {
+              const els = Array.from(document.querySelectorAll('input,select'));
+              return els.filter(el => {
+                const r = el.getClientRects();
+                return r.length > 0 && el.type !== 'hidden';
+              }).map(el => ({ id: el.id, name: el.name, type: el.type || el.tagName }));
+            });
+            console.log(JSON.stringify(visNow2));
 
             try {
               await page.click('button:has-text("Afficher le résultat")', { timeout: 5000 });
