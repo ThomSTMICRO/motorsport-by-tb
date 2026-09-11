@@ -19,51 +19,100 @@ jobs:
           npm install --no-save playwright@1.48.0
           npx playwright install chromium --with-deps
 
-      - name: Probe published CO2 malus grid pages
-        timeout-minutes: 3
+      - name: Sweep every CO2 value through the official simulator (one session)
+        timeout-minutes: 8
         run: |
           node <<'EOF'
           const { chromium } = require('playwright');
+          const fs = require('fs');
           (async () => {
             const browser = await chromium.launch();
+            const page = await browser.newPage({ viewport: { width: 1600, height: 3000 } });
 
-            async function probe(name, url) {
-              console.log('\n\n======== PROBE: ' + name + ' (' + url + ') ========');
-              const page = await browser.newPage({ userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36' });
-              try {
-                const res = await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
-                console.log('HTTP status:', res ? res.status() : 'no response');
-                await page.waitForTimeout(2500);
-                const title = await page.title();
-                console.log('Title:', title);
-                const bodyText = await page.evaluate(() => document.body.innerText);
-                const challenged = /just a moment|checking your browser|verify you are human|cloudflare/i.test(bodyText) || /just a moment/i.test(title);
-                console.log('Bot-challenged:', challenged, 'body length:', bodyText.length);
-
-                // Try to find a table with CO2 -> malus mapping
-                const tables = await page.evaluate(() => {
-                  const out = [];
-                  document.querySelectorAll('table').forEach((t, i) => {
-                    const rows = Array.from(t.querySelectorAll('tr')).map(tr =>
-                      Array.from(tr.querySelectorAll('th,td')).map(c => c.textContent.trim()).join(' | ')
-                    );
-                    out.push({ index: i, rowCount: t.querySelectorAll('tr').length, rows });
-                  });
-                  return out;
-                });
-                console.log('TABLES FOUND:', tables.length);
-                tables.forEach(t => { console.log('=== table#' + t.index + ' rows=' + t.rowCount + ' ==='); t.rows.forEach(r => console.log('  ' + r)); });
-
-                console.log('FULL BODY TEXT:');
-                console.log(bodyText);
-              } catch (e) {
-                console.log('PROBE_ERROR', e.message.split('\n')[0]);
-              }
-              await page.close();
+            async function forceUnhideOnly(id) {
+              return page.evaluate((elId) => {
+                const el = document.getElementById(elId);
+                if (!el) return 'NO_EL';
+                let node = el, changed = [];
+                for (let i = 0; i < 6 && node; i++) {
+                  const cs = getComputedStyle(node);
+                  if (cs.display === 'none') { node.style.display = 'block'; changed.push(node.id || node.className); }
+                  node = node.parentElement;
+                }
+                return changed.join(',') || 'NONE_HIDDEN';
+              }, id);
             }
 
-            await probe('simulateur-malus-bareme', 'https://www.simulateur-malus-ecologique.fr/bareme-malus-ecologique-2026');
+            async function set(id, value, isSelect) {
+              try {
+                await forceUnhideOnly(id);
+                if (isSelect) await page.selectOption('#'+id, {label: value}, {timeout: 5000}).catch(() => page.selectOption('#'+id, value, {timeout: 5000}));
+                else await page.fill('#'+id, value, {force: true, timeout: 5000});
+                await page.waitForTimeout(300);
+                return true;
+              } catch (e) { console.log('SET_FAIL', id, e.message.split('\n')[0]); return false; }
+            }
+
+            async function forceUnhideAndClick(inputId) {
+              await forceUnhideOnly(inputId);
+              await page.waitForTimeout(150);
+              try { await page.click(`label[for="${inputId}"]`, { timeout: 3000 }); return true; }
+              catch (e) { console.log('CLICK_FAIL', inputId, e.message.split('\n')[0]); return false; }
+            }
+
+            await page.goto('https://www.service-public.gouv.fr/simulateur/calcul/cout-certificat-immatriculation', { waitUntil: 'networkidle', timeout: 45000 });
+            await page.waitForTimeout(1000);
+            try { await page.click('button:has-text("Accepter")', { timeout: 3000 }); } catch (e) {}
+
+            await set('demarche', "Immatriculation d'un véhicule d'occasion", true);
+            await page.waitForTimeout(800);
+            await forceUnhideAndClick('franceOuImport_2');
+            await page.waitForTimeout(600);
+            await set('typeVehicule', 'Véhicule de tourisme (VT ou M1) ex-Voiture particulière (VP)', true);
+            await page.waitForTimeout(500);
+            // Very recent registration to minimize décote (coef ~1) so we isolate the raw barème.
+            await set('dateMiseEnCirculation', '2026-09-01', false);
+            await set('PuissanceAdmSaisie', '6', false);
+            await page.waitForTimeout(500);
+            await forceUnhideAndClick('vehiculeElectric_2');
+            await page.waitForTimeout(600);
+            await set('energie', 'Essence (ES)', true);
+            await page.waitForTimeout(500);
+            for (const id of ['Autonomie50Km_2','invalidite_2','receptionCommunautaire_2','vehicule_8Places_2','PersonMoraleLocataireOuProprietaire_2','personneMorale_2']) {
+              await forceUnhideAndClick(id);
+              await page.waitForTimeout(200);
+            }
+            // Weight fixed just under the 1500kg threshold: isolates CO2 malus, zero TMOM.
+            await set('poidsSaisi', '1400', false);
+            await set('departement', '06 - Alpes-Maritimes', true);
+            await page.waitForTimeout(1000);
+
+            const results = {};
+            for (let co2 = 105; co2 <= 195; co2++) {
+              try {
+                await page.fill('#TauxCO2Saisi', String(co2), { force: true, timeout: 4000 });
+                await page.waitForTimeout(250);
+                await page.click('button:has-text("Afficher le résultat")', { timeout: 4000 });
+                await page.waitForTimeout(450);
+                const txt = await page.evaluate(() => document.body.innerText);
+                const m = txt.match(/Y3\s*-\s*Malus CO2 et TMOM\s*:\s*([\d\s]+,\d+)\s*€/);
+                results[co2] = m ? m[1].replace(/\s/g, '') : 'NOT_FOUND';
+              } catch (e) {
+                results[co2] = 'ERROR:' + e.message.split('\n')[0];
+              }
+            }
+
+            console.log('=== CO2_SWEEP_RESULTS ===');
+            console.log(JSON.stringify(results));
+            fs.writeFileSync('co2_sweep.json', JSON.stringify(results, null, 1));
 
             await browser.close();
           })().catch(e => { console.error('SCRIPT_ERROR', e); process.exit(1); });
           EOF
+
+      - name: Upload sweep results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: co2-sweep
+          path: co2_sweep.json
