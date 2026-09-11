@@ -19,121 +19,68 @@ jobs:
           npm install --no-save playwright@1.48.0
           npx playwright install chromium --with-deps
 
-      - name: Wait properly for the rich radio to become actionable, then fill full form
+      - name: Walk DOM ancestors to find exactly what hides franceOuImport_2
         timeout-minutes: 3
         run: |
           node <<'EOF'
           const { chromium } = require('playwright');
           (async () => {
             const browser = await chromium.launch();
-            const page = await browser.newPage();
-            const sources = [];
-            page.on('response', async (res) => {
-              const u = res.url();
-              if (u.includes('/Default/source')) {
-                try { sources.push({url: u, body: await res.text()}); } catch (e) {}
-              }
-            });
-
-            async function set(id, value, isSelect) {
-              try {
-                if (isSelect) await page.selectOption('#'+id, {label: value}, {timeout: 5000}).catch(() => page.selectOption('#'+id, value, {timeout: 5000}));
-                else await page.fill('#'+id, value, {force: true, timeout: 5000});
-                await page.waitForTimeout(500);
-                return true;
-              } catch (e) { console.log('SET_FAIL', id, e.message.split('\n')[0]); return false; }
-            }
+            const page = await browser.newPage({ viewport: { width: 1600, height: 5000 } });
 
             await page.goto('https://www.service-public.gouv.fr/simulateur/calcul/cout-certificat-immatriculation', { waitUntil: 'networkidle', timeout: 45000 });
             await page.waitForTimeout(1000);
             try { await page.click('button:has-text("Accepter")', { timeout: 3000 }); } catch (e) {}
 
-            await set('demarche', "Immatriculation d'un véhicule d'occasion", true);
-
-            console.log('Scrolling the radio into view (IntersectionObserver-based reveal?)...');
-            try {
-              await page.locator('#franceOuImport_2').scrollIntoViewIfNeeded({ timeout: 5000 });
-              console.log('scrollIntoViewIfNeeded succeeded');
-            } catch (e) { console.log('scrollIntoViewIfNeeded failed:', e.message.split('\n')[0]); }
+            await page.selectOption('#demarche', { label: "Immatriculation d'un véhicule d'occasion" });
             await page.waitForTimeout(1500);
 
-            console.log('Waiting for franceOuImport_2 to become visible (up to 10s)...');
-            try {
-              await page.waitForSelector('#franceOuImport_2', { state: 'visible', timeout: 10000 });
-              console.log('franceOuImport_2 is now VISIBLE');
-            } catch (e) {
-              console.log('Still not visible after 10s:', e.message.split('\n')[0]);
-            }
-
-            const state1 = await page.evaluate(() => {
-              const el = document.getElementById('franceOuImport_2');
-              const r = el ? el.getClientRects() : null;
-              return { exists: !!el, rects: r ? r.length : 0, checked: el ? el.checked : null };
+            const chain = await page.evaluate(() => {
+              const out = [];
+              let el = document.getElementById('franceOuImport_2');
+              let depth = 0;
+              while (el && depth < 15) {
+                const cs = getComputedStyle(el);
+                const r = el.getBoundingClientRect();
+                out.push({
+                  depth,
+                  tag: el.tagName,
+                  id: el.id || null,
+                  cls: el.className || null,
+                  display: cs.display,
+                  visibility: cs.visibility,
+                  opacity: cs.opacity,
+                  height: cs.height,
+                  maxHeight: cs.maxHeight,
+                  overflow: cs.overflow,
+                  position: cs.position,
+                  rectW: r.width,
+                  rectH: r.height,
+                });
+                el = el.parentElement;
+                depth++;
+              }
+              return out;
             });
-            console.log('STATE after wait:', JSON.stringify(state1));
+            console.log('ANCESTOR_CHAIN:');
+            chain.forEach(c => console.log(JSON.stringify(c)));
 
-            // try the click now that we (hopefully) waited long enough
-            try {
-              await page.click('label[for="franceOuImport_2"]', { timeout: 5000 });
-              console.log('label click succeeded');
-            } catch (e) {
-              console.log('label click still failed:', e.message.split('\n')[0]);
-              try {
-                await page.click('#franceOuImport_2', { force: true, timeout: 3000 });
-                console.log('forced input click done (may not have worked)');
-              } catch (e2) { console.log('forced input click failed too:', e2.message.split('\n')[0]); }
-            }
-            await page.waitForTimeout(500);
-            const state2 = await page.evaluate(() => ({
-              r1: document.getElementById('franceOuImport_1').checked,
-              r2: document.getElementById('franceOuImport_2').checked,
-            }));
-            console.log('STATE after click attempt:', JSON.stringify(state2));
-
-            if (!state2.r2) {
-              console.log('GIVING UP on franceOuImport for this run, continuing with whatever state it is in.');
-            }
-
-            await set('typeVehicule', 'Véhicule de tourisme (VT ou M1) ex-Voiture particulière (VP)', true);
-            await page.waitForTimeout(500);
-            await set('dateMiseEnCirculation', '2020-06-15', false);
-            await set('PuissanceAdmSaisie', '6', false);
-            await page.waitForTimeout(500);
-
-            try { await page.click('label[for="vehiculeElectric_2"]', { timeout: 4000 }); } catch (e) { console.log('vehiculeElectric_2 label click failed:', e.message.split('\n')[0]); }
-            await page.waitForTimeout(800);
-
-            await set('energie', 'Essence (ES)', true);
-            await page.waitForTimeout(500);
-
-            for (const id of ['Autonomie50Km_2','invalidite_2','receptionCommunautaire_2','vehicule_8Places_2','PersonMoraleLocataireOuProprietaire_2','personneMorale_2']) {
-              try { await page.click(`label[for="${id}"]`, { timeout: 2000 }); } catch (e) {}
-              await page.waitForTimeout(300);
-            }
-
-            await set('TauxCO2Saisi', '130', false);
-            await set('poidsSaisi', '1400', false);
-            await set('departement', '06 - Alpes-Maritimes', true);
-            await page.waitForTimeout(2000);
-
-            console.log('=== FILLED VALUES ===');
-            const filled = await page.evaluate(() => {
-              const els = Array.from(document.querySelectorAll('input,select'));
-              return els.filter(el => el.id && el.value).map(el => el.id + '=' + el.value);
+            // Also compare against typeVehicule (which DOES work) for reference
+            const chain2 = await page.evaluate(() => {
+              const out = [];
+              let el = document.getElementById('typeVehicule');
+              let depth = 0;
+              while (el && depth < 10) {
+                const cs = getComputedStyle(el);
+                const r = el.getBoundingClientRect();
+                out.push({ depth, tag: el.tagName, id: el.id || null, cls: el.className || null, display: cs.display, visibility: cs.visibility, rectW: r.width, rectH: r.height });
+                el = el.parentElement;
+                depth++;
+              }
+              return out;
             });
-            console.log(JSON.stringify(filled));
-
-            try {
-              await page.click('button:has-text("Afficher le résultat")', { timeout: 5000 });
-              await page.waitForTimeout(2000);
-              console.log('CLICKED_RESULT_BUTTON');
-            } catch (e) { console.log('RESULT_BUTTON_FAIL', e.message.split('\n')[0]); }
-
-            console.log('=== RESULT TEXT (tail) ===');
-            console.log((await page.evaluate(() => document.body.innerText)).slice(-2200));
-
-            console.log('=== CAPTURED SOURCES (' + sources.length + ') ===');
-            sources.forEach((s, i) => { console.log('--- src ' + i + ' ---'); console.log(s.body); });
+            console.log('REFERENCE_CHAIN (typeVehicule, known-working):');
+            chain2.forEach(c => console.log(JSON.stringify(c)));
 
             await browser.close();
           })().catch(e => { console.error('SCRIPT_ERROR', e); process.exit(1); });
