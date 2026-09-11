@@ -43,25 +43,21 @@ jobs:
           })().catch(e => { console.error('SCRIPT_ERROR', e); process.exit(1); });
           EOF
 
-      - name: Print step.json and datas.json in chunks
+      - name: Print DATAS only (compact, chunked, first half)
         run: |
           node -e "
           const fs = require('fs');
           const json = JSON.parse(fs.readFileSync('fields_full_1.json', 'utf8'));
+          const s = JSON.stringify(json.datas || {});
+          const half = Math.ceil(s.length/2);
+          const first = s.slice(0, half);
           const CH = 6000;
-          function dump(label, obj) {
-            const s = JSON.stringify(obj, null, 1);
-            console.log('#####', label, 'LENGTH', s.length, '#####');
-            for (let i = 0; i < s.length; i += CH) {
-              console.log('==='+label+'_CHUNK_' + (i/CH) + '_START===');
-              console.log(s.slice(i, i+CH));
-              console.log('==='+label+'_CHUNK_' + (i/CH) + '_END===');
-            }
+          for (let i = 0; i < first.length; i += CH) {
+            console.log('===DATAS_A_' + (i/CH) + '_START===');
+            console.log(first.slice(i, i+CH));
+            console.log('===DATAS_A_' + (i/CH) + '_END===');
           }
-          dump('STEP', json.step || {});
-          dump('DATAS', json.datas || {});
-          // DATAS printed last on purpose: if job log output gets truncated
-          // (tail kept), we still get the field-level lookup tables.
+          console.log('TOTAL_DATAS_LENGTH', s.length, 'HALF', half);
           "
 
       - name: Upload artifacts
