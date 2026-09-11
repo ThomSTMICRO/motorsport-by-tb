@@ -43,19 +43,19 @@ jobs:
           })().catch(e => { console.error('SCRIPT_ERROR', e); process.exit(1); });
           EOF
 
-      - name: Print DATAS only (compact, chunked, first half)
+      - name: Print DATAS only (compact, chunked, second half)
         run: |
           node -e "
           const fs = require('fs');
           const json = JSON.parse(fs.readFileSync('fields_full_1.json', 'utf8'));
           const s = JSON.stringify(json.datas || {});
           const half = Math.ceil(s.length/2);
-          const first = s.slice(0, half);
+          const second = s.slice(half);
           const CH = 6000;
-          for (let i = 0; i < first.length; i += CH) {
-            console.log('===DATAS_A_' + (i/CH) + '_START===');
-            console.log(first.slice(i, i+CH));
-            console.log('===DATAS_A_' + (i/CH) + '_END===');
+          for (let i = 0; i < second.length; i += CH) {
+            console.log('===DATAS_B_' + (i/CH) + '_START===');
+            console.log(second.slice(i, i+CH));
+            console.log('===DATAS_B_' + (i/CH) + '_END===');
           }
           console.log('TOTAL_DATAS_LENGTH', s.length, 'HALF', half);
           "
