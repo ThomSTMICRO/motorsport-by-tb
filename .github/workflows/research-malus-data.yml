@@ -62,33 +62,41 @@ jobs:
 
             async function setupForm() {
               await page.goto('https://www.service-public.gouv.fr/simulateur/calcul/cout-certificat-immatriculation', { waitUntil: 'networkidle', timeout: 30000 });
-              await page.waitForTimeout(600);
-              try { await page.click('button:has-text("Accepter")', { timeout: 2000 }); } catch (e) {}
+              await page.waitForTimeout(1000);
+              try { await page.click('button:has-text("Accepter")', { timeout: 3000 }); } catch (e) {}
 
               await set('demarche', "Immatriculation d'un véhicule d'occasion", true);
-              await page.waitForTimeout(500);
+              await page.waitForTimeout(800);
               await forceUnhideAndClick('franceOuImport_2');
-              await page.waitForTimeout(400);
+              await page.waitForTimeout(600);
               await set('typeVehicule', 'Véhicule de tourisme (VT ou M1) ex-Voiture particulière (VP)', true);
-              await page.waitForTimeout(300);
+              await page.waitForTimeout(500);
               await set('dateMiseEnCirculation', '2026-09-01', false);
               await set('PuissanceAdmSaisie', '6', false);
-              await page.waitForTimeout(300);
+              await page.waitForTimeout(500);
               await forceUnhideAndClick('vehiculeElectric_2');
-              await page.waitForTimeout(400);
+              await page.waitForTimeout(600);
               await set('energie', 'Essence (ES)', true);
-              await page.waitForTimeout(300);
+              await page.waitForTimeout(500);
               for (const id of ['Autonomie50Km_2','invalidite_2','receptionCommunautaire_2','vehicule_8Places_2','PersonMoraleLocataireOuProprietaire_2','personneMorale_2']) {
                 await forceUnhideAndClick(id);
-                await page.waitForTimeout(150);
+                await page.waitForTimeout(200);
               }
               await set('poidsSaisi', '1400', false);
               await set('departement', '06 - Alpes-Maritimes', true);
-              await page.waitForTimeout(600);
+              await page.waitForTimeout(1000);
             }
 
+            // Sample every 3g to fit within the time budget with the longer (proven-working) waits.
+            const co2Points = [];
+            for (let c = 105; c <= 195; c += 3) co2Points.push(c);
+            if (!co2Points.includes(195)) co2Points.push(195);
+            // Always include 150 as a known cross-check (goBack-based test gave 4279,00 here).
+            if (!co2Points.includes(150)) co2Points.push(150);
+            co2Points.sort((a, b) => a - b);
+
             const results = {};
-            for (let co2 = 105; co2 <= 195; co2++) {
+            for (const co2 of co2Points) {
               try {
                 await setupForm();
                 await page.fill('#TauxCO2Saisi', String(co2), { force: true, timeout: 5000 });
@@ -101,7 +109,7 @@ jobs:
               } catch (e) {
                 results[co2] = 'ERROR:' + e.message.split('\n')[0];
               }
-              if (co2 % 10 === 0) console.log('progress:', co2, results[co2]);
+              console.log('progress:', co2, results[co2]);
             }
 
             console.log('=== CO2_SWEEP_RESULTS ===');
