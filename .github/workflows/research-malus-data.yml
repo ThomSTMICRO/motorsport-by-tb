@@ -26,15 +26,9 @@ jobs:
           (async () => {
             const browser = await chromium.launch();
             const page = await browser.newPage();
-            let counter = 0;
             page.on('response', async (res) => {
-              if (res.url().includes('/Default/fields') || res.url().includes('/Default/source')) {
-                try {
-                  const body = await res.text();
-                  counter++;
-                  const fname = res.url().includes('fields') ? `fields_full_${counter}.json` : `source_${counter}.json`;
-                  fs.writeFileSync(fname, body);
-                } catch (e) {}
+              if (res.url().includes('/Default/fields')) {
+                try { fs.writeFileSync('fields_full_1.json', await res.text()); } catch (e) {}
               }
             });
             await page.goto('https://www.service-public.gouv.fr/simulateur/calcul/cout-certificat-immatriculation', { waitUntil: 'networkidle', timeout: 45000 });
@@ -48,32 +42,26 @@ jobs:
             await browser.close();
           })().catch(e => { console.error('SCRIPT_ERROR', e); process.exit(1); });
           EOF
-          ls -la *.json
 
-      - name: Split evaluate field into files (avoid log truncation)
-        run: |
-          node <<'EOF'
-          const fs = require('fs');
-          const json = JSON.parse(fs.readFileSync('fields_full_1.json', 'utf8'));
-          fs.writeFileSync('evaluate.txt', json.evaluate || '');
-          fs.writeFileSync('datas.json', JSON.stringify(json.datas || {}, null, 1));
-          fs.writeFileSync('step.json', JSON.stringify(json.step || {}, null, 1));
-          console.log('evaluate length:', (json.evaluate||'').length);
-          console.log('datas length:', JSON.stringify(json.datas||{}).length);
-          console.log('step length:', JSON.stringify(json.step||{}).length);
-          EOF
-
-      - name: Print evaluate.txt in chunks (chunk markers for easy reassembly)
+      - name: Print step.json and datas.json in chunks
         run: |
           node -e "
           const fs = require('fs');
-          const s = fs.readFileSync('evaluate.txt', 'utf8');
+          const json = JSON.parse(fs.readFileSync('fields_full_1.json', 'utf8'));
           const CH = 6000;
-          for (let i = 0; i < s.length; i += CH) {
-            console.log('===CHUNK ' + (i/CH) + ' START===');
-            console.log(s.slice(i, i+CH));
-            console.log('===CHUNK ' + (i/CH) + ' END===');
+          function dump(label, obj) {
+            const s = JSON.stringify(obj, null, 1);
+            console.log('#####', label, 'LENGTH', s.length, '#####');
+            for (let i = 0; i < s.length; i += CH) {
+              console.log('==='+label+'_CHUNK_' + (i/CH) + '_START===');
+              console.log(s.slice(i, i+CH));
+              console.log('==='+label+'_CHUNK_' + (i/CH) + '_END===');
+            }
           }
+          dump('STEP', json.step || {});
+          dump('DATAS', json.datas || {});
+          // DATAS printed last on purpose: if job log output gets truncated
+          // (tail kept), we still get the field-level lookup tables.
           "
 
       - name: Upload artifacts
@@ -83,7 +71,3 @@ jobs:
           name: sim-full
           path: |
             fields_full_*.json
-            source_*.json
-            evaluate.txt
-            datas.json
-            step.json
