@@ -19,118 +19,72 @@ jobs:
           npm install --no-save playwright@1.48.0
           npx playwright install chromium --with-deps
 
-      - name: Fill full form robustly (label-based clicks) and capture all sources
+      - name: Verify franceOuImport radio actually toggles
         timeout-minutes: 3
         run: |
           node <<'EOF'
           const { chromium } = require('playwright');
-          const fs = require('fs');
           (async () => {
             const browser = await chromium.launch();
             const page = await browser.newPage();
-            const sources = [];
-            page.on('response', async (res) => {
-              const u = res.url();
-              if (u.includes('/Default/source')) {
-                try { sources.push({url: u, body: await res.text()}); } catch (e) {}
-              }
-            });
-
-            async function set(id, value, isSelect) {
-              try {
-                if (isSelect) await page.selectOption('#'+id, value, {timeout: 5000});
-                else await page.fill('#'+id, value, {force: true, timeout: 5000});
-                await page.waitForTimeout(600);
-                return true;
-              } catch (e) { console.log('SET_FAIL', id, e.message.split('\n')[0]); return false; }
-            }
-
-            // Robust "choose radio option" that tries: native input click, then its <label for=id>,
-            // then a label whose text matches, then JS-dispatch a click event directly.
-            async function chooseRadio(id) {
-              try {
-                const input = page.locator('#'+id);
-                if (await input.count()) {
-                  await input.click({force: true, timeout: 2000}).catch(()=>{});
-                }
-                const label = page.locator(`label[for="${id}"]`);
-                if (await label.count()) {
-                  await label.click({force: true, timeout: 2000}).catch(()=>{});
-                }
-                // fallback: dispatch a native click via JS on the element itself
-                const clicked = await page.evaluate((elId) => {
-                  const el = document.getElementById(elId);
-                  if (!el) return false;
-                  el.checked = true;
-                  el.dispatchEvent(new Event('click', {bubbles:true}));
-                  el.dispatchEvent(new Event('change', {bubbles:true}));
-                  return true;
-                }, id).catch(()=>false);
-                await page.waitForTimeout(600);
-                return clicked;
-              } catch (e) { console.log('RADIO_FAIL', id, e.message.split('\n')[0]); return false; }
-            }
 
             await page.goto('https://www.service-public.gouv.fr/simulateur/calcul/cout-certificat-immatriculation', { waitUntil: 'networkidle', timeout: 45000 });
             await page.waitForTimeout(1000);
             try { await page.click('button:has-text("Accepter")', { timeout: 3000 }); } catch (e) {}
 
-            await set('demarche', "Immatriculation d'un véhicule d'occasion", true);
-            await page.waitForTimeout(800);
-            await chooseRadio('franceOuImport_2'); // importé
-            await set('typeVehicule', '1', true);
-            await page.waitForTimeout(500);
-            await chooseRadio('IsCamionnettePlacesAssises_2');
-            await chooseRadio('vehiculeDeCollection_2');
-            await set('dateMiseEnCirculation', '2020-06-15', false);
-            await set('PuissanceAdmSaisie', '6', false);
-            await chooseRadio('vehiculeElectric_2');
-            await page.waitForTimeout(800);
+            await page.selectOption('#demarche', "Immatriculation d'un véhicule d'occasion");
+            await page.waitForTimeout(1000);
 
-            console.log('=== VISIBLE TEXT RIGHT AFTER vehiculeElectric ===');
-            console.log((await page.evaluate(() => document.body.innerText)).slice(-2500));
+            const before = await page.evaluate(() => ({
+              r1: document.getElementById('franceOuImport_1') ? document.getElementById('franceOuImport_1').checked : 'NO_EL',
+              r2: document.getElementById('franceOuImport_2') ? document.getElementById('franceOuImport_2').checked : 'NO_EL',
+            }));
+            console.log('BEFORE:', JSON.stringify(before));
 
-            console.log('=== VISIBLE (on-screen) CONTROLS AT THIS POINT ===');
-            const visNow = await page.evaluate(() => {
-              const els = Array.from(document.querySelectorAll('input,select'));
-              return els.filter(el => {
-                const r = el.getClientRects();
-                return r.length > 0 && el.type !== 'hidden';
-              }).map(el => ({ id: el.id, name: el.name, type: el.type || el.tagName }));
-            });
-            console.log(JSON.stringify(visNow));
-
-            await set('departement', '06 - Alpes-Maritimes', true);
-            await page.waitForTimeout(1500);
-
-            console.log('=== VISIBLE TEXT AFTER département TOO ===');
-            console.log((await page.evaluate(() => document.body.innerText)).slice(-2500));
-            console.log('=== VISIBLE CONTROLS AFTER département ===');
-            const visNow2 = await page.evaluate(() => {
-              const els = Array.from(document.querySelectorAll('input,select'));
-              return els.filter(el => {
-                const r = el.getClientRects();
-                return r.length > 0 && el.type !== 'hidden';
-              }).map(el => ({ id: el.id, name: el.name, type: el.type || el.tagName }));
-            });
-            console.log(JSON.stringify(visNow2));
-
+            // Method A: Playwright's dedicated check() with force
             try {
-              await page.click('button:has-text("Afficher le résultat")', { timeout: 5000 });
-              await page.waitForTimeout(2000);
-              console.log('CLICKED_RESULT_BUTTON');
-            } catch (e) { console.log('RESULT_BUTTON_FAIL', e.message.split('\n')[0]); }
+              await page.check('#franceOuImport_2', { force: true, timeout: 3000 });
+              console.log('page.check() succeeded without throwing');
+            } catch (e) { console.log('page.check() failed:', e.message.split('\n')[0]); }
 
-            console.log('=== RESULT TEXT (tail) ===');
-            const txt = await page.evaluate(() => document.body.innerText);
-            console.log(txt.slice(-3000));
+            const afterA = await page.evaluate(() => ({
+              r1: document.getElementById('franceOuImport_1').checked,
+              r2: document.getElementById('franceOuImport_2').checked,
+            }));
+            console.log('AFTER page.check():', JSON.stringify(afterA));
 
-            console.log('=== CAPTURED SOURCES (' + sources.length + ') ===');
-            sources.forEach((s, i) => {
-              console.log('--- src ' + i + ' ---');
-              console.log(s.body);
-            });
+            // If still not checked, try clicking the parent wrapper / sibling span (custom-styled radio pattern)
+            if (!afterA.r2) {
+              const wrapperInfo = await page.evaluate(() => {
+                const el = document.getElementById('franceOuImport_2');
+                const parent = el.parentElement;
+                return {
+                  parentTag: parent ? parent.tagName : null,
+                  parentClass: parent ? parent.className : null,
+                  parentHTML: parent ? parent.outerHTML.slice(0, 500) : null,
+                  grandParentHTML: parent && parent.parentElement ? parent.parentElement.outerHTML.slice(0, 800) : null,
+                };
+              });
+              console.log('WRAPPER_INFO:', JSON.stringify(wrapperInfo));
 
+              try {
+                await page.click('#franceOuImport_2 + label, label[for="franceOuImport_2"], #franceOuImport_2 ~ label', { force: true, timeout: 3000 });
+              } catch (e) { console.log('sibling label click failed:', e.message.split('\n')[0]); }
+              const afterB = await page.evaluate(() => ({
+                r1: document.getElementById('franceOuImport_1').checked,
+                r2: document.getElementById('franceOuImport_2').checked,
+              }));
+              console.log('AFTER sibling-label click:', JSON.stringify(afterB));
+            }
+
+            await page.screenshot({ path: 'radio_state.png', fullPage: true });
             await browser.close();
           })().catch(e => { console.error('SCRIPT_ERROR', e); process.exit(1); });
           EOF
+
+      - name: Upload screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: radio-diag
+          path: radio_state.png
