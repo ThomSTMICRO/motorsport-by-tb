@@ -6,7 +6,7 @@ on:
     paths: [.github/workflows/research-malus-data.yml]
 
 jobs:
-  research:
+  q5_scenario:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/setup-node@v4
@@ -19,12 +19,11 @@ jobs:
           npm install --no-save playwright@1.48.0
           npx playwright install chromium --with-deps
 
-      - name: Sweep every CO2 value through the official simulator (one session)
-        timeout-minutes: 25
+      - name: Real Audi Q5 2018 252ch import scenario via official simulator
+        timeout-minutes: 5
         run: |
           node <<'EOF'
           const { chromium } = require('playwright');
-          const fs = require('fs');
           (async () => {
             const browser = await chromium.launch();
             const page = await browser.newPage({ viewport: { width: 1600, height: 3000 } });
@@ -42,7 +41,6 @@ jobs:
                 return changed.join(',') || 'NONE_HIDDEN';
               }, id);
             }
-
             async function set(id, value, isSelect) {
               try {
                 await forceUnhideOnly(id);
@@ -52,7 +50,6 @@ jobs:
                 return true;
               } catch (e) { console.log('SET_FAIL', id, e.message.split('\n')[0]); return false; }
             }
-
             async function forceUnhideAndClick(inputId) {
               await forceUnhideOnly(inputId);
               await page.waitForTimeout(150);
@@ -60,21 +57,22 @@ jobs:
               catch (e) { console.log('CLICK_FAIL', inputId, e.message.split('\n')[0]); return false; }
             }
 
-            async function setupForm() {
-              await page.goto('https://www.service-public.gouv.fr/simulateur/calcul/cout-certificat-immatriculation', { waitUntil: 'networkidle', timeout: 30000 });
+            async function runScenario(label, {dateMEC, cv, co2, poids, dept}) {
+              console.log('\n\n======== SCENARIO: ' + label + ' ========');
+              await page.goto('https://www.service-public.gouv.fr/simulateur/calcul/cout-certificat-immatriculation', { waitUntil: 'networkidle', timeout: 45000 });
               await page.waitForTimeout(1000);
               try { await page.click('button:has-text("Accepter")', { timeout: 3000 }); } catch (e) {}
 
               await set('demarche', "Immatriculation d'un véhicule d'occasion", true);
               await page.waitForTimeout(800);
-              await forceUnhideAndClick('franceOuImport_2');
+              await forceUnhideAndClick('franceOuImport_2'); // importé
               await page.waitForTimeout(600);
               await set('typeVehicule', 'Véhicule de tourisme (VT ou M1) ex-Voiture particulière (VP)', true);
               await page.waitForTimeout(500);
-              await set('dateMiseEnCirculation', '2026-09-01', false);
-              await set('PuissanceAdmSaisie', '6', false);
+              await set('dateMiseEnCirculation', dateMEC, false);
+              await set('PuissanceAdmSaisie', String(cv), false);
               await page.waitForTimeout(500);
-              await forceUnhideAndClick('vehiculeElectric_2');
+              await forceUnhideAndClick('vehiculeElectric_2'); // non électrique
               await page.waitForTimeout(600);
               await set('energie', 'Essence (ES)', true);
               await page.waitForTimeout(500);
@@ -82,47 +80,33 @@ jobs:
                 await forceUnhideAndClick(id);
                 await page.waitForTimeout(200);
               }
-              await set('poidsSaisi', '1400', false);
-              await set('departement', '06 - Alpes-Maritimes', true);
+              await set('poidsSaisi', String(poids), false);
+              await page.waitForTimeout(300);
+              await forceUnhideOnly('TauxCO2Saisi');
+              await page.fill('#TauxCO2Saisi', String(co2), { force: true, timeout: 5000 });
+              await page.waitForTimeout(300);
+              await set('departement', dept, true);
               await page.waitForTimeout(1000);
+
+              await page.click('button:has-text("Afficher le résultat")', { timeout: 8000 });
+              await page.waitForTimeout(700);
+              const txt = await page.evaluate(() => document.body.innerText);
+              const lines = txt.split('\n').filter(l => /^Y[1-6]\s*-/.test(l.trim()) || /Total/i.test(l.trim()));
+              console.log('RESULT LINES:');
+              lines.forEach(l => console.log('  ', l.trim()));
+              // Dump broader results block as fallback in case regex above misses formatting
+              const idx = txt.indexOf('Y1');
+              if (idx >= 0) console.log('RAW BLOCK:\n', txt.slice(idx, idx + 1200));
             }
 
-            // Sample every 3g to fit within the time budget with the longer (proven-working) waits.
-            const co2Points = [];
-            for (let c = 105; c <= 195; c += 3) co2Points.push(c);
-            if (!co2Points.includes(195)) co2Points.push(195);
-            // Always include 150 as a known cross-check (goBack-based test gave 4279,00 here).
-            if (!co2Points.includes(150)) co2Points.push(150);
-            co2Points.sort((a, b) => a - b);
-
-            const results = {};
-            for (const co2 of co2Points) {
-              try {
-                await setupForm();
-                await page.fill('#TauxCO2Saisi', String(co2), { force: true, timeout: 5000 });
-                await page.waitForTimeout(200);
-                await page.click('button:has-text("Afficher le résultat")', { timeout: 5000 });
-                await page.waitForTimeout(400);
-                const txt = await page.evaluate(() => document.body.innerText);
-                const m = txt.match(/Y3\s*-\s*Malus CO2 et TMOM\s*:\s*([\d\s]+,\d+)\s*€/);
-                results[co2] = m ? m[1].replace(/\s/g, '') : 'NOT_FOUND';
-              } catch (e) {
-                results[co2] = 'ERROR:' + e.message.split('\n')[0];
-              }
-              console.log('progress:', co2, results[co2]);
-            }
-
-            console.log('=== CO2_SWEEP_RESULTS ===');
-            console.log(JSON.stringify(results));
-            fs.writeFileSync('co2_sweep.json', JSON.stringify(results, null, 1));
+            // Audi Q5 II (FY) facelift "45 TFSI quattro" 2.0 TFSI 252ch, MY2018, essence, import Allemagne.
+            // Specs ESTIMÉES (à confirmer avec la carte grise allemande / COC réelle) :
+            //   CO2 ~172 g/km (NEDC corrélé), masse en ordre de marche ~1900kg, puissance fiscale ~12 CV.
+            //   Département placeholder: 06 - Alpes-Maritimes (à remplacer par le département réel du client).
+            await runScenario('Audi Q5 2018 252ch essence import (estimations)', {
+              dateMEC: '2018-06-01', cv: 12, co2: 172, poids: 1900, dept: '06 - Alpes-Maritimes'
+            });
 
             await browser.close();
           })().catch(e => { console.error('SCRIPT_ERROR', e); process.exit(1); });
           EOF
-
-      - name: Upload sweep results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: co2-sweep
-          path: co2_sweep.json
