@@ -17,20 +17,14 @@ jobs:
           npm install --no-save playwright@1.48.0
           npx playwright install chromium --with-deps
 
-      - name: Capture fields JSON
+      - name: List all form controls after démarche+import selected
         timeout-minutes: 3
         run: |
           node <<'EOF'
           const { chromium } = require('playwright');
-          const fs = require('fs');
           (async () => {
             const browser = await chromium.launch();
             const page = await browser.newPage();
-            page.on('response', async (res) => {
-              if (res.url().includes('/Default/fields')) {
-                try { fs.writeFileSync('fields_full_1.json', await res.text()); } catch (e) {}
-              }
-            });
             await page.goto('https://www.service-public.gouv.fr/simulateur/calcul/cout-certificat-immatriculation', { waitUntil: 'networkidle', timeout: 45000 });
             await page.waitForTimeout(1000);
             try { await page.click('button:has-text("Accepter")', { timeout: 3000 }); } catch (e) {}
@@ -39,31 +33,36 @@ jobs:
             const franceOuImportImporte = await page.$('#franceOuImport_2');
             if (franceOuImportImporte) { await franceOuImportImporte.click().catch(()=>{}); }
             await page.waitForTimeout(1500);
+
+            const controls = await page.evaluate(() => {
+              function labelFor(el) {
+                if (el.id) {
+                  const lbl = document.querySelector(`label[for="${CSS.escape(el.id)}"]`);
+                  if (lbl) return lbl.innerText.trim().slice(0,120);
+                }
+                const fieldset = el.closest('fieldset');
+                if (fieldset) {
+                  const legend = fieldset.querySelector('legend');
+                  if (legend) return legend.innerText.trim().slice(0,120);
+                }
+                const prevLabel = el.parentElement && el.parentElement.querySelector('label');
+                if (prevLabel) return prevLabel.innerText.trim().slice(0,120);
+                return null;
+              }
+              const els = Array.from(document.querySelectorAll('input, select, textarea'));
+              return els.map(el => ({
+                tag: el.tagName,
+                type: el.type || null,
+                id: el.id || null,
+                name: el.name || null,
+                visible: !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length),
+                label: labelFor(el),
+                options: el.tagName === 'SELECT' ? Array.from(el.options).slice(0,6).map(o => o.value + '=' + o.text) : undefined
+              }));
+            });
+            console.log('TOTAL_CONTROLS', controls.length);
+            console.log(JSON.stringify(controls, null, 0));
+
             await browser.close();
           })().catch(e => { console.error('SCRIPT_ERROR', e); process.exit(1); });
           EOF
-
-      - name: Print DATAS only (compact, chunked, second half)
-        run: |
-          node -e "
-          const fs = require('fs');
-          const json = JSON.parse(fs.readFileSync('fields_full_1.json', 'utf8'));
-          const s = JSON.stringify(json.datas || {});
-          const half = Math.ceil(s.length/2);
-          const second = s.slice(half);
-          const CH = 6000;
-          for (let i = 0; i < second.length; i += CH) {
-            console.log('===DATAS_B_' + (i/CH) + '_START===');
-            console.log(second.slice(i, i+CH));
-            console.log('===DATAS_B_' + (i/CH) + '_END===');
-          }
-          console.log('TOTAL_DATAS_LENGTH', s.length, 'HALF', half);
-          "
-
-      - name: Upload artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: sim-full
-          path: |
-            fields_full_*.json
