@@ -1,7 +1,9 @@
 name: Research malus/carte grise official data
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [claude/animated-slides-website-7hkyof]
+    paths: [.github/workflows/research-malus-data.yml]
 
 jobs:
   research:
@@ -17,7 +19,7 @@ jobs:
           npm install --no-save playwright@1.48.0
           npx playwright install chromium --with-deps
 
-      - name: Fill full form (test case), click résultat, capture sources
+      - name: Fill full form robustly (label-based clicks) and capture all sources
         timeout-minutes: 3
         run: |
           node <<'EOF'
@@ -38,16 +40,35 @@ jobs:
               try {
                 if (isSelect) await page.selectOption('#'+id, value, {timeout: 5000});
                 else await page.fill('#'+id, value, {force: true, timeout: 5000});
-                await page.waitForTimeout(500);
+                await page.waitForTimeout(600);
                 return true;
               } catch (e) { console.log('SET_FAIL', id, e.message.split('\n')[0]); return false; }
             }
-            async function clickIfVisible(id) {
+
+            // Robust "choose radio option" that tries: native input click, then its <label for=id>,
+            // then a label whose text matches, then JS-dispatch a click event directly.
+            async function chooseRadio(id) {
               try {
-                const el = await page.$('#'+id);
-                if (el) { await el.click({force:true, timeout:3000}); await page.waitForTimeout(400); return true; }
-              } catch (e) { console.log('CLICK_FAIL', id, e.message.split('\n')[0]); }
-              return false;
+                const input = page.locator('#'+id);
+                if (await input.count()) {
+                  await input.click({force: true, timeout: 2000}).catch(()=>{});
+                }
+                const label = page.locator(`label[for="${id}"]`);
+                if (await label.count()) {
+                  await label.click({force: true, timeout: 2000}).catch(()=>{});
+                }
+                // fallback: dispatch a native click via JS on the element itself
+                const clicked = await page.evaluate((elId) => {
+                  const el = document.getElementById(elId);
+                  if (!el) return false;
+                  el.checked = true;
+                  el.dispatchEvent(new Event('click', {bubbles:true}));
+                  el.dispatchEvent(new Event('change', {bubbles:true}));
+                  return true;
+                }, id).catch(()=>false);
+                await page.waitForTimeout(600);
+                return clicked;
+              } catch (e) { console.log('RADIO_FAIL', id, e.message.split('\n')[0]); return false; }
             }
 
             await page.goto('https://www.service-public.gouv.fr/simulateur/calcul/cout-certificat-immatriculation', { waitUntil: 'networkidle', timeout: 45000 });
@@ -55,34 +76,36 @@ jobs:
             try { await page.click('button:has-text("Accepter")', { timeout: 3000 }); } catch (e) {}
 
             await set('demarche', "Immatriculation d'un véhicule d'occasion", true);
-            await clickIfVisible('franceOuImport_2');
+            await page.waitForTimeout(800);
+            await chooseRadio('franceOuImport_2'); // importé
             await set('typeVehicule', '1', true);
-            await clickIfVisible('IsCamionnettePlacesAssises_2');
-            await clickIfVisible('vehiculeDeCollection_2');
+            await page.waitForTimeout(500);
+            await chooseRadio('IsCamionnettePlacesAssises_2');
+            await chooseRadio('vehiculeDeCollection_2');
             await set('dateMiseEnCirculation', '2020-06-15', false);
             await set('PuissanceAdmSaisie', '6', false);
-            await clickIfVisible('vehiculeElectric_2');
-            await set('energie', '1', true);
-            await clickIfVisible('Autonomie50Km_2');
-            await clickIfVisible('invalidite_2');
-            await clickIfVisible('receptionCommunautaire_2');
+            await chooseRadio('vehiculeElectric_2');
+            await page.waitForTimeout(500);
+            await set('energie', '1', true); // Essence
+            await page.waitForTimeout(500);
+            await chooseRadio('Autonomie50Km_2');
+            await chooseRadio('invalidite_2');
+            await chooseRadio('receptionCommunautaire_2');
             await set('TauxCO2Saisi', '130', false);
-            await clickIfVisible('vehicule_8Places_2');
-            await clickIfVisible('PersonMoraleLocataireOuProprietaire_2');
-            await clickIfVisible('personneMorale_2');
+            await chooseRadio('vehicule_8Places_2');
+            await chooseRadio('PersonMoraleLocataireOuProprietaire_2');
+            await chooseRadio('personneMorale_2');
             await set('poidsSaisi', '1400', false);
+            await chooseRadio('vehiculeElectric_2');
             await set('departement', '06 - Alpes-Maritimes', true);
-            await page.waitForTimeout(1500);
+            await page.waitForTimeout(2000);
 
-            console.log('=== CONTROLS STILL EMPTY/VISIBLE CHECK ===');
-            const remaining = await page.evaluate(() => {
+            console.log('=== RECAP CHECK (fields with values) ===');
+            const filled = await page.evaluate(() => {
               const els = Array.from(document.querySelectorAll('input,select'));
-              return els.filter(el => {
-                const r = el.getClientRects();
-                return r.length > 0 && !el.value && el.type !== 'radio' && el.type !== 'hidden' && el.type !== 'search';
-              }).map(el => el.id || el.name);
+              return els.filter(el => el.id && el.value).map(el => el.id + '=' + el.value);
             });
-            console.log(JSON.stringify(remaining));
+            console.log(JSON.stringify(filled));
 
             try {
               await page.click('button:has-text("Afficher le résultat")', { timeout: 5000 });
@@ -90,24 +113,16 @@ jobs:
               console.log('CLICKED_RESULT_BUTTON');
             } catch (e) { console.log('RESULT_BUTTON_FAIL', e.message.split('\n')[0]); }
 
-            console.log('=== FULL VISIBLE TEXT (tail, likely contains result) ===');
+            console.log('=== RESULT TEXT (tail) ===');
             const txt = await page.evaluate(() => document.body.innerText);
-            console.log(txt.slice(-4000));
+            console.log(txt.slice(-3000));
 
             console.log('=== CAPTURED SOURCES (' + sources.length + ') ===');
             sources.forEach((s, i) => {
-              console.log('--- src ' + i + ' url=' + s.url + ' ---');
+              console.log('--- src ' + i + ' ---');
               console.log(s.body);
             });
 
-            await page.screenshot({ path: 'final.png', fullPage: true });
             await browser.close();
           })().catch(e => { console.error('SCRIPT_ERROR', e); process.exit(1); });
           EOF
-
-      - name: Upload screenshot
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: sim-full
-          path: final.png
