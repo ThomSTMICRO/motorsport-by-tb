@@ -7,75 +7,19 @@ jobs:
   research:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Install Playwright
+      - name: Fetch the simulator's fields JSON in full
         run: |
-          npm init -y >/dev/null 2>&1 || true
-          npm install --no-save playwright@1.48.0
-          npx playwright install chromium --with-deps
+          curl -sL -A "Mozilla/5.0" "https://www.service-public.gouv.fr/simulateur/calcul/cout-certificat-immatriculation/Default/fields" -o fields.json
+          echo "bytes: $(wc -c < fields.json)"
+          python3 -m json.tool fields.json > fields_pretty.json || cp fields.json fields_pretty.json
+          echo "=== first 3000 chars pretty ==="
+          head -c 3000 fields_pretty.json
+          echo ""
+          echo "=== search for key terms ==="
+          grep -o '"[a-zA-Z][a-zA-Z0-9_]\{2,40\}"[[:space:]]*:' fields.json | sort -u | head -150
 
-      - name: Explore the official simulator (capture network + DOM)
-        timeout-minutes: 3
-        run: |
-          node <<'EOF'
-          const { chromium } = require('playwright');
-          const fs = require('fs');
-          (async () => {
-            const browser = await chromium.launch();
-            const page = await browser.newPage();
-            const jsonCalls = [];
-            page.on('response', async (res) => {
-              const url = res.url();
-              const ct = res.headers()['content-type'] || '';
-              if (ct.includes('json')) {
-                try {
-                  const body = await res.text();
-                  jsonCalls.push({ url, status: res.status(), body: body.slice(0, 20000) });
-                } catch (e) {}
-              }
-            });
-
-            await page.goto('https://www.service-public.gouv.fr/simulateur/calcul/cout-certificat-immatriculation', { waitUntil: 'networkidle', timeout: 45000 });
-            await page.waitForTimeout(1500);
-
-            console.log('PAGE_TITLE:', await page.title());
-            console.log('=== VISIBLE TEXT (first 4000 chars) ===');
-            const bodyText = await page.evaluate(() => document.body.innerText);
-            console.log(bodyText.slice(0, 4000));
-
-            console.log('=== FORM CONTROLS on step 1 ===');
-            const controls = await page.evaluate(() => {
-              const els = Array.from(document.querySelectorAll('input, select, textarea, button, [role="radio"], [role="button"]'));
-              return els.map(el => ({
-                tag: el.tagName,
-                type: el.type || null,
-                name: el.name || null,
-                id: el.id || null,
-                text: (el.innerText || el.value || el.getAttribute('aria-label') || '').slice(0, 80),
-              }));
-            });
-            console.log(JSON.stringify(controls, null, 2).slice(0, 6000));
-
-            fs.writeFileSync('json_calls.json', JSON.stringify(jsonCalls, null, 2));
-            console.log('JSON_CALLS_COUNT:', jsonCalls.length);
-            for (const c of jsonCalls) {
-              console.log('JSON_CALL_URL:', c.url, 'status', c.status, 'bytes', c.body.length);
-            }
-
-            await page.screenshot({ path: 'step1.png', fullPage: true });
-
-            await browser.close();
-          })().catch(e => { console.error('SCRIPT_ERROR', e); process.exit(1); });
-          EOF
-
-      - name: Upload artifacts
-        if: always()
+      - name: Upload full fields json
         uses: actions/upload-artifact@v4
         with:
-          name: sim-recon
-          path: |
-            step1.png
-            json_calls.json
+          name: fields-json
+          path: fields_pretty.json
