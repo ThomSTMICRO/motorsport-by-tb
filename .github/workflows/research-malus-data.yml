@@ -7,19 +7,82 @@ jobs:
   research:
     runs-on: ubuntu-latest
     steps:
-      - name: Fetch the simulator's fields JSON in full
-        run: |
-          curl -sL -A "Mozilla/5.0" "https://www.service-public.gouv.fr/simulateur/calcul/cout-certificat-immatriculation/Default/fields" -o fields.json
-          echo "bytes: $(wc -c < fields.json)"
-          python3 -m json.tool fields.json > fields_pretty.json || cp fields.json fields_pretty.json
-          echo "=== first 3000 chars pretty ==="
-          head -c 3000 fields_pretty.json
-          echo ""
-          echo "=== search for key terms ==="
-          grep -o '"[a-zA-Z][a-zA-Z0-9_]\{2,40\}"[[:space:]]*:' fields.json | sort -u | head -150
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
-      - name: Upload full fields json
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1 || true
+          npm install --no-save playwright@1.48.0
+          npx playwright install chromium --with-deps
+
+      - name: Capture full /fields JSON and step through the form (occasion importée)
+        timeout-minutes: 3
+        run: |
+          node <<'EOF'
+          const { chromium } = require('playwright');
+          const fs = require('fs');
+          (async () => {
+            const browser = await chromium.launch();
+            const page = await browser.newPage();
+
+            page.on('response', async (res) => {
+              if (res.url().includes('/Default/fields')) {
+                try {
+                  const body = await res.text();
+                  fs.writeFileSync('fields_full.json', body);
+                  console.log('SAVED fields_full.json, bytes:', body.length);
+                } catch (e) { console.log('fields capture error', e.message); }
+              }
+            });
+
+            await page.goto('https://www.service-public.gouv.fr/simulateur/calcul/cout-certificat-immatriculation', { waitUntil: 'networkidle', timeout: 45000 });
+            await page.waitForTimeout(1000);
+
+            // Accept cookies if the banner is there
+            try { await page.click('button:has-text("Accepter")', { timeout: 3000 }); } catch (e) {}
+
+            // Step 1: démarche + franceOuImport + typeVehicule
+            await page.selectOption('#demarche', { label: "Immatriculation d'un véhicule d'occasion" }).catch(async () => {
+              // fallback: it may be a custom searchable select, try typing
+              await page.click('#demarche').catch(()=>{});
+            });
+            await page.waitForTimeout(500);
+            const franceOuImportImporte = await page.$('#franceOuImport_2');
+            if (franceOuImportImporte) await franceOuImportImporte.click();
+            await page.waitForTimeout(300);
+
+            console.log('=== STEP 1 VISIBLE TEXT AFTER SELECTIONS ===');
+            console.log((await page.evaluate(() => document.body.innerText)).slice(0, 3000));
+
+            // Try to find and click a "Suivant" / "Continuer" button
+            const nextBtn = await page.$('button:has-text("Suivant"), button:has-text("Continuer"), button:has-text("Valider")');
+            if (nextBtn) {
+              await nextBtn.click();
+              await page.waitForTimeout(1500);
+              console.log('=== AFTER CLICKING NEXT ===');
+              console.log('URL:', page.url());
+              console.log((await page.evaluate(() => document.body.innerText)).slice(0, 3000));
+              const controls2 = await page.evaluate(() => {
+                const els = Array.from(document.querySelectorAll('input, select, textarea'));
+                return els.map(el => ({ tag: el.tagName, type: el.type||null, name: el.name||null, id: el.id||null }));
+              });
+              console.log('STEP2_CONTROLS:', JSON.stringify(controls2).slice(0, 3000));
+            } else {
+              console.log('NO NEXT BUTTON FOUND');
+            }
+
+            await page.screenshot({ path: 'step_after.png', fullPage: true });
+            await browser.close();
+          })().catch(e => { console.error('SCRIPT_ERROR', e); process.exit(1); });
+          EOF
+
+      - name: Upload artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: fields-json
-          path: fields_pretty.json
+          name: sim-full
+          path: |
+            fields_full.json
+            step_after.png
