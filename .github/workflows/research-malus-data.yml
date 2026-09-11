@@ -6,6 +6,48 @@ on:
     paths: [.github/workflows/research-malus-data.yml]
 
 jobs:
+  fetch_q5_specs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1 || true
+          npm install --no-save playwright@1.48.0
+          npx playwright install chromium --with-deps
+      - name: Fetch real Audi Q5 2.0 TFSI 252ch (2018) specs from technical databases
+        timeout-minutes: 4
+        run: |
+          node <<'EOF'
+          const { chromium } = require('playwright');
+          (async () => {
+            const browser = await chromium.launch();
+            async function probe(url) {
+              console.log('\n\n======== FETCH: ' + url + ' ========');
+              const page = await browser.newPage({ userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36' });
+              try {
+                const res = await page.goto(url, { waitUntil: 'networkidle', timeout: 25000 });
+                console.log('HTTP status:', res ? res.status() : 'no response');
+                await page.waitForTimeout(1500);
+                const txt = await page.evaluate(() => document.body.innerText);
+                // Print lines mentioning CO2, weight, fiscal power keywords for quick scan
+                const keep = txt.split('\n').filter(l => /co2|CO²|kg|weight|poids|fiscal|puissance|kW|PS|hp|tax/i.test(l) && l.trim().length > 0 && l.trim().length < 200);
+                console.log('RELEVANT LINES (' + keep.length + '):');
+                keep.slice(0, 80).forEach(l => console.log('  ', l.trim()));
+              } catch (e) {
+                console.log('FETCH_ERROR', e.message.split('\n')[0]);
+              }
+              await page.close();
+            }
+            await probe('https://www.automobile-catalog.com/car/2018/2503865/audi_q5_2_0_tfsi_252_quattro_s-tronic.html');
+            await probe('https://www.auto-data.net/en/audi-q5-ii-fy-2.0-tfsi-252hp-quattro-ultra-s-tronic-26243');
+            await probe('https://www.ultimatespecs.com/car-specs/Audi/107930/Audi-Q5-(FY)-20-TFSI-252HP-Quattro-S-tronic.html');
+            await browser.close();
+          })().catch(e => { console.error('SCRIPT_ERROR', e); process.exit(1); });
+          EOF
+
   q5_scenario:
     runs-on: ubuntu-latest
     steps:
