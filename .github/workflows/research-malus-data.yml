@@ -6,127 +6,40 @@ on:
     paths: [.github/workflows/research-malus-data.yml]
 
 jobs:
-  q5_scenario:
+  fetch_legifrance:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-
       - name: Install Playwright
         run: |
           npm init -y >/dev/null 2>&1 || true
           npm install --no-save playwright@1.48.0
           npx playwright install chromium --with-deps
-
-      - name: Real Audi Q5 2018 252ch import scenario via official simulator
-        timeout-minutes: 5
+      - name: Fetch Legifrance article L421-7-2 (décote coefficient) full text
+        timeout-minutes: 4
         run: |
           node <<'EOF'
           const { chromium } = require('playwright');
           (async () => {
             const browser = await chromium.launch();
-            const page = await browser.newPage({ viewport: { width: 1600, height: 3000 } });
-
-            async function forceUnhideOnly(id) {
-              return page.evaluate((elId) => {
-                const el = document.getElementById(elId);
-                if (!el) return 'NO_EL';
-                let node = el, changed = [];
-                for (let i = 0; i < 6 && node; i++) {
-                  const cs = getComputedStyle(node);
-                  if (cs.display === 'none') { node.style.display = 'block'; changed.push(node.id || node.className); }
-                  node = node.parentElement;
-                }
-                return changed.join(',') || 'NONE_HIDDEN';
-              }, id);
-            }
-            async function set(id, value, isSelect) {
+            async function probe(url) {
+              console.log('\n\n======== FETCH: ' + url + ' ========');
+              const page = await browser.newPage({ userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36' });
               try {
-                await forceUnhideOnly(id);
-                if (isSelect) await page.selectOption('#'+id, {label: value}, {timeout: 5000}).catch(() => page.selectOption('#'+id, value, {timeout: 5000}));
-                else await page.fill('#'+id, value, {force: true, timeout: 5000});
-                await page.waitForTimeout(300);
-                return true;
-              } catch (e) { console.log('SET_FAIL', id, e.message.split('\n')[0]); return false; }
-            }
-            async function forceUnhideAndClick(inputId) {
-              await forceUnhideOnly(inputId);
-              await page.waitForTimeout(150);
-              try { await page.click(`label[for="${inputId}"]`, { timeout: 3000 }); return true; }
-              catch (e) { console.log('CLICK_FAIL', inputId, e.message.split('\n')[0]); return false; }
-            }
-
-            async function runScenario(label, {dateMEC, cv, co2, poids, dept}) {
-              console.log('\n\n======== SCENARIO: ' + label + ' ========');
-              await page.goto('https://www.service-public.gouv.fr/simulateur/calcul/cout-certificat-immatriculation', { waitUntil: 'networkidle', timeout: 45000 });
-              await page.waitForTimeout(1000);
-              try { await page.click('button:has-text("Accepter")', { timeout: 3000 }); } catch (e) {}
-
-              await set('demarche', "Immatriculation d'un véhicule d'occasion", true);
-              await page.waitForTimeout(800);
-              await forceUnhideAndClick('franceOuImport_2'); // importé
-              await page.waitForTimeout(600);
-              await set('typeVehicule', 'Véhicule de tourisme (VT ou M1) ex-Voiture particulière (VP)', true);
-              await page.waitForTimeout(500);
-              await set('dateMiseEnCirculation', dateMEC, false);
-              const dateVal = await page.evaluate(() => document.getElementById('dateMiseEnCirculation')?.value);
-              console.log('dateMiseEnCirculation actual value after set:', dateVal);
-              await set('PuissanceAdmSaisie', String(cv), false);
-              await page.waitForTimeout(500);
-              await forceUnhideAndClick('vehiculeElectric_2'); // non électrique
-              await page.waitForTimeout(600);
-              await set('energie', 'Essence (ES)', true);
-              await page.waitForTimeout(500);
-              for (const id of ['Autonomie50Km_2','invalidite_2','receptionCommunautaire_2','vehicule_8Places_2','PersonMoraleLocataireOuProprietaire_2','personneMorale_2']) {
-                await forceUnhideAndClick(id);
-                await page.waitForTimeout(200);
+                const res = await page.goto(url, { waitUntil: 'networkidle', timeout: 25000 });
+                console.log('HTTP status:', res ? res.status() : 'no response');
+                await page.waitForTimeout(1500);
+                const txt = await page.evaluate(() => document.body.innerText);
+                console.log('FULL TEXT (up to 6000 chars):\n', txt.slice(0, 6000));
+              } catch (e) {
+                console.log('FETCH_ERROR', e.message.split('\n')[0]);
               }
-              await set('poidsSaisi', String(poids), false);
-              await page.waitForTimeout(300);
-              await forceUnhideOnly('TauxCO2Saisi');
-              await page.fill('#TauxCO2Saisi', String(co2), { force: true, timeout: 5000 });
-              await page.waitForTimeout(300);
-              await set('departement', dept, true);
-              await page.waitForTimeout(1000);
-
-              // Diagnose: is there still a "Suivant" (multi-step wizard) button, or a validation error, before the result button?
-              const preClickButtons = await page.evaluate(() => Array.from(document.querySelectorAll('button')).map(b => b.textContent.trim()).filter(t => t.length > 0 && t.length < 60));
-              console.log('Buttons visible before clicking "Afficher le résultat":', JSON.stringify(preClickButtons));
-              const errorTexts = await page.evaluate(() => Array.from(document.querySelectorAll('.fr-error-text, [class*="error"]')).map(e => e.textContent.trim()).filter(t => t.length > 0));
-              console.log('Error texts on page before click:', JSON.stringify(errorTexts));
-
-              await page.click('button:has-text("Afficher le résultat")', { timeout: 8000 });
-              await page.waitForTimeout(700);
-              const txt = await page.evaluate(() => document.body.innerText);
-              const lines = txt.split('\n').filter(l => /^Y[1-6]\s*-/.test(l.trim()) || /Total/i.test(l.trim()));
-              console.log('RESULT LINES:');
-              lines.forEach(l => console.log('  ', l.trim()));
-              const idx = txt.indexOf('Y1');
-              if (idx >= 0) {
-                console.log('RAW BLOCK:\n', txt.slice(idx, idx + 1200));
-              } else {
-                console.log('NO "Y1" FOUND. URL after click:', page.url());
-                const postClickErrors = await page.evaluate(() => Array.from(document.querySelectorAll('.fr-error-text, [class*="error"]')).map(e => e.textContent.trim()).filter(t => t.length > 0));
-                console.log('Error texts after click:', JSON.stringify(postClickErrors));
-                console.log('FULL BODY TEXT (first 4000 chars):\n', txt.slice(0, 4000));
-              }
+              await page.close();
             }
-
-            // Isolation test: same params as the earlier WORKING sweep (cv=6, poids=1400) but with a past date,
-            // to determine if dateMiseEnCirculation=2018 alone triggers "situation non traitée".
-            await runScenario('ISOLATION: dateMEC=2018 avec params sweep qui marchaient (cv=6, poids=1400)', {
-              dateMEC: '2018-06-01', cv: 6, co2: 172, poids: 1400, dept: '06 - Alpes-Maritimes'
-            });
-            // Boundary test: a more recent past date (2023) to find where the cutoff is.
-            await runScenario('BOUNDARY: dateMEC=2023-06-01, cv=6, poids=1400', {
-              dateMEC: '2023-06-01', cv: 6, co2: 172, poids: 1400, dept: '06 - Alpes-Maritimes'
-            });
-            // Real scenario with actual Q5 specs, using a date late enough to (hopefully) be supported: same 2018 but isolate cv/poids as culprit.
-            await runScenario('Audi Q5 2018 252ch essence import (specs web, cv=12, poids=1910)', {
-              dateMEC: '2018-06-01', cv: 12, co2: 154, poids: 1910, dept: '06 - Alpes-Maritimes'
-            });
-
+            await probe('https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000051180735');
+            await probe('https://www.legifrance.gouv.fr/codes/id/LEGISCTA000051180737');
             await browser.close();
           })().catch(e => { console.error('SCRIPT_ERROR', e); process.exit(1); });
           EOF
