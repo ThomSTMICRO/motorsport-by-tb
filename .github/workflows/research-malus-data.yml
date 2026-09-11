@@ -44,25 +44,24 @@ jobs:
                 const tables = await page.evaluate(() => {
                   const out = [];
                   document.querySelectorAll('table').forEach((t, i) => {
-                    const rows = Array.from(t.querySelectorAll('tr')).slice(0, 5).map(tr =>
+                    const rows = Array.from(t.querySelectorAll('tr')).map(tr =>
                       Array.from(tr.querySelectorAll('th,td')).map(c => c.textContent.trim()).join(' | ')
                     );
-                    out.push({ index: i, rowCount: t.querySelectorAll('tr').length, sample: rows });
+                    out.push({ index: i, rowCount: t.querySelectorAll('tr').length, rows });
                   });
                   return out;
                 });
                 console.log('TABLES FOUND:', tables.length);
-                tables.forEach(t => { console.log('table#' + t.index, 'rows=' + t.rowCount); t.sample.forEach(r => console.log('  ' + r)); });
+                tables.forEach(t => { console.log('=== table#' + t.index + ' rows=' + t.rowCount + ' ==='); t.rows.forEach(r => console.log('  ' + r)); });
 
-                console.log('BODY TEXT SAMPLE (2000 chars):');
-                console.log(bodyText.slice(0, 2000));
+                console.log('FULL BODY TEXT:');
+                console.log(bodyText);
               } catch (e) {
                 console.log('PROBE_ERROR', e.message.split('\n')[0]);
               }
               await page.close();
             }
 
-            await probe('malus-ecologique-grille', 'https://www.malus-ecologique.fr/grille-malus/2026');
             await probe('simulateur-malus-bareme', 'https://www.simulateur-malus-ecologique.fr/bareme-malus-ecologique-2026');
 
             await browser.close();
