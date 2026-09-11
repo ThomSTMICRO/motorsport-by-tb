@@ -96,8 +96,8 @@ jobs:
 
             await set('typeVehicule', 'Véhicule de tourisme (VT ou M1) ex-Voiture particulière (VP)', true);
             await page.waitForTimeout(500);
-            await set('dateMiseEnCirculation', '2020-06-15', false);
-            await set('PuissanceAdmSaisie', '6', false);
+            await set('dateMiseEnCirculation', '2025-08-15', false);
+            await set('PuissanceAdmSaisie', '10', false);
             await page.waitForTimeout(500);
 
             await forceUnhideAndClick('vehiculeElectric_2');
@@ -111,8 +111,8 @@ jobs:
               await page.waitForTimeout(300);
             }
 
-            await set('TauxCO2Saisi', '130', false);
-            await set('poidsSaisi', '1400', false);
+            await set('TauxCO2Saisi', '250', false);
+            await set('poidsSaisi', '1900', false);
             await set('departement', '06 - Alpes-Maritimes', true);
             await page.waitForTimeout(2000);
 
