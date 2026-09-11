@@ -32,8 +32,24 @@ jobs:
               }
             });
 
+            async function forceUnhideOnly(id) {
+              return page.evaluate((elId) => {
+                const el = document.getElementById(elId);
+                if (!el) return 'NO_EL';
+                let node = el, changed = [];
+                for (let i = 0; i < 6 && node; i++) {
+                  const cs = getComputedStyle(node);
+                  if (cs.display === 'none') { node.style.display = 'block'; changed.push(node.id || node.className); }
+                  node = node.parentElement;
+                }
+                return changed.join(',') || 'NONE_HIDDEN';
+              }, id);
+            }
+
             async function set(id, value, isSelect) {
               try {
+                const u = await forceUnhideOnly(id);
+                if (u !== 'NONE_HIDDEN') console.log('forceUnhide(' + id + '):', u);
                 if (isSelect) await page.selectOption('#'+id, {label: value}, {timeout: 5000}).catch(() => page.selectOption('#'+id, value, {timeout: 5000}));
                 else await page.fill('#'+id, value, {force: true, timeout: 5000});
                 await page.waitForTimeout(500);
