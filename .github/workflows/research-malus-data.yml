@@ -20,7 +20,7 @@ jobs:
           npx playwright install chromium --with-deps
 
       - name: Sweep every CO2 value through the official simulator (one session)
-        timeout-minutes: 8
+        timeout-minutes: 15
         run: |
           node <<'EOF'
           const { chromium } = require('playwright');
@@ -87,75 +87,25 @@ jobs:
             await set('departement', '06 - Alpes-Maritimes', true);
             await page.waitForTimeout(1000);
 
-            // --- First value (known-working path) ---
-            await page.fill('#TauxCO2Saisi', '105', { force: true, timeout: 4000 });
-            await page.waitForTimeout(250);
-            await page.click('button:has-text("Afficher le résultat")', { timeout: 4000 });
-            await page.waitForTimeout(450);
-            let txt = await page.evaluate(() => document.body.innerText);
-            let m = txt.match(/Y3\s*-\s*Malus CO2 et TMOM\s*:\s*([\d\s]+,\d+)\s*€/);
-            const results = { '105': m ? m[1].replace(/\s/g, '') : 'NOT_FOUND' };
-            console.log('105 =>', results['105']);
-
-            // --- Diagnose post-result page state ---
-            console.log('=== POST_RESULT_DIAGNOSTICS ===');
-            console.log('URL:', page.url());
-            const fieldExists = await page.evaluate(() => !!document.getElementById('TauxCO2Saisi'));
-            console.log('TauxCO2Saisi still in DOM:', fieldExists);
-            const fieldVisible = await page.evaluate(() => {
-              const el = document.getElementById('TauxCO2Saisi');
-              if (!el) return 'NO_EL';
-              const cs = getComputedStyle(el);
-              return cs.display + '/' + cs.visibility;
-            });
-            console.log('TauxCO2Saisi display/visibility:', fieldVisible);
-            const clickables = await page.evaluate(() => {
-              return Array.from(document.querySelectorAll('button, a')).map(e => e.textContent.trim()).filter(t => t.length > 0 && t.length < 60);
-            });
-            console.log('Clickable texts on page:', JSON.stringify(clickables));
-
-            // --- Try recovery strategies ---
-            let recovered = false;
-            const modifyEl = clickables.find(t => /modifier/i.test(t));
-            if (modifyEl) {
-              console.log('Trying: click element containing "modifier" =>', modifyEl);
+            const results = {};
+            for (let co2 = 105; co2 <= 195; co2++) {
               try {
-                await page.click(`text="${modifyEl}"`, { timeout: 3000 });
-                await page.waitForTimeout(500);
-                const vis = await forceUnhideOnly('TauxCO2Saisi');
-                console.log('After modify-click, forceUnhideOnly result:', vis);
-                const stillThere = await page.evaluate(() => !!document.getElementById('TauxCO2Saisi'));
-                console.log('Field present after modify-click:', stillThere);
-                if (stillThere) recovered = 'modify-click';
-              } catch (e) { console.log('modify-click failed:', e.message.split('\n')[0]); }
-            }
-            if (!recovered) {
-              console.log('Trying: page.goBack()');
-              try {
-                await page.goBack({ timeout: 5000, waitUntil: 'networkidle' });
-                await page.waitForTimeout(500);
-                const vis = await forceUnhideOnly('TauxCO2Saisi');
-                console.log('After goBack, forceUnhideOnly result:', vis);
-                const stillThere = await page.evaluate(() => !!document.getElementById('TauxCO2Saisi'));
-                console.log('Field present after goBack:', stillThere);
-                if (stillThere) recovered = 'goBack';
-              } catch (e) { console.log('goBack failed:', e.message.split('\n')[0]); }
-            }
-            if (recovered) {
-              console.log('Trying test fill with co2=150 after recovery method:', recovered);
-              try {
-                await forceUnhideOnly('TauxCO2Saisi');
-                await page.fill('#TauxCO2Saisi', '150', { force: true, timeout: 4000 });
-                await page.waitForTimeout(250);
-                await page.click('button:has-text("Afficher le résultat")', { timeout: 4000 });
-                await page.waitForTimeout(450);
-                txt = await page.evaluate(() => document.body.innerText);
-                m = txt.match(/Y3\s*-\s*Malus CO2 et TMOM\s*:\s*([\d\s]+,\d+)\s*€/);
-                console.log('150 (after recovery) =>', m ? m[1] : 'NOT_FOUND');
-              } catch (e) { console.log('test fill after recovery failed:', e.message.split('\n')[0]); }
-            } else {
-              console.log('NO RECOVERY METHOD WORKED. Dumping full body text for manual inspection:');
-              console.log(txt.slice(0, 3000));
+                if (co2 > 105) {
+                  await page.goBack({ timeout: 8000, waitUntil: 'networkidle' });
+                  await page.waitForTimeout(300);
+                  await forceUnhideOnly('TauxCO2Saisi');
+                }
+                await page.fill('#TauxCO2Saisi', String(co2), { force: true, timeout: 5000 });
+                await page.waitForTimeout(200);
+                await page.click('button:has-text("Afficher le résultat")', { timeout: 5000 });
+                await page.waitForTimeout(400);
+                const txt = await page.evaluate(() => document.body.innerText);
+                const m = txt.match(/Y3\s*-\s*Malus CO2 et TMOM\s*:\s*([\d\s]+,\d+)\s*€/);
+                results[co2] = m ? m[1].replace(/\s/g, '') : 'NOT_FOUND';
+              } catch (e) {
+                results[co2] = 'ERROR:' + e.message.split('\n')[0];
+              }
+              if (co2 % 15 === 0) console.log('progress:', co2, results[co2]);
             }
 
             console.log('=== CO2_SWEEP_RESULTS ===');
