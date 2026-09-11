@@ -17,7 +17,7 @@ jobs:
           npm install --no-save playwright@1.48.0
           npx playwright install chromium --with-deps
 
-      - name: Capture full /fields JSON and inspect its structure
+      - name: Capture fields/source JSON and dump relevant rules
         timeout-minutes: 3
         run: |
           node <<'EOF'
@@ -26,7 +26,6 @@ jobs:
           (async () => {
             const browser = await chromium.launch();
             const page = await browser.newPage();
-            let savedAny = false;
             let counter = 0;
 
             page.on('response', async (res) => {
@@ -37,79 +36,48 @@ jobs:
                   const fname = res.url().includes('fields') ? `fields_full_${counter}.json` : `source_${counter}.json`;
                   fs.writeFileSync(fname, body);
                   console.log('SAVED', fname, 'bytes:', body.length, 'url:', res.url());
-                  savedAny = true;
                 } catch (e) { console.log('capture error', e.message); }
               }
             });
 
             await page.goto('https://www.service-public.gouv.fr/simulateur/calcul/cout-certificat-immatriculation', { waitUntil: 'networkidle', timeout: 45000 });
             await page.waitForTimeout(1000);
-
             try { await page.click('button:has-text("Accepter")', { timeout: 3000 }); } catch (e) {}
-
-            // Step 1: démarche + franceOuImport
             await page.selectOption('#demarche', { label: "Immatriculation d'un véhicule d'occasion" }).catch(()=>{});
             await page.waitForTimeout(800);
             const franceOuImportImporte = await page.$('#franceOuImport_2');
             if (franceOuImportImporte) { await franceOuImportImporte.click().catch(()=>{}); }
-            await page.waitForTimeout(800);
-
-            // Try clicking "Suivant" robustly: re-query fresh each attempt, use force if needed
-            for (let attempt = 0; attempt < 5; attempt++) {
-              try {
-                const btn = page.locator('button:has-text("Suivant"), button:has-text("Continuer"), button:has-text("Valider")').first();
-                await btn.waitFor({ state: 'visible', timeout: 3000 });
-                await btn.click({ timeout: 3000, force: true });
-                console.log('CLICKED NEXT on attempt', attempt);
-                break;
-              } catch (e) {
-                console.log('attempt', attempt, 'failed:', e.message.split('\n')[0]);
-                await page.waitForTimeout(700);
-              }
-            }
             await page.waitForTimeout(1500);
-
-            console.log('=== VISIBLE TEXT AFTER STEP ATTEMPT ===');
-            console.log((await page.evaluate(() => document.body.innerText)).slice(0, 2000));
-
-            await page.screenshot({ path: 'step_after.png', fullPage: true });
-
-            // Now inspect the structure of every captured fields/source JSON file
-            const files = fs.readdirSync('.').filter(f => f.startsWith('fields_full_') || f.startsWith('source_'));
-            for (const f of files) {
-              try {
-                const raw = fs.readFileSync(f, 'utf8');
-                const json = JSON.parse(raw);
-                console.log('=== STRUCTURE OF', f, '===');
-                const summarize = (obj, depth) => {
-                  if (depth > 2 || obj === null || typeof obj !== 'object') return;
-                  if (Array.isArray(obj)) {
-                    console.log('  '.repeat(depth) + `[array of ${obj.length}]`);
-                    if (obj.length) summarize(obj[0], depth + 1);
-                  } else {
-                    for (const k of Object.keys(obj)) {
-                      const v = obj[k];
-                      const t = Array.isArray(v) ? `array(${v.length})` : typeof v;
-                      console.log('  '.repeat(depth) + k + ': ' + t);
-                    }
-                  }
-                };
-                summarize(json, 0);
-              } catch (e) {
-                console.log(f, 'not valid JSON or error:', e.message);
-              }
-            }
-
-            // Keyword grep across all captured files for tax-relevant terms
-            const keywords = ['malus', 'co2', 'poids', 'departement', 'région', 'region', 'cheval', 'tarif', 'bareme', 'barème', 'taxe', 'coefficient', 'masse', 'énergie', 'energie'];
-            for (const f of files) {
-              const raw = fs.readFileSync(f, 'utf8').toLowerCase();
-              for (const kw of keywords) {
-                if (raw.includes(kw)) console.log('KEYWORD HIT:', f, kw);
-              }
-            }
-
             await browser.close();
+
+            console.log('\n\n=== RAW CONTENT OF SMALL source_*.json FILES ===');
+            const files = fs.readdirSync('.').filter(f => f.startsWith('fields_full_') || f.startsWith('source_'));
+            for (const f of files.filter(f => f.startsWith('source_'))) {
+              console.log('--- ' + f + ' ---');
+              console.log(fs.readFileSync(f, 'utf8'));
+            }
+
+            const keywords = ['malus','co2','poids','departement','région','region','cheval','tarif','bareme','barème','taxe','coefficient','masse','énergie','energie','abattement','plafond','seuil','tmom','regional','régional'];
+            for (const f of files.filter(f => f.startsWith('fields_full_'))) {
+              const json = JSON.parse(fs.readFileSync(f, 'utf8'));
+              console.log('\n\n=== FIELD-LEVEL INFO FROM ' + f + ' ===');
+              console.log('top name/label/category:', json.name, '|', json.label, '|', json.category);
+              console.log('step:', JSON.stringify(json.step).slice(0,1000));
+              console.log('sources keys:', JSON.stringify(Object.keys(json.sources || {})));
+              console.log('datas keys:', JSON.stringify(Object.keys(json.datas || {})).slice(0,2000));
+
+              const rules = json.rules || [];
+              console.log('TOTAL RULES:', rules.length);
+              const matched = rules.filter(r => {
+                const blob = JSON.stringify(r).toLowerCase();
+                return keywords.some(k => blob.includes(k));
+              });
+              console.log('MATCHED RULES:', matched.length, '/ ', rules.length);
+              matched.forEach((r, i) => {
+                console.log(`--- RULE ${i} ---`);
+                console.log(JSON.stringify(r, null, 1));
+              });
+            }
           })().catch(e => { console.error('SCRIPT_ERROR', e); process.exit(1); });
           EOF
 
@@ -121,4 +89,3 @@ jobs:
           path: |
             fields_full_*.json
             source_*.json
-            step_after.png
