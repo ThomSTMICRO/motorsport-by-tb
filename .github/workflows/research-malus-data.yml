@@ -20,7 +20,7 @@ jobs:
           npx playwright install chromium --with-deps
 
       - name: Sweep every CO2 value through the official simulator (one session)
-        timeout-minutes: 15
+        timeout-minutes: 25
         run: |
           node <<'EOF'
           const { chromium } = require('playwright');
@@ -60,41 +60,37 @@ jobs:
               catch (e) { console.log('CLICK_FAIL', inputId, e.message.split('\n')[0]); return false; }
             }
 
-            await page.goto('https://www.service-public.gouv.fr/simulateur/calcul/cout-certificat-immatriculation', { waitUntil: 'networkidle', timeout: 45000 });
-            await page.waitForTimeout(1000);
-            try { await page.click('button:has-text("Accepter")', { timeout: 3000 }); } catch (e) {}
+            async function setupForm() {
+              await page.goto('https://www.service-public.gouv.fr/simulateur/calcul/cout-certificat-immatriculation', { waitUntil: 'networkidle', timeout: 30000 });
+              await page.waitForTimeout(600);
+              try { await page.click('button:has-text("Accepter")', { timeout: 2000 }); } catch (e) {}
 
-            await set('demarche', "Immatriculation d'un véhicule d'occasion", true);
-            await page.waitForTimeout(800);
-            await forceUnhideAndClick('franceOuImport_2');
-            await page.waitForTimeout(600);
-            await set('typeVehicule', 'Véhicule de tourisme (VT ou M1) ex-Voiture particulière (VP)', true);
-            await page.waitForTimeout(500);
-            // Very recent registration to minimize décote (coef ~1) so we isolate the raw barème.
-            await set('dateMiseEnCirculation', '2026-09-01', false);
-            await set('PuissanceAdmSaisie', '6', false);
-            await page.waitForTimeout(500);
-            await forceUnhideAndClick('vehiculeElectric_2');
-            await page.waitForTimeout(600);
-            await set('energie', 'Essence (ES)', true);
-            await page.waitForTimeout(500);
-            for (const id of ['Autonomie50Km_2','invalidite_2','receptionCommunautaire_2','vehicule_8Places_2','PersonMoraleLocataireOuProprietaire_2','personneMorale_2']) {
-              await forceUnhideAndClick(id);
-              await page.waitForTimeout(200);
+              await set('demarche', "Immatriculation d'un véhicule d'occasion", true);
+              await page.waitForTimeout(500);
+              await forceUnhideAndClick('franceOuImport_2');
+              await page.waitForTimeout(400);
+              await set('typeVehicule', 'Véhicule de tourisme (VT ou M1) ex-Voiture particulière (VP)', true);
+              await page.waitForTimeout(300);
+              await set('dateMiseEnCirculation', '2026-09-01', false);
+              await set('PuissanceAdmSaisie', '6', false);
+              await page.waitForTimeout(300);
+              await forceUnhideAndClick('vehiculeElectric_2');
+              await page.waitForTimeout(400);
+              await set('energie', 'Essence (ES)', true);
+              await page.waitForTimeout(300);
+              for (const id of ['Autonomie50Km_2','invalidite_2','receptionCommunautaire_2','vehicule_8Places_2','PersonMoraleLocataireOuProprietaire_2','personneMorale_2']) {
+                await forceUnhideAndClick(id);
+                await page.waitForTimeout(150);
+              }
+              await set('poidsSaisi', '1400', false);
+              await set('departement', '06 - Alpes-Maritimes', true);
+              await page.waitForTimeout(600);
             }
-            // Weight fixed just under the 1500kg threshold: isolates CO2 malus, zero TMOM.
-            await set('poidsSaisi', '1400', false);
-            await set('departement', '06 - Alpes-Maritimes', true);
-            await page.waitForTimeout(1000);
 
             const results = {};
             for (let co2 = 105; co2 <= 195; co2++) {
               try {
-                if (co2 > 105) {
-                  await page.goBack({ timeout: 8000, waitUntil: 'networkidle' });
-                  await page.waitForTimeout(300);
-                  await forceUnhideOnly('TauxCO2Saisi');
-                }
+                await setupForm();
                 await page.fill('#TauxCO2Saisi', String(co2), { force: true, timeout: 5000 });
                 await page.waitForTimeout(200);
                 await page.click('button:has-text("Afficher le résultat")', { timeout: 5000 });
@@ -105,7 +101,7 @@ jobs:
               } catch (e) {
                 results[co2] = 'ERROR:' + e.message.split('\n')[0];
               }
-              if (co2 % 15 === 0) console.log('progress:', co2, results[co2]);
+              if (co2 % 10 === 0) console.log('progress:', co2, results[co2]);
             }
 
             console.log('=== CO2_SWEEP_RESULTS ===');
