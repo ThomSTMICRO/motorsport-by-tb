@@ -25,10 +25,14 @@ jobs:
             const browser = await chromium.launch();
             const page = await browser.newPage({ viewport: { width: 1600, height: 3000 } });
             const sources = [];
+            const allXhr = [];
             page.on('response', async (res) => {
               const u = res.url();
+              const ct = res.headers()['content-type'] || '';
               if (u.includes('/Default/source')) {
                 try { sources.push({url: u, body: await res.text()}); } catch (e) {}
+              } else if (u.includes('/Default/') && (ct.includes('json') || ct.includes('text'))) {
+                try { allXhr.push({url: u, status: res.status(), body: (await res.text()).slice(0, 300)}); } catch (e) {}
               }
             });
 
@@ -134,6 +138,21 @@ jobs:
 
             console.log('=== CAPTURED SOURCES (' + sources.length + ') ===');
             sources.forEach((s, i) => { console.log('--- src ' + i + ' ---'); console.log(s.body); });
+
+            console.log('=== ALL OTHER /Default/* XHR (' + allXhr.length + ') ===');
+            allXhr.forEach((s, i) => { console.log('--- xhr ' + i + ' status=' + s.status + ' url=' + s.url + ' ---'); console.log(s.body); });
+
+            console.log('=== Re-checking tauxCO2 related computed values via page state ===');
+            const co2debug = await page.evaluate(() => {
+              const ids = ['TauxCO2Saisi','tauxCO2_Retenu','valeurMalus_Selon_Taux_CO2','malusCO2','malusCO2Final','coefReducPivo','coef_ReductionFinal'];
+              const out = {};
+              ids.forEach(id => {
+                const el = document.getElementById(id);
+                out[id] = el ? el.value : 'NO_INPUT_' + id;
+              });
+              return out;
+            });
+            console.log(JSON.stringify(co2debug));
 
             await browser.close();
           })().catch(e => { console.error('SCRIPT_ERROR', e); process.exit(1); });
