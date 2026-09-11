@@ -17,52 +17,82 @@ jobs:
           npm install --no-save playwright@1.48.0
           npx playwright install chromium --with-deps
 
-      - name: List all form controls after démarche+import selected
+      - name: Fill full form (test case) and capture every /Default/source response
         timeout-minutes: 3
         run: |
           node <<'EOF'
           const { chromium } = require('playwright');
+          const fs = require('fs');
           (async () => {
             const browser = await chromium.launch();
             const page = await browser.newPage();
+            let n = 0;
+            page.on('response', async (res) => {
+              const u = res.url();
+              if (u.includes('/Default/source')) {
+                try {
+                  const body = await res.text();
+                  n++;
+                  fs.writeFileSync(`src_${n}.json`, JSON.stringify({url: u, body}, null, 0));
+                } catch (e) {}
+              }
+            });
+
+            async function set(id, value, isSelect) {
+              try {
+                if (isSelect) await page.selectOption('#'+id, value);
+                else await page.fill('#'+id, value, {force: true});
+                await page.waitForTimeout(500);
+                return true;
+              } catch (e) { console.log('SET_FAIL', id, e.message.split('\n')[0]); return false; }
+            }
+            async function clickIfVisible(id) {
+              try {
+                const el = await page.$('#'+id);
+                if (el) { await el.click({force:true}); await page.waitForTimeout(400); return true; }
+              } catch (e) {}
+              return false;
+            }
+
             await page.goto('https://www.service-public.gouv.fr/simulateur/calcul/cout-certificat-immatriculation', { waitUntil: 'networkidle', timeout: 45000 });
             await page.waitForTimeout(1000);
             try { await page.click('button:has-text("Accepter")', { timeout: 3000 }); } catch (e) {}
-            await page.selectOption('#demarche', { label: "Immatriculation d'un véhicule d'occasion" }).catch(()=>{});
-            await page.waitForTimeout(800);
-            const franceOuImportImporte = await page.$('#franceOuImport_2');
-            if (franceOuImportImporte) { await franceOuImportImporte.click().catch(()=>{}); }
-            await page.waitForTimeout(1500);
 
-            const controls = await page.evaluate(() => {
-              function labelFor(el) {
-                if (el.id) {
-                  const lbl = document.querySelector(`label[for="${CSS.escape(el.id)}"]`);
-                  if (lbl) return lbl.innerText.trim().slice(0,120);
-                }
-                const fieldset = el.closest('fieldset');
-                if (fieldset) {
-                  const legend = fieldset.querySelector('legend');
-                  if (legend) return legend.innerText.trim().slice(0,120);
-                }
-                const prevLabel = el.parentElement && el.parentElement.querySelector('label');
-                if (prevLabel) return prevLabel.innerText.trim().slice(0,120);
-                return null;
-              }
-              const els = Array.from(document.querySelectorAll('input, select, textarea'));
-              return els.map(el => ({
-                tag: el.tagName,
-                type: el.type || null,
-                id: el.id || null,
-                name: el.name || null,
-                visible: !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length),
-                label: labelFor(el),
-                options: el.tagName === 'SELECT' ? Array.from(el.options).slice(0,6).map(o => o.value + '=' + o.text) : undefined
-              }));
-            });
-            console.log('TOTAL_CONTROLS', controls.length);
-            console.log(JSON.stringify(controls, null, 0));
+            await set('demarche', "Immatriculation d'un véhicule d'occasion", true);
+            await clickIfVisible('franceOuImport_2'); // importé
+            await set('typeVehicule', '1', true); // Véhicule de tourisme
+            await clickIfVisible('IsCamionnettePlacesAssises_2');
+            await clickIfVisible('vehiculeDeCollection_2');
+            await set('dateMiseEnCirculation', '2020-06-15', false);
+            await set('PuissanceAdmSaisie', '6', false);
+            await set('energie', '1', true); // Essence
+            await clickIfVisible('Autonomie50Km_2');
+            await clickIfVisible('invalidite_2');
+            await clickIfVisible('receptionCommunautaire_1');
+            await set('TauxCO2Saisi', '130', false);
+            await clickIfVisible('vehicule_8Places_2');
+            await clickIfVisible('PersonMoraleLocataireOuProprietaire_2');
+            await clickIfVisible('personneMorale_2');
+            await set('poidsSaisi', '1400', false);
+            await clickIfVisible('vehiculeElectric_2');
+            await set('departement', '06 - Alpes-Maritimes', true);
+            await page.waitForTimeout(2500);
 
+            console.log('=== FULL VISIBLE TEXT ===');
+            console.log((await page.evaluate(() => document.body.innerText)).slice(0, 6000));
+
+            await page.screenshot({ path: 'final.png', fullPage: true });
             await browser.close();
           })().catch(e => { console.error('SCRIPT_ERROR', e); process.exit(1); });
           EOF
+          echo "--- captured source files ---"
+          ls -la src_*.json 2>/dev/null || echo "none"
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sim-full
+          path: |
+            src_*.json
+            final.png
