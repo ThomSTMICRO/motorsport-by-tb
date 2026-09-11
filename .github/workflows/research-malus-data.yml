@@ -13,74 +13,111 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install Playwright
+      - name: Force-unhide franceOuImport-container then click normally, full flow
+        timeout-minutes: 3
         run: |
           npm init -y >/dev/null 2>&1 || true
           npm install --no-save playwright@1.48.0
           npx playwright install chromium --with-deps
-
-      - name: Walk DOM ancestors to find exactly what hides franceOuImport_2
-        timeout-minutes: 3
-        run: |
           node <<'EOF'
           const { chromium } = require('playwright');
           (async () => {
             const browser = await chromium.launch();
-            const page = await browser.newPage({ viewport: { width: 1600, height: 5000 } });
+            const page = await browser.newPage({ viewport: { width: 1600, height: 3000 } });
+            const sources = [];
+            page.on('response', async (res) => {
+              const u = res.url();
+              if (u.includes('/Default/source')) {
+                try { sources.push({url: u, body: await res.text()}); } catch (e) {}
+              }
+            });
+
+            async function set(id, value, isSelect) {
+              try {
+                if (isSelect) await page.selectOption('#'+id, {label: value}, {timeout: 5000}).catch(() => page.selectOption('#'+id, value, {timeout: 5000}));
+                else await page.fill('#'+id, value, {force: true, timeout: 5000});
+                await page.waitForTimeout(500);
+                return true;
+              } catch (e) { console.log('SET_FAIL', id, e.message.split('\n')[0]); return false; }
+            }
+
+            async function forceUnhideAndClick(inputId) {
+              const unhid = await page.evaluate((id) => {
+                const el = document.getElementById(id);
+                if (!el) return 'NO_INPUT';
+                let node = el;
+                let changed = [];
+                for (let i = 0; i < 6 && node; i++) {
+                  const cs = getComputedStyle(node);
+                  if (cs.display === 'none') { node.style.display = 'block'; changed.push(node.id || node.className); }
+                  node = node.parentElement;
+                }
+                return changed.join(',') || 'NONE_HIDDEN';
+              }, inputId);
+              console.log('forceUnhide(' + inputId + '):', unhid);
+              await page.waitForTimeout(200);
+              try {
+                await page.click(`label[for="${inputId}"]`, { timeout: 3000 });
+                console.log('click after unhide: OK for', inputId);
+                return true;
+              } catch (e) {
+                console.log('click after unhide FAILED for', inputId, e.message.split('\n')[0]);
+                return false;
+              }
+            }
 
             await page.goto('https://www.service-public.gouv.fr/simulateur/calcul/cout-certificat-immatriculation', { waitUntil: 'networkidle', timeout: 45000 });
             await page.waitForTimeout(1000);
             try { await page.click('button:has-text("Accepter")', { timeout: 3000 }); } catch (e) {}
 
-            await page.selectOption('#demarche', { label: "Immatriculation d'un véhicule d'occasion" });
-            await page.waitForTimeout(1500);
+            await set('demarche', "Immatriculation d'un véhicule d'occasion", true);
+            await page.waitForTimeout(1000);
 
-            const chain = await page.evaluate(() => {
-              const out = [];
-              let el = document.getElementById('franceOuImport_2');
-              let depth = 0;
-              while (el && depth < 15) {
-                const cs = getComputedStyle(el);
-                const r = el.getBoundingClientRect();
-                out.push({
-                  depth,
-                  tag: el.tagName,
-                  id: el.id || null,
-                  cls: el.className || null,
-                  display: cs.display,
-                  visibility: cs.visibility,
-                  opacity: cs.opacity,
-                  height: cs.height,
-                  maxHeight: cs.maxHeight,
-                  overflow: cs.overflow,
-                  position: cs.position,
-                  rectW: r.width,
-                  rectH: r.height,
-                });
-                el = el.parentElement;
-                depth++;
-              }
-              return out;
-            });
-            console.log('ANCESTOR_CHAIN:');
-            chain.forEach(c => console.log(JSON.stringify(c)));
+            await forceUnhideAndClick('franceOuImport_2');
+            await page.waitForTimeout(800);
+            const checkedState = await page.evaluate(() => document.getElementById('franceOuImport_2').checked);
+            console.log('franceOuImport_2 checked now:', checkedState);
 
-            // Also compare against typeVehicule (which DOES work) for reference
-            const chain2 = await page.evaluate(() => {
-              const out = [];
-              let el = document.getElementById('typeVehicule');
-              let depth = 0;
-              while (el && depth < 10) {
-                const cs = getComputedStyle(el);
-                const r = el.getBoundingClientRect();
-                out.push({ depth, tag: el.tagName, id: el.id || null, cls: el.className || null, display: cs.display, visibility: cs.visibility, rectW: r.width, rectH: r.height });
-                el = el.parentElement;
-                depth++;
-              }
-              return out;
+            await set('typeVehicule', 'Véhicule de tourisme (VT ou M1) ex-Voiture particulière (VP)', true);
+            await page.waitForTimeout(500);
+            await set('dateMiseEnCirculation', '2020-06-15', false);
+            await set('PuissanceAdmSaisie', '6', false);
+            await page.waitForTimeout(500);
+
+            await forceUnhideAndClick('vehiculeElectric_2');
+            await page.waitForTimeout(800);
+
+            await set('energie', 'Essence (ES)', true);
+            await page.waitForTimeout(500);
+
+            for (const id of ['Autonomie50Km_2','invalidite_2','receptionCommunautaire_2','vehicule_8Places_2','PersonMoraleLocataireOuProprietaire_2','personneMorale_2']) {
+              await forceUnhideAndClick(id);
+              await page.waitForTimeout(300);
+            }
+
+            await set('TauxCO2Saisi', '130', false);
+            await set('poidsSaisi', '1400', false);
+            await set('departement', '06 - Alpes-Maritimes', true);
+            await page.waitForTimeout(2000);
+
+            console.log('=== FILLED VALUES ===');
+            const filled = await page.evaluate(() => {
+              const els = Array.from(document.querySelectorAll('input,select'));
+              return els.filter(el => el.id && el.value).map(el => el.id + '=' + el.value);
             });
-            console.log('REFERENCE_CHAIN (typeVehicule, known-working):');
-            chain2.forEach(c => console.log(JSON.stringify(c)));
+            console.log(JSON.stringify(filled));
+
+            try {
+              await page.click('button:has-text("Afficher le résultat")', { timeout: 5000 });
+              await page.waitForTimeout(2000);
+              console.log('CLICKED_RESULT_BUTTON');
+            } catch (e) { console.log('RESULT_BUTTON_FAIL', e.message.split('\n')[0]); }
+
+            console.log('=== RESULT TEXT (tail) ===');
+            console.log((await page.evaluate(() => document.body.innerText)).slice(-2200));
+
+            console.log('=== CAPTURED SOURCES (' + sources.length + ') ===');
+            sources.forEach((s, i) => { console.log('--- src ' + i + ' ---'); console.log(s.body); });
 
             await browser.close();
           })().catch(e => { console.error('SCRIPT_ERROR', e); process.exit(1); });
