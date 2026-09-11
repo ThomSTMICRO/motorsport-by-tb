@@ -113,11 +113,17 @@ jobs:
               }
             }
 
-            // Audi Q5 II (FY) 2.0 TFSI quattro S-tronic 252ch, MY2018, essence, import Allemagne.
-            // Specs trouvées via recherche web (automobile-catalog.com) : CO2 154 g/km (NEDC),
-            // poids à vide ~1835kg (+75kg conducteur = ~1910kg TMOM). À confirmer avec le COC/Fahrzeugschein réel.
-            // Département placeholder: 06 - Alpes-Maritimes (à remplacer par le département réel du client).
-            await runScenario('Audi Q5 2018 252ch essence import (specs web)', {
+            // Isolation test: same params as the earlier WORKING sweep (cv=6, poids=1400) but with a past date,
+            // to determine if dateMiseEnCirculation=2018 alone triggers "situation non traitée".
+            await runScenario('ISOLATION: dateMEC=2018 avec params sweep qui marchaient (cv=6, poids=1400)', {
+              dateMEC: '2018-06-01', cv: 6, co2: 172, poids: 1400, dept: '06 - Alpes-Maritimes'
+            });
+            // Boundary test: a more recent past date (2023) to find where the cutoff is.
+            await runScenario('BOUNDARY: dateMEC=2023-06-01, cv=6, poids=1400', {
+              dateMEC: '2023-06-01', cv: 6, co2: 172, poids: 1400, dept: '06 - Alpes-Maritimes'
+            });
+            // Real scenario with actual Q5 specs, using a date late enough to (hopefully) be supported: same 2018 but isolate cv/poids as culprit.
+            await runScenario('Audi Q5 2018 252ch essence import (specs web, cv=12, poids=1910)', {
               dateMEC: '2018-06-01', cv: 12, co2: 154, poids: 1910, dept: '06 - Alpes-Maritimes'
             });
 
