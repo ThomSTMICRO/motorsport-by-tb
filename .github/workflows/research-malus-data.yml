@@ -7,53 +7,75 @@ jobs:
   research:
     runs-on: ubuntu-latest
     steps:
-      - name: Search data.gouv.fr for official datasets
-        run: |
-          echo "=== data.gouv.fr search: malus ecologique ==="
-          curl -s "https://www.data.gouv.fr/api/1/datasets/?q=malus%20ecologique" | python3 -m json.tool | head -200
-          echo "=== data.gouv.fr search: bareme malus ==="
-          curl -s "https://www.data.gouv.fr/api/1/datasets/?q=bareme%20malus" | python3 -m json.tool | head -200
-          echo "=== data.gouv.fr search: taxe certificats immatriculation ==="
-          curl -s "https://www.data.gouv.fr/api/1/datasets/?q=taxe%20certificats%20immatriculation" | python3 -m json.tool | head -200
-          echo "=== data.gouv.fr search: cheval fiscal region ==="
-          curl -s "https://www.data.gouv.fr/api/1/datasets/?q=cheval%20fiscal" | python3 -m json.tool | head -200
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
-      - name: Fetch service-public.fr page (raw)
+      - name: Install Playwright
         run: |
-          curl -sL -A "Mozilla/5.0 (research)" "https://www.service-public.fr/particuliers/vosdroits/F34811" -o sp_malus.html
-          echo "bytes: $(wc -c < sp_malus.html)"
-          echo "=== grep for euro amounts / g/km table markers ==="
-          grep -oE '[0-9]+[ ]?(€|euros)' sp_malus.html | sort -u | head -100
+          npm init -y >/dev/null 2>&1 || true
+          npm install --no-save playwright@1.48.0
+          npx playwright install chromium --with-deps
 
-      - name: Fetch legifrance article (base malus CO2 table, CGI art 1012 ter)
+      - name: Explore the official simulator (capture network + DOM)
+        timeout-minutes: 3
         run: |
-          curl -sL -A "Mozilla/5.0 (research)" "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000047345363" -o lf_1012ter.html
-          echo "bytes: $(wc -c < lf_1012ter.html)"
-          python3 - <<'EOF'
-          import re
-          html = open('lf_1012ter.html', encoding='utf-8', errors='replace').read()
-          text = re.sub('<[^>]+>', ' ', html)
-          text = re.sub(r'\s+', ' ', text)
-          print(text[:6000])
+          node <<'EOF'
+          const { chromium } = require('playwright');
+          const fs = require('fs');
+          (async () => {
+            const browser = await chromium.launch();
+            const page = await browser.newPage();
+            const jsonCalls = [];
+            page.on('response', async (res) => {
+              const url = res.url();
+              const ct = res.headers()['content-type'] || '';
+              if (ct.includes('json')) {
+                try {
+                  const body = await res.text();
+                  jsonCalls.push({ url, status: res.status(), body: body.slice(0, 20000) });
+                } catch (e) {}
+              }
+            });
+
+            await page.goto('https://www.service-public.gouv.fr/simulateur/calcul/cout-certificat-immatriculation', { waitUntil: 'networkidle', timeout: 45000 });
+            await page.waitForTimeout(1500);
+
+            console.log('PAGE_TITLE:', await page.title());
+            console.log('=== VISIBLE TEXT (first 4000 chars) ===');
+            const bodyText = await page.evaluate(() => document.body.innerText);
+            console.log(bodyText.slice(0, 4000));
+
+            console.log('=== FORM CONTROLS on step 1 ===');
+            const controls = await page.evaluate(() => {
+              const els = Array.from(document.querySelectorAll('input, select, textarea, button, [role="radio"], [role="button"]'));
+              return els.map(el => ({
+                tag: el.tagName,
+                type: el.type || null,
+                name: el.name || null,
+                id: el.id || null,
+                text: (el.innerText || el.value || el.getAttribute('aria-label') || '').slice(0, 80),
+              }));
+            });
+            console.log(JSON.stringify(controls, null, 2).slice(0, 6000));
+
+            fs.writeFileSync('json_calls.json', JSON.stringify(jsonCalls, null, 2));
+            console.log('JSON_CALLS_COUNT:', jsonCalls.length);
+            for (const c of jsonCalls) {
+              console.log('JSON_CALL_URL:', c.url, 'status', c.status, 'bytes', c.body.length);
+            }
+
+            await page.screenshot({ path: 'step1.png', fullPage: true });
+
+            await browser.close();
+          })().catch(e => { console.error('SCRIPT_ERROR', e); process.exit(1); });
           EOF
 
-      - name: Fetch a simulator page raw (fallback source)
-        run: |
-          curl -sL -A "Mozilla/5.0 (research)" "https://www.malus-ecologique.fr/grille-malus/2026" -o sim1.html
-          echo "bytes: $(wc -c < sim1.html)"
-          python3 - <<'EOF'
-          import re
-          html = open('sim1.html', encoding='utf-8', errors='replace').read()
-          text = re.sub('<[^>]+>', ' ', html)
-          text = re.sub(r'\s+', ' ', text)
-          print(text[:8000])
-          EOF
-
-      - name: Upload raw pages as artifact
+      - name: Upload artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: research-raw-pages
+          name: sim-recon
           path: |
-            sp_malus.html
-            lf_1012ter.html
-            sim1.html
+            step1.png
+            json_calls.json
