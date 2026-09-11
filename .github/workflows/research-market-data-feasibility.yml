@@ -1,0 +1,72 @@
+name: Research market data feasibility (LaCentrale / Leboncoin)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1 || true
+          npm install --no-save playwright@1.48.0
+          npx playwright install chromium --with-deps
+
+      - name: Probe LaCentrale and Leboncoin (single read-only page load each)
+        timeout-minutes: 3
+        run: |
+          node <<'EOF'
+          const { chromium } = require('playwright');
+          (async () => {
+            const browser = await chromium.launch();
+
+            async function probe(name, url) {
+              console.log('\n\n======== PROBE: ' + name + ' (' + url + ') ========');
+              const page = await browser.newPage({ userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36' });
+              const apiCalls = [];
+              page.on('response', (res) => {
+                const u = res.url();
+                const ct = res.headers()['content-type'] || '';
+                if (ct.includes('json') && res.status() === 200) {
+                  apiCalls.push({ url: u, status: res.status(), ct });
+                }
+              });
+              try {
+                const res = await page.goto(url, { waitUntil: 'networkidle', timeout: 25000 });
+                console.log('HTTP status:', res ? res.status() : 'no response');
+                await page.waitForTimeout(2000);
+                const title = await page.title();
+                console.log('Page title:', title);
+                const bodyText = await page.evaluate(() => document.body.innerText).catch(()=>'');
+                const looksChallenged = /just a moment|checking your browser|cloudflare|captcha|access denied|are you human/i.test(bodyText) || /just a moment|checking your browser/i.test(title);
+                console.log('Looks bot-challenged:', looksChallenged);
+                console.log('Body text sample (first 500 chars):', bodyText.slice(0, 500).replace(/\n+/g, ' | '));
+                console.log('JSON API calls observed:', apiCalls.length);
+                apiCalls.slice(0, 8).forEach(c => console.log('  API:', c.url.slice(0, 200)));
+                await page.screenshot({ path: name + '.png', fullPage: false }).catch(()=>{});
+              } catch (e) {
+                console.log('PROBE_ERROR', e.message.split('\n')[0]);
+              }
+              await page.close();
+            }
+
+            await probe('lacentrale', 'https://www.lacentrale.fr/listing?makesModelsCommercialNames=BMW-M3');
+            await probe('leboncoin', 'https://www.leboncoin.fr/recherche?category=2&text=BMW%20M3');
+
+            await browser.close();
+          })().catch(e => { console.error('SCRIPT_ERROR', e); process.exit(1); });
+          EOF
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: market-probe
+          path: |
+            lacentrale.png
+            leboncoin.png
