@@ -50,6 +50,13 @@ jobs:
 
             await set('demarche', "Immatriculation d'un véhicule d'occasion", true);
 
+            console.log('Scrolling the radio into view (IntersectionObserver-based reveal?)...');
+            try {
+              await page.locator('#franceOuImport_2').scrollIntoViewIfNeeded({ timeout: 5000 });
+              console.log('scrollIntoViewIfNeeded succeeded');
+            } catch (e) { console.log('scrollIntoViewIfNeeded failed:', e.message.split('\n')[0]); }
+            await page.waitForTimeout(1500);
+
             console.log('Waiting for franceOuImport_2 to become visible (up to 10s)...');
             try {
               await page.waitForSelector('#franceOuImport_2', { state: 'visible', timeout: 10000 });
