@@ -1,7 +1,9 @@
 name: Research market data feasibility (LaCentrale / Leboncoin)
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [claude/animated-slides-website-7hkyof]
+    paths: [.github/workflows/research-market-data-feasibility.yml]
 
 jobs:
   research:
