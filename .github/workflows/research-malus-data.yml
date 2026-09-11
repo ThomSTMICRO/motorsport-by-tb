@@ -17,7 +17,7 @@ jobs:
           npm install --no-save playwright@1.48.0
           npx playwright install chromium --with-deps
 
-      - name: Fill full form (test case) and capture every /Default/source response
+      - name: Fill full form (test case), click résultat, capture sources
         timeout-minutes: 3
         run: |
           node <<'EOF'
@@ -26,22 +26,18 @@ jobs:
           (async () => {
             const browser = await chromium.launch();
             const page = await browser.newPage();
-            let n = 0;
+            const sources = [];
             page.on('response', async (res) => {
               const u = res.url();
               if (u.includes('/Default/source')) {
-                try {
-                  const body = await res.text();
-                  n++;
-                  fs.writeFileSync(`src_${n}.json`, JSON.stringify({url: u, body}, null, 0));
-                } catch (e) {}
+                try { sources.push({url: u, body: await res.text()}); } catch (e) {}
               }
             });
 
             async function set(id, value, isSelect) {
               try {
-                if (isSelect) await page.selectOption('#'+id, value);
-                else await page.fill('#'+id, value, {force: true});
+                if (isSelect) await page.selectOption('#'+id, value, {timeout: 5000});
+                else await page.fill('#'+id, value, {force: true, timeout: 5000});
                 await page.waitForTimeout(500);
                 return true;
               } catch (e) { console.log('SET_FAIL', id, e.message.split('\n')[0]); return false; }
@@ -49,8 +45,8 @@ jobs:
             async function clickIfVisible(id) {
               try {
                 const el = await page.$('#'+id);
-                if (el) { await el.click({force:true}); await page.waitForTimeout(400); return true; }
-              } catch (e) {}
+                if (el) { await el.click({force:true, timeout:3000}); await page.waitForTimeout(400); return true; }
+              } catch (e) { console.log('CLICK_FAIL', id, e.message.split('\n')[0]); }
               return false;
             }
 
@@ -59,40 +55,59 @@ jobs:
             try { await page.click('button:has-text("Accepter")', { timeout: 3000 }); } catch (e) {}
 
             await set('demarche', "Immatriculation d'un véhicule d'occasion", true);
-            await clickIfVisible('franceOuImport_2'); // importé
-            await set('typeVehicule', '1', true); // Véhicule de tourisme
+            await clickIfVisible('franceOuImport_2');
+            await set('typeVehicule', '1', true);
             await clickIfVisible('IsCamionnettePlacesAssises_2');
             await clickIfVisible('vehiculeDeCollection_2');
             await set('dateMiseEnCirculation', '2020-06-15', false);
             await set('PuissanceAdmSaisie', '6', false);
-            await set('energie', '1', true); // Essence
+            await clickIfVisible('vehiculeElectric_2');
+            await set('energie', '1', true);
             await clickIfVisible('Autonomie50Km_2');
             await clickIfVisible('invalidite_2');
-            await clickIfVisible('receptionCommunautaire_1');
+            await clickIfVisible('receptionCommunautaire_2');
             await set('TauxCO2Saisi', '130', false);
             await clickIfVisible('vehicule_8Places_2');
             await clickIfVisible('PersonMoraleLocataireOuProprietaire_2');
             await clickIfVisible('personneMorale_2');
             await set('poidsSaisi', '1400', false);
-            await clickIfVisible('vehiculeElectric_2');
             await set('departement', '06 - Alpes-Maritimes', true);
-            await page.waitForTimeout(2500);
+            await page.waitForTimeout(1500);
 
-            console.log('=== FULL VISIBLE TEXT ===');
-            console.log((await page.evaluate(() => document.body.innerText)).slice(0, 6000));
+            console.log('=== CONTROLS STILL EMPTY/VISIBLE CHECK ===');
+            const remaining = await page.evaluate(() => {
+              const els = Array.from(document.querySelectorAll('input,select'));
+              return els.filter(el => {
+                const r = el.getClientRects();
+                return r.length > 0 && !el.value && el.type !== 'radio' && el.type !== 'hidden' && el.type !== 'search';
+              }).map(el => el.id || el.name);
+            });
+            console.log(JSON.stringify(remaining));
+
+            try {
+              await page.click('button:has-text("Afficher le résultat")', { timeout: 5000 });
+              await page.waitForTimeout(2000);
+              console.log('CLICKED_RESULT_BUTTON');
+            } catch (e) { console.log('RESULT_BUTTON_FAIL', e.message.split('\n')[0]); }
+
+            console.log('=== FULL VISIBLE TEXT (tail, likely contains result) ===');
+            const txt = await page.evaluate(() => document.body.innerText);
+            console.log(txt.slice(-4000));
+
+            console.log('=== CAPTURED SOURCES (' + sources.length + ') ===');
+            sources.forEach((s, i) => {
+              console.log('--- src ' + i + ' url=' + s.url + ' ---');
+              console.log(s.body);
+            });
 
             await page.screenshot({ path: 'final.png', fullPage: true });
             await browser.close();
           })().catch(e => { console.error('SCRIPT_ERROR', e); process.exit(1); });
           EOF
-          echo "--- captured source files ---"
-          ls -la src_*.json 2>/dev/null || echo "none"
 
-      - name: Upload artifacts
+      - name: Upload screenshot
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: sim-full
-          path: |
-            src_*.json
-            final.png
+          path: final.png
