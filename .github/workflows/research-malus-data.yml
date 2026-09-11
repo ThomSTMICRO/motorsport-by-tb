@@ -6,48 +6,6 @@ on:
     paths: [.github/workflows/research-malus-data.yml]
 
 jobs:
-  fetch_q5_specs:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - name: Install Playwright
-        run: |
-          npm init -y >/dev/null 2>&1 || true
-          npm install --no-save playwright@1.48.0
-          npx playwright install chromium --with-deps
-      - name: Fetch real Audi Q5 2.0 TFSI 252ch (2018) specs from technical databases
-        timeout-minutes: 4
-        run: |
-          node <<'EOF'
-          const { chromium } = require('playwright');
-          (async () => {
-            const browser = await chromium.launch();
-            async function probe(url) {
-              console.log('\n\n======== FETCH: ' + url + ' ========');
-              const page = await browser.newPage({ userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36' });
-              try {
-                const res = await page.goto(url, { waitUntil: 'networkidle', timeout: 25000 });
-                console.log('HTTP status:', res ? res.status() : 'no response');
-                await page.waitForTimeout(1500);
-                const txt = await page.evaluate(() => document.body.innerText);
-                // Print lines mentioning CO2, weight, fiscal power keywords for quick scan
-                const keep = txt.split('\n').filter(l => /co2|CO²|kg|weight|poids|fiscal|puissance|kW|PS|hp|tax/i.test(l) && l.trim().length > 0 && l.trim().length < 200);
-                console.log('RELEVANT LINES (' + keep.length + '):');
-                keep.slice(0, 80).forEach(l => console.log('  ', l.trim()));
-              } catch (e) {
-                console.log('FETCH_ERROR', e.message.split('\n')[0]);
-              }
-              await page.close();
-            }
-            await probe('https://www.automobile-catalog.com/car/2018/2503865/audi_q5_2_0_tfsi_252_quattro_s-tronic.html');
-            await probe('https://www.auto-data.net/en/audi-q5-ii-fy-2.0-tfsi-252hp-quattro-ultra-s-tronic-26243');
-            await probe('https://www.ultimatespecs.com/car-specs/Audi/107930/Audi-Q5-(FY)-20-TFSI-252HP-Quattro-S-tronic.html');
-            await browser.close();
-          })().catch(e => { console.error('SCRIPT_ERROR', e); process.exit(1); });
-          EOF
-
   q5_scenario:
     runs-on: ubuntu-latest
     steps:
@@ -112,6 +70,8 @@ jobs:
               await set('typeVehicule', 'Véhicule de tourisme (VT ou M1) ex-Voiture particulière (VP)', true);
               await page.waitForTimeout(500);
               await set('dateMiseEnCirculation', dateMEC, false);
+              const dateVal = await page.evaluate(() => document.getElementById('dateMiseEnCirculation')?.value);
+              console.log('dateMiseEnCirculation actual value after set:', dateVal);
               await set('PuissanceAdmSaisie', String(cv), false);
               await page.waitForTimeout(500);
               await forceUnhideAndClick('vehiculeElectric_2'); // non électrique
@@ -130,23 +90,35 @@ jobs:
               await set('departement', dept, true);
               await page.waitForTimeout(1000);
 
+              // Diagnose: is there still a "Suivant" (multi-step wizard) button, or a validation error, before the result button?
+              const preClickButtons = await page.evaluate(() => Array.from(document.querySelectorAll('button')).map(b => b.textContent.trim()).filter(t => t.length > 0 && t.length < 60));
+              console.log('Buttons visible before clicking "Afficher le résultat":', JSON.stringify(preClickButtons));
+              const errorTexts = await page.evaluate(() => Array.from(document.querySelectorAll('.fr-error-text, [class*="error"]')).map(e => e.textContent.trim()).filter(t => t.length > 0));
+              console.log('Error texts on page before click:', JSON.stringify(errorTexts));
+
               await page.click('button:has-text("Afficher le résultat")', { timeout: 8000 });
               await page.waitForTimeout(700);
               const txt = await page.evaluate(() => document.body.innerText);
               const lines = txt.split('\n').filter(l => /^Y[1-6]\s*-/.test(l.trim()) || /Total/i.test(l.trim()));
               console.log('RESULT LINES:');
               lines.forEach(l => console.log('  ', l.trim()));
-              // Dump broader results block as fallback in case regex above misses formatting
               const idx = txt.indexOf('Y1');
-              if (idx >= 0) console.log('RAW BLOCK:\n', txt.slice(idx, idx + 1200));
+              if (idx >= 0) {
+                console.log('RAW BLOCK:\n', txt.slice(idx, idx + 1200));
+              } else {
+                console.log('NO "Y1" FOUND. URL after click:', page.url());
+                const postClickErrors = await page.evaluate(() => Array.from(document.querySelectorAll('.fr-error-text, [class*="error"]')).map(e => e.textContent.trim()).filter(t => t.length > 0));
+                console.log('Error texts after click:', JSON.stringify(postClickErrors));
+                console.log('FULL BODY TEXT (first 4000 chars):\n', txt.slice(0, 4000));
+              }
             }
 
-            // Audi Q5 II (FY) facelift "45 TFSI quattro" 2.0 TFSI 252ch, MY2018, essence, import Allemagne.
-            // Specs ESTIMÉES (à confirmer avec la carte grise allemande / COC réelle) :
-            //   CO2 ~172 g/km (NEDC corrélé), masse en ordre de marche ~1900kg, puissance fiscale ~12 CV.
-            //   Département placeholder: 06 - Alpes-Maritimes (à remplacer par le département réel du client).
-            await runScenario('Audi Q5 2018 252ch essence import (estimations)', {
-              dateMEC: '2018-06-01', cv: 12, co2: 172, poids: 1900, dept: '06 - Alpes-Maritimes'
+            // Audi Q5 II (FY) 2.0 TFSI quattro S-tronic 252ch, MY2018, essence, import Allemagne.
+            // Specs trouvées via recherche web (automobile-catalog.com) : CO2 154 g/km (NEDC),
+            // poids à vide ~1835kg (+75kg conducteur = ~1910kg TMOM). À confirmer avec le COC/Fahrzeugschein réel.
+            // Département placeholder: 06 - Alpes-Maritimes (à remplacer par le département réel du client).
+            await runScenario('Audi Q5 2018 252ch essence import (specs web)', {
+              dateMEC: '2018-06-01', cv: 12, co2: 154, poids: 1910, dept: '06 - Alpes-Maritimes'
             });
 
             await browser.close();
