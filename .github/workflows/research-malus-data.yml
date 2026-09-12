@@ -6,7 +6,7 @@ on:
     paths: [.github/workflows/research-malus-data.yml]
 
 jobs:
-  fetch_bofip_full:
+  fetch_tarifs_regionaux:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/setup-node@v4
@@ -17,34 +17,42 @@ jobs:
           npm init -y >/dev/null 2>&1 || true
           npm install --no-save playwright@1.48.0
           npx playwright install chromium --with-deps
-      - name: Fetch full BOI-AIS-MOB-10-20-40 text, searching for "coefficient forfaitaire" / "ancienneté" / "importé"
+      - name: Fetch full 2026 regional cheval fiscal tariff table
         timeout-minutes: 4
         run: |
           node <<'EOF'
           const { chromium } = require('playwright');
           (async () => {
             const browser = await chromium.launch();
-            const page = await browser.newPage({ userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36' });
-            const url = 'https://bofip.impots.gouv.fr/bofip/13927-PGP.html/identifiant=BOI-AIS-MOB-10-20-40-20250528';
-            const res = await page.goto(url, { waitUntil: 'networkidle', timeout: 25000 });
-            console.log('HTTP status:', res ? res.status() : 'no response');
-            await page.waitForTimeout(1500);
-            const txt = await page.evaluate(() => document.body.innerText);
-            console.log('FULL TEXT LENGTH:', txt.length);
-
-            for (const kw of ['coefficient forfaitaire', 'ancienneté', 'importé', 'décote', 'usagé', 'occasion']) {
-              const positions = [];
-              let idx = txt.toLowerCase().indexOf(kw.toLowerCase());
-              while (idx >= 0 && positions.length < 3) {
-                positions.push(idx);
-                idx = txt.toLowerCase().indexOf(kw.toLowerCase(), idx + 1);
+            async function probe(url) {
+              console.log('\n\n======== FETCH: ' + url + ' ========');
+              const page = await browser.newPage({ userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36' });
+              try {
+                const res = await page.goto(url, { waitUntil: 'networkidle', timeout: 25000 });
+                console.log('HTTP status:', res ? res.status() : 'no response');
+                await page.waitForTimeout(1500);
+                // Dump all table rows as text (departement/region tables are usually <table> or list items)
+                const rows = await page.evaluate(() => {
+                  const out = [];
+                  document.querySelectorAll('table tr').forEach(tr => {
+                    const cells = Array.from(tr.querySelectorAll('td,th')).map(td => td.textContent.trim());
+                    if (cells.length) out.push(cells.join(' | '));
+                  });
+                  return out;
+                });
+                console.log('TABLE ROWS (' + rows.length + '):');
+                rows.forEach(r => console.log('  ', r));
+                if (rows.length === 0) {
+                  const txt = await page.evaluate(() => document.body.innerText);
+                  console.log('NO TABLE FOUND. Full text (8000 chars):\n', txt.slice(0, 8000));
+                }
+              } catch (e) {
+                console.log('FETCH_ERROR', e.message.split('\n')[0]);
               }
-              console.log(`Keyword "${kw}": ${positions.length} occurrence(s) at positions`, positions);
+              await page.close();
             }
-
-            console.log('\n=== FULL TEXT (complete) ===\n');
-            console.log(txt);
-
+            await probe('https://www.direct-carte-grise.fr/aide/tarif-carte-grise-2026');
+            await probe('https://www.caroom.fr/guide/administratif/carte-grise/prix-cheval-fiscal');
             await browser.close();
           })().catch(e => { console.error('SCRIPT_ERROR', e); process.exit(1); });
           EOF
