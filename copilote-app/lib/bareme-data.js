@@ -121,14 +121,79 @@ const TRANCHES_DECOTE_MOIS = [
 const MALUS_POIDS_INTRODUIT_LE = "2022-01-01";
 
 /**
- * Tarifs régionaux du cheval fiscal (taxe Y1), par département, année 2026.
- * Seul le département 06 est confirmé (cas réel + sources concordantes) à ce jour.
+ * Tarif du cheval fiscal par région, année 2026 (taxe régionale Y1).
+ * ⚠️ Confiance "estime" pour toutes les régions SAUF PACA (département 06, confirmé
+ * par un cas réel payé) — sources secondaires concordantes (plusieurs agrégateurs
+ * carte grise), mais direct-carte-grise.fr et caroom.fr eux-mêmes sont bloqués par
+ * Cloudflare, donc ces valeurs viennent des extraits de recherche, pas d'une page
+ * consultée intégralement. Chaque région fixe son tarif annuellement — à revérifier
+ * si l'année change.
  */
-const TARIF_CV_PAR_DEPARTEMENT_2026 = {
-  "06": { tarif: 60.0, confiance: "confirme" }, // Alpes-Maritimes, région PACA — confirmé par un cas réel payé
-  // Autres départements : non encore renseignés. Ne pas deviner un tarif régional —
-  // la fourchette réelle va d'environ 27€/CV (Corse) à 60€/CV (plusieurs régions au taux max).
+const TARIF_PAR_REGION_2026 = {
+  "Auvergne-Rhône-Alpes": { tarif: 43.0, confiance: "estime" },
+  "Bourgogne-Franche-Comté": { tarif: 60.0, confiance: "estime" },
+  Bretagne: { tarif: 60.0, confiance: "estime" },
+  "Centre-Val de Loire": { tarif: 60.0, confiance: "estime" },
+  Corse: { tarif: 53.0, confiance: "estime" },
+  "Grand Est": { tarif: 60.0, confiance: "estime" },
+  "Hauts-de-France": { tarif: 43.0, confiance: "estime" },
+  "Île-de-France": { tarif: 68.95, confiance: "estime" },
+  Normandie: { tarif: 60.0, confiance: "estime" },
+  "Nouvelle-Aquitaine": { tarif: 58.0, confiance: "estime" },
+  Occitanie: { tarif: 59.5, confiance: "estime" },
+  "Pays de la Loire": { tarif: 60.0, confiance: "estime" },
+  "Provence-Alpes-Côte d'Azur": { tarif: 60.0, confiance: "confirme" }, // dépt 06 confirmé par un cas réel payé
+  Martinique: { tarif: 30.0, confiance: "estime" },
+  Mayotte: { tarif: 30.0, confiance: "estime" },
 };
+
+/**
+ * Département (code à 2 chiffres, ou 2A/2B pour la Corse) -> région. Géographie
+ * administrative française standard (13 régions métropolitaines depuis 2016 + Corse
+ * + DOM), pas une donnée fiscale à vérifier séparément.
+ * Guadeloupe (971), Guyane (973), Réunion (974) : tarif non recherché, absents ici
+ * plutôt que devinés.
+ */
+const REGION_PAR_DEPARTEMENT = {
+  "01": "Auvergne-Rhône-Alpes", "03": "Auvergne-Rhône-Alpes", "07": "Auvergne-Rhône-Alpes",
+  "15": "Auvergne-Rhône-Alpes", "26": "Auvergne-Rhône-Alpes", "38": "Auvergne-Rhône-Alpes",
+  "42": "Auvergne-Rhône-Alpes", "43": "Auvergne-Rhône-Alpes", "63": "Auvergne-Rhône-Alpes",
+  "69": "Auvergne-Rhône-Alpes", "73": "Auvergne-Rhône-Alpes", "74": "Auvergne-Rhône-Alpes",
+  "21": "Bourgogne-Franche-Comté", "25": "Bourgogne-Franche-Comté", "39": "Bourgogne-Franche-Comté",
+  "58": "Bourgogne-Franche-Comté", "70": "Bourgogne-Franche-Comté", "71": "Bourgogne-Franche-Comté",
+  "89": "Bourgogne-Franche-Comté", "90": "Bourgogne-Franche-Comté",
+  "22": "Bretagne", "29": "Bretagne", "35": "Bretagne", "56": "Bretagne",
+  "18": "Centre-Val de Loire", "28": "Centre-Val de Loire", "36": "Centre-Val de Loire",
+  "37": "Centre-Val de Loire", "41": "Centre-Val de Loire", "45": "Centre-Val de Loire",
+  "2A": "Corse", "2B": "Corse",
+  "08": "Grand Est", "10": "Grand Est", "51": "Grand Est", "52": "Grand Est",
+  "54": "Grand Est", "55": "Grand Est", "57": "Grand Est", "67": "Grand Est",
+  "68": "Grand Est", "88": "Grand Est",
+  "02": "Hauts-de-France", "59": "Hauts-de-France", "60": "Hauts-de-France",
+  "62": "Hauts-de-France", "80": "Hauts-de-France",
+  "75": "Île-de-France", "77": "Île-de-France", "78": "Île-de-France", "91": "Île-de-France",
+  "92": "Île-de-France", "93": "Île-de-France", "94": "Île-de-France", "95": "Île-de-France",
+  "14": "Normandie", "27": "Normandie", "50": "Normandie", "61": "Normandie", "76": "Normandie",
+  "16": "Nouvelle-Aquitaine", "17": "Nouvelle-Aquitaine", "19": "Nouvelle-Aquitaine",
+  "23": "Nouvelle-Aquitaine", "24": "Nouvelle-Aquitaine", "33": "Nouvelle-Aquitaine",
+  "40": "Nouvelle-Aquitaine", "47": "Nouvelle-Aquitaine", "64": "Nouvelle-Aquitaine",
+  "79": "Nouvelle-Aquitaine", "86": "Nouvelle-Aquitaine", "87": "Nouvelle-Aquitaine",
+  "09": "Occitanie", "11": "Occitanie", "12": "Occitanie", "30": "Occitanie",
+  "31": "Occitanie", "32": "Occitanie", "34": "Occitanie", "46": "Occitanie",
+  "48": "Occitanie", "65": "Occitanie", "66": "Occitanie", "81": "Occitanie", "82": "Occitanie",
+  "44": "Pays de la Loire", "49": "Pays de la Loire", "53": "Pays de la Loire",
+  "72": "Pays de la Loire", "85": "Pays de la Loire",
+  "04": "Provence-Alpes-Côte d'Azur", "05": "Provence-Alpes-Côte d'Azur",
+  "06": "Provence-Alpes-Côte d'Azur", "13": "Provence-Alpes-Côte d'Azur",
+  "83": "Provence-Alpes-Côte d'Azur", "84": "Provence-Alpes-Côte d'Azur",
+  "972": "Martinique", "976": "Mayotte",
+};
+
+/** Tarif du cheval fiscal par département, dérivé de REGION_PAR_DEPARTEMENT +
+ *  TARIF_PAR_REGION_2026. Département 06 seul en confiance "confirme". */
+const TARIF_CV_PAR_DEPARTEMENT_2026 = Object.fromEntries(
+  Object.entries(REGION_PAR_DEPARTEMENT).map(([dept, region]) => [dept, TARIF_PAR_REGION_2026[region]])
+);
 
 /** Frais fixes de dossier (Y4 + Y5), indépendants du véhicule. */
 const FRAIS_FIXES = {

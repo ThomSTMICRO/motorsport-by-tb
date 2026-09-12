@@ -97,15 +97,43 @@ test("Année de barème inconnue -> erreur explicite, jamais un chiffre inventé
 });
 
 test("Département inconnu -> erreur explicite, jamais un tarif inventé", () => {
+  // 971 (Guadeloupe) : volontairement absent de la table (tarif non recherché,
+  // jamais deviné) — voir REGION_PAR_DEPARTEMENT dans bareme-data.js.
   const resultat = calculerCoutImport({
-    departement: "75",
+    departement: "971",
     cvFiscaux: 10,
     co2GKm: 150,
     dateMiseEnCirculation: "2018-01-01",
     dateCalcul: "2026-09-12",
   });
   assert.equal(resultat.ok, false);
-  assert.match(resultat.erreur, /75/);
+  assert.match(resultat.erreur, /971/);
+});
+
+test("Département métropolitain hors 06 : couvert via la table région (confiance estimée)", () => {
+  // 75 = Paris (Île-de-France), 69 = Rhône (Auvergne-Rhône-Alpes) : tarifs dérivés
+  // de la table région, confiance "estime" (pas "confirme" comme le 06).
+  const paris = calculerCoutImport({
+    departement: "75",
+    cvFiscaux: 10,
+    co2GKm: 150,
+    dateMiseEnCirculation: "2018-01-01",
+    dateCalcul: "2026-09-12",
+  });
+  assert.equal(paris.ok, true);
+  const y1Paris = paris.lignes.find((l) => l.code === "Y1");
+  assert.equal(y1Paris.montant, 690); // 10 CV x 68,95€/CV = 689,5 -> arrondi 690
+  assert.equal(y1Paris.confiance, "estime");
+
+  const lyon = calculerCoutImport({
+    departement: "69",
+    cvFiscaux: 10,
+    co2GKm: 150,
+    dateMiseEnCirculation: "2018-01-01",
+    dateCalcul: "2026-09-12",
+  });
+  assert.equal(lyon.ok, true);
+  assert.equal(lyon.lignes.find((l) => l.code === "Y1").montant, 430); // 10 CV x 43€/CV
 });
 
 test("Entrées invalides rejetées proprement", () => {

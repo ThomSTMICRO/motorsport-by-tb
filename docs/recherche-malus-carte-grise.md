@@ -120,15 +120,46 @@ divergence trouvée entre source simulateur réel et source tierce) :
 - 1900-1999 kg : 20 €/kg (donnée simulateur officiel réelle) vs 25 €/kg (source tierce — à
   reconcilier, privilégier la donnée simulateur officiel)
 
-## Taxe régionale (Y1) — tarifs cheval fiscal confirmés
+## Taxe régionale (Y1) — tarifs cheval fiscal par région, 2026
 
-- 2026, département 06 (Alpes-Maritimes, région PACA) : **60,00 €/CV** ✅ confirmé (cas réel + sources concordantes)
-- Régions au tarif maximal 60,00 €/CV en 2026 : Bourgogne-Franche-Comté, Bretagne,
-  Centre-Val-de-Loire, Grand Est, Normandie, PACA
+- Département 06 (Alpes-Maritimes, région PACA) : **60,00 €/CV** ✅ **confirmé** (cas réel payé
+  + sources concordantes)
+- Toutes les autres régions : ⚠️ **estimé** — sourcé via extraits de recherche web (plusieurs
+  agrégateurs carte grise concordants), mais les pages elles-mêmes (direct-carte-grise.fr,
+  caroom.fr) sont bloquées par Cloudflare, donc jamais consultées intégralement.
+
+| Région | Tarif 2026 (€/CV) |
+|---|---|
+| Auvergne-Rhône-Alpes | 43,00 € |
+| Bourgogne-Franche-Comté | 60,00 € |
+| Bretagne | 60,00 € |
+| Centre-Val de Loire | 60,00 € |
+| Corse | 53,00 € |
+| Grand Est | 60,00 € |
+| Hauts-de-France | 43,00 € |
+| Île-de-France | 68,95 € (majoration forfaitaire de 14€/CV depuis le 01/03/2026) |
+| Normandie | 60,00 € |
+| Nouvelle-Aquitaine | 58,00 € |
+| Occitanie | 59,50 € |
+| Pays de la Loire | 60,00 € |
+| **Provence-Alpes-Côte d'Azur** | **60,00 €** ✅ confirmé (dépt 06) |
+| Martinique | 30,00 € |
+| Mayotte | 30,00 € |
+
+Non couverts (tarif non recherché, volontairement absent plutôt que deviné) : Guadeloupe (971),
+Guyane (973), Réunion (974).
+
+Mapping département → région : géographie administrative française standard (13 régions
+métropolitaines depuis 2016 + Corse + DOM), implémenté dans `copilote-app/lib/bareme-data.js`
+(`REGION_PAR_DEPARTEMENT`) — fiable en soi, indépendamment des tarifs qui restent à vérifier
+par région.
+
 - Décote régionale par âge du véhicule (règle générale, à confirmer précisément) :
   ×1,0 si <10 ans depuis 1ère immatriculation, ×0,5 si >10 ans — véhicule <10 ans dans le cas
   réel étudié (99 mois = 8,25 ans), donc pas de décote appliquée sur Y1, cohérent avec
-  Y1 = 900,00 € confirmé sans réduction.
+  Y1 = 900,00 € confirmé sans réduction. Cette règle des 10 ans elle-même reste à vérifier via
+  BOFiP (probablement dans BOI-AIS-MOB-10-20-30, section "Tarifs réduits — véhicules d'une
+  ancienneté au moins égale à dix ans", repérée dans la table des matières mais pas encore lue).
 
 ## Frais fixes
 
