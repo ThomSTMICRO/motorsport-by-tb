@@ -6,7 +6,7 @@ on:
     paths: [.github/workflows/research-malus-data.yml]
 
 jobs:
-  fetch_bofip_decote:
+  fetch_bofip_full:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/setup-node@v4
@@ -17,41 +17,34 @@ jobs:
           npm init -y >/dev/null 2>&1 || true
           npm install --no-save playwright@1.48.0
           npx playwright install chromium --with-deps
-      - name: Fetch BOFiP pages searching for the exact décote coefficient table
-        timeout-minutes: 5
+      - name: Fetch full BOI-AIS-MOB-10-20-40 text, searching for "coefficient forfaitaire" / "ancienneté" / "importé"
+        timeout-minutes: 4
         run: |
           node <<'EOF'
           const { chromium } = require('playwright');
           (async () => {
             const browser = await chromium.launch();
-            async function probe(url) {
-              console.log('\n\n======== FETCH: ' + url + ' ========');
-              const page = await browser.newPage({ userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36' });
-              try {
-                const res = await page.goto(url, { waitUntil: 'networkidle', timeout: 25000 });
-                console.log('HTTP status:', res ? res.status() : 'no response');
-                await page.waitForTimeout(1500);
-                const txt = await page.evaluate(() => document.body.innerText);
-                console.log('FULL TEXT LENGTH:', txt.length);
-                const lower = txt.toLowerCase();
-                const idx = lower.indexOf('coefficient forfaitaire de décote');
-                const idx2 = idx >= 0 ? idx : lower.indexOf('décote');
-                if (idx2 >= 0) {
-                  console.log('CONTEXT (10000 chars):\n', txt.slice(Math.max(0, idx2 - 300), idx2 + 10000));
-                } else {
-                  console.log('"décote" not found. Table of contents / headings:');
-                  const headings = await page.evaluate(() =>
-                    Array.from(document.querySelectorAll('h1,h2,h3,a')).map(e => e.textContent.trim()).filter(t => t.length > 3 && t.length < 150)
-                  );
-                  console.log(JSON.stringify(headings.slice(0, 100)));
-                }
-              } catch (e) {
-                console.log('FETCH_ERROR', e.message.split('\n')[0]);
+            const page = await browser.newPage({ userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36' });
+            const url = 'https://bofip.impots.gouv.fr/bofip/13927-PGP.html/identifiant=BOI-AIS-MOB-10-20-40-20250528';
+            const res = await page.goto(url, { waitUntil: 'networkidle', timeout: 25000 });
+            console.log('HTTP status:', res ? res.status() : 'no response');
+            await page.waitForTimeout(1500);
+            const txt = await page.evaluate(() => document.body.innerText);
+            console.log('FULL TEXT LENGTH:', txt.length);
+
+            for (const kw of ['coefficient forfaitaire', 'ancienneté', 'importé', 'décote', 'usagé', 'occasion']) {
+              const positions = [];
+              let idx = txt.toLowerCase().indexOf(kw.toLowerCase());
+              while (idx >= 0 && positions.length < 3) {
+                positions.push(idx);
+                idx = txt.toLowerCase().indexOf(kw.toLowerCase(), idx + 1);
               }
-              await page.close();
+              console.log(`Keyword "${kw}": ${positions.length} occurrence(s) at positions`, positions);
             }
-            await probe('https://bofip.impots.gouv.fr/bofip/13925-PGP.html/identifiant=BOI-AIS-MOB-10-20-30-20250528');
-            await probe('https://bofip.impots.gouv.fr/bofip/13911-PGP.html/identifiant=BOI-AIS-MOB-10-10-20250604');
+
+            console.log('\n=== FULL TEXT (complete) ===\n');
+            console.log(txt);
+
             await browser.close();
           })().catch(e => { console.error('SCRIPT_ERROR', e); process.exit(1); });
           EOF
