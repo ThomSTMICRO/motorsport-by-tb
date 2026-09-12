@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Copilote automobile</title>
+<style>
+  body { margin: 0; font-family: system-ui, sans-serif; background: #f7f7f8; color: #111; }
+  main { max-width: 720px; margin: 0 auto; padding: 24px 16px; min-height: 100vh; display: flex; flex-direction: column; box-sizing: border-box; }
+  h1 { font-size: 20px; font-weight: 600; margin-bottom: 0; }
+  .sous-titre { color: #666; font-size: 14px; margin-top: 4px; }
+  #messages { flex: 1; display: flex; flex-direction: column; gap: 12px; margin-top: 16px; }
+  .msg { border-radius: 12px; padding: 10px 14px; max-width: 85%; white-space: pre-wrap; font-size: 14px; line-height: 1.5; }
+  .msg.user { align-self: flex-end; background: #111; color: #fff; }
+  .msg.assistant { align-self: flex-start; background: #fff; color: #111; border: 1px solid #e2e2e2; }
+  .info { color: #888; font-size: 14px; }
+  .erreur { color: #c00; font-size: 14px; }
+  #zone-saisie { display: flex; gap: 8px; margin-top: 16px; position: sticky; bottom: 16px; }
+  #saisie { flex: 1; padding: 12px 14px; border-radius: 10px; border: 1px solid #d5d5d5; font-size: 14px; box-sizing: border-box; }
+  #envoyer { padding: 12px 20px; border-radius: 10px; border: none; background: #111; color: #fff; font-size: 14px; cursor: pointer; }
+  #envoyer:disabled { opacity: 0.6; cursor: default; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Copilote automobile</h1>
+  <p class="sous-titre">Coût d'import d'un véhicule d'occasion — carte grise et malus écologique</p>
+
+  <div id="messages">
+    <div class="info" id="placeholder">
+      Décrivez le véhicule à importer (marque, modèle, année, CO2, puissance fiscale,
+      département) et je calcule le coût exact de la carte grise et du malus.
+    </div>
+  </div>
+
+  <div id="zone-saisie">
+    <input id="saisie" type="text" placeholder="Ex. : Audi Q5 2018, 162g CO2, 15CV, département 06" autocomplete="off" />
+    <button id="envoyer">Envoyer</button>
+  </div>
+</main>
+
+<script>
+  const elMessages = document.getElementById("messages");
+  const elPlaceholder = document.getElementById("placeholder");
+  const elSaisie = document.getElementById("saisie");
+  const elEnvoyer = document.getElementById("envoyer");
+
+  let historique = [];
+  let enCours = false;
+
+  function texteAffichable(message) {
+    if (typeof message.content === "string") return message.content;
+    if (!Array.isArray(message.content)) return null;
+    const morceaux = message.content.filter((b) => b.type === "text" && typeof b.text === "string").map((b) => b.text);
+    return morceaux.length > 0 ? morceaux.join("\n") : null;
+  }
+
+  function afficherHistorique() {
+    elMessages.innerHTML = "";
+    if (historique.length === 0) {
+      elMessages.appendChild(elPlaceholder);
+      return;
+    }
+    for (const m of historique) {
+      const texte = texteAffichable(m);
+      if (texte === null) continue;
+      const div = document.createElement("div");
+      div.className = "msg " + (m.role === "user" ? "user" : "assistant");
+      div.textContent = texte;
+      elMessages.appendChild(div);
+    }
+  }
+
+  function afficherStatut(texte, classe) {
+    const div = document.createElement("div");
+    div.className = classe;
+    div.textContent = texte;
+    elMessages.appendChild(div);
+  }
+
+  async function envoyer() {
+    const texte = elSaisie.value.trim();
+    if (!texte || enCours) return;
+    elSaisie.value = "";
+    historique = [...historique, { role: "user", content: texte }];
+    afficherHistorique();
+    enCours = true;
+    elEnvoyer.disabled = true;
+    afficherStatut("Calcul en cours…", "info");
+
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ messages: historique }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Erreur inconnue");
+      historique = data.messages;
+      afficherHistorique();
+    } catch (e) {
+      afficherHistorique();
+      afficherStatut("Erreur : " + e.message, "erreur");
+    } finally {
+      enCours = false;
+      elEnvoyer.disabled = false;
+      elSaisie.focus();
+    }
+  }
+
+  elEnvoyer.addEventListener("click", envoyer);
+  elSaisie.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") envoyer();
+  });
+</script>
+</body>
+</html>

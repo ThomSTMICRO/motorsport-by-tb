@@ -3,19 +3,12 @@
  *
  * PRINCIPE DU PROJET : TRANSPARENCE > FAUSSE PRÉCISION, DONNÉES RÉELLES > DONNÉES INVENTÉES.
  * Chaque table ci-dessous porte un niveau de confiance explicite. Le moteur de calcul
- * (voir calculateur.ts) DOIT refuser de répondre — plutôt que d'inventer un chiffre —
+ * (voir calculateur.js) DOIT refuser de répondre — plutôt que d'inventer un chiffre —
  * quand une donnée nécessaire n'est pas dans ces tables.
  *
  * Voir /docs/recherche-malus-carte-grise.md à la racine du dépôt pour l'historique complet
  * de la recherche et les sources.
  */
-
-export type Confiance = "confirme" | "estime" | "interpole";
-
-export interface EntreeBareme {
-  co2: number;
-  montant: number;
-}
 
 /**
  * Barème malus CO2 par année de première immatriculation.
@@ -23,7 +16,7 @@ export interface EntreeBareme {
  * (sources secondaires concordantes + un point recoupé avec un cas réel payé).
  * Les autres années ne sont PAS encore renseignées — ne pas inventer de valeurs.
  */
-export const BAREME_CO2_PAR_ANNEE: Record<number, { confiance: Confiance; seuil: number; plafondCo2: number; plafondMontant: number; grille: EntreeBareme[] }> = {
+const BAREME_CO2_PAR_ANNEE = {
   2018: {
     confiance: "estime", // sources secondaires (L'Argus, cartegrise.com) + 1 point recoupé avec un cas réel (162g/km = 4460€)
     seuil: 120, // g/km à partir duquel le malus s'applique (0€ en dessous)
@@ -61,7 +54,7 @@ export const BAREME_CO2_PAR_ANNEE: Record<number, { confiance: Confiance; seuil:
       { co2: 147, montant: 1873 },
       { co2: 148, montant: 2010 },
       { co2: 149, montant: 2153 },
-      // 150-153 : non collecté (trou dans la grille)
+      // 150-153 : non collecté (trou dans la grille) — interpolé si nécessaire, confiance dégradée
       { co2: 154, montant: 2940 },
       { co2: 155, montant: 3113 },
       { co2: 156, montant: 3290 },
@@ -89,14 +82,13 @@ export const BAREME_CO2_PAR_ANNEE: Record<number, { confiance: Confiance; seuil:
  * (remplace l'ancien système de réduction proportionnelle de 10 %/an).
  *
  * C'est un barème PAR PALIER (pas une courbe continue) : chaque tranche a un
- * pourcentage fixe, aucune interpolation à faire — contrairement à ce qu'on
- * supposait avant d'avoir trouvé ce texte.
+ * pourcentage fixe, aucune interpolation à faire.
  *
  * Vérifié à la fois par le texte de loi ET par un cas réel payé (Audi Q5 2018,
  * 162g/km, 15CV, dépt 06 : 99 mois → tranche 97-108 → 58 %, exactement confirmé
  * par la facture réelle de 2 786,76 €).
  */
-export const TRANCHES_DECOTE_MOIS: { min: number; max: number; decote: number }[] = [
+const TRANCHES_DECOTE_MOIS = [
   { min: 0, max: 0, decote: 0.0 },
   { min: 1, max: 3, decote: 0.03 },
   { min: 4, max: 6, decote: 0.06 },
@@ -126,23 +118,23 @@ export const TRANCHES_DECOTE_MOIS: { min: number; max: number; decote: number }[
  * 1er janvier 2022 (introduit à cette date). Pour un véhicule immatriculé avant,
  * aucune composante poids ne s'applique, quel que soit son poids réel.
  */
-export const MALUS_POIDS_INTRODUIT_LE = "2022-01-01";
+const MALUS_POIDS_INTRODUIT_LE = "2022-01-01";
 
 /**
  * Tarifs régionaux du cheval fiscal (taxe Y1), par département, année 2026.
  * Seul le département 06 est confirmé (cas réel + sources concordantes) à ce jour.
  */
-export const TARIF_CV_PAR_DEPARTEMENT_2026: Record<string, { tarif: number; confiance: Confiance }> = {
+const TARIF_CV_PAR_DEPARTEMENT_2026 = {
   "06": { tarif: 60.0, confiance: "confirme" }, // Alpes-Maritimes, région PACA — confirmé par un cas réel payé
   // Autres départements : non encore renseignés. Ne pas deviner un tarif régional —
   // la fourchette réelle va d'environ 27€/CV (Corse) à 60€/CV (plusieurs régions au taux max).
 };
 
 /** Frais fixes de dossier (Y4 + Y5), indépendants du véhicule. */
-export const FRAIS_FIXES = {
+const FRAIS_FIXES = {
   y4: 11.0,
   y5: 2.76,
-  confiance: "confirme" as Confiance, // confirmé par un cas réel payé
+  confiance: "confirme", // confirmé par un cas réel payé
 };
 
 /**
@@ -153,4 +145,13 @@ export const FRAIS_FIXES = {
  * du simulateur officiel), mais explique pourquoi on ne peut pas simplement vérifier
  * chaque résultat contre lui pour les véhicules de plus de quelques années.
  */
-export const LIMITE_SIMULATEUR_OFFICIEL_MOIS = 13; // dernière valeur confirmée fonctionnelle ; 39 mois confirmé refusé
+const LIMITE_SIMULATEUR_OFFICIEL_MOIS = 13; // dernière valeur confirmée fonctionnelle ; 39 mois confirmé refusé
+
+module.exports = {
+  BAREME_CO2_PAR_ANNEE,
+  TRANCHES_DECOTE_MOIS,
+  MALUS_POIDS_INTRODUIT_LE,
+  TARIF_CV_PAR_DEPARTEMENT_2026,
+  FRAIS_FIXES,
+  LIMITE_SIMULATEUR_OFFICIEL_MOIS,
+};

@@ -1,9 +1,9 @@
 /**
  * Définition de l'outil (tool use) exposé à Claude pour calculer le coût d'import
- * d'un véhicule. Le schéma DOIT correspondre exactement à `EntreeCalcul`
- * dans calculateur.ts.
+ * d'un véhicule. Le schéma DOIT correspondre exactement aux champs lus par
+ * `calculerCoutImport()` dans calculateur.js.
  */
-export const CALCULER_COUT_IMPORT_TOOL = {
+const CALCULER_COUT_IMPORT_TOOL = {
   name: "calculer_cout_import",
   description:
     "Calcule le coût total d'immatriculation (taxe régionale + malus écologique + frais fixes) " +
@@ -11,11 +11,11 @@ export const CALCULER_COUT_IMPORT_TOOL = {
     "Utilise UNIQUEMENT cet outil pour tout montant en euros — ne calcule jamais toi-même. " +
     "Si l'outil renvoie ok:false, explique l'erreur à l'utilisateur au lieu d'inventer un chiffre.",
   input_schema: {
-    type: "object" as const,
+    type: "object",
     properties: {
       departement: {
         type: "string",
-        description: "Code département à 2 chiffres où le véhicule sera immatriculé, ex. \"06\"",
+        description: 'Code département à 2 chiffres où le véhicule sera immatriculé, ex. "06"',
       },
       cvFiscaux: {
         type: "number",
@@ -42,7 +42,7 @@ export const CALCULER_COUT_IMPORT_TOOL = {
   },
 };
 
-export const SYSTEM_PROMPT = `Tu es le copilote automobile d'un professionnel de l'import de véhicules en France.
+const SYSTEM_PROMPT = `Tu es le copilote automobile d'un professionnel de l'import de véhicules en France.
 Ton rôle : aider l'utilisateur à connaître le coût exact d'immatriculation (carte grise + malus
 écologique) d'un véhicule d'occasion importé, en conversant naturellement.
 
@@ -62,3 +62,5 @@ RÈGLES ABSOLUES :
 5. Présente toujours le détail ligne par ligne (Y1, Y3, Y4, Y5) en plus du total, pour que
    l'utilisateur comprenne d'où vient chaque euro.
 6. Réponds en français, de façon claire et professionnelle.`;
+
+module.exports = { CALCULER_COUT_IMPORT_TOOL, SYSTEM_PROMPT };
