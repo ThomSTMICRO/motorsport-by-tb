@@ -109,16 +109,76 @@ Ces deux exemples valident aussi la règle de calcul des mois déjà implément�
 `copilote-app/lib/calculateur.ts` (`moisEntreDates`), vérifiée a posteriori : elle reproduit
 exactement 26 et 73 mois pour ces deux cas.
 
-## Malus poids / TMOM
+## Malus poids / TMOM — ⚠️ correction structurelle importante (12/09/2026)
 
-**N'existait pas en 2018** — introduit le 1er janvier 2022. Pour un véhicule enregistré avant 2022,
-aucune composante poids ne s'applique, quel que soit son poids réel (le barème utilisé est celui
-de l'année de 1ère immatriculation, qui ne comportait pas cette taxe).
+**N'existait pas en 2018** — introduit le 1er janvier 2022 (CIBS art. L.421-72 à L.421-75,
+confirmé BOFiP BOI-AIS-MOB-10-20-40). Pour un véhicule dont la 1ère immatriculation est
+antérieure au 1er janvier 2022, le malus masse est **nul**, quel que soit son poids réel
+(confirmé par un exemple chiffré du BOFiP : véhicule immatriculé le 13/02/2020, 2000kg,
+importé/immatriculé en France en 2022 → malus masse = 0€, car "la première immatriculation
+est intervenue avant l'entrée en vigueur de la taxe au 1er janvier 2022").
 
-Pour les véhicules immatriculés à partir de 2022, tranches connues (2026, non vérifiées à 100% —
-divergence trouvée entre source simulateur réel et source tierce) :
-- 1900-1999 kg : 20 €/kg (donnée simulateur officiel réelle) vs 25 €/kg (source tierce — à
-  reconcilier, privilégier la donnée simulateur officiel)
+**CORRECTION** : ce n'est **PAS un tarif fixe par kg** comme supposé précédemment (ce qui
+explique la divergence "20€/kg vs 25€/kg" notée plus tôt — cette question n'a plus vraiment de
+sens telle que posée). C'est un **barème PAR TRANCHES MARGINALES**, comme l'impôt sur le revenu :
+chaque tranche de poids a son propre tarif marginal, et le malus total est la SOMME des montants
+calculés séparément sur chaque tranche traversée.
+
+Exemple donné par le BOFiP (barème 2024, confirmé aussi valable en janvier 2025) :
+| Tranche (masse en ordre de marche) | Tarif marginal |
+|---|---|
+| 0 - 1599 kg | 0 €/kg |
+| 1600 - 1799 kg | 10 €/kg |
+| 1800 - 1899 kg | 15 €/kg |
+| (tranches au-delà de 1899kg) | non données dans cet exemple |
+
+Calcul d'un véhicule de 1849 kg (2024) : 0€ (tranche 1) + 200×10€ (tranche 2, 1600-1799)
++ 50×15€ (tranche 3, 1800-1849) = **2 750 €**. Un autre exemple à 1880kg (barème janvier 2025,
+mêmes tranches) : 200×10 + 81×15 = **3 215 €**.
+
+**Règles complémentaires confirmées** :
+- La réduction d'ancienneté du malus masse suit **exactement la même table par tranche de mois**
+  que le malus CO2 (CIBS art. L.421-73) — même fonction de décote, pas une règle séparée.
+- **Plafonnement du cumul** (CIBS art. L.421-74) : le malus masse est réduit pour que
+  (malus CO2 + malus masse) ne dépasse jamais le tarif maximum du barème CO2 de l'année
+  concernée. Exemple : CO2=222g (2022) → malus CO2 brut 38 767€ ; masse → malus masse brut
+  5 000€ (500kg × 10€) ; max barème 2022 = 40 000€ ; donc malus masse plafonné à
+  40 000 - 38 767 = **1 233 €** (pas 5 000€).
+- Abattement famille nombreuse pour le malus masse : **200 kg par enfant à charge** (vs 20g/km
+  pour le malus CO2).
+
+Cette structure est trop complexe et les tranches trop incomplètes (seulement 3 tranches basses
+connues, sur un barème qui monte probablement jusqu'à 3000+ kg) pour être implémentée de façon
+fiable dans `copilote-app/lib/bareme-data.js` pour l'instant — le moteur de calcul continue donc
+d'avertir l'utilisateur plutôt que de calculer une valeur potentiellement fausse pour Y3 poids.
+
+## Points de calibration CO2 supplémentaires trouvés (BOFiP, non encore intégrés au moteur)
+
+Trouvés dans les exemples chiffrés du BOFiP BOI-AIS-MOB-10-20-40 — trop peu de points par année
+pour reconstruire une grille complète fiable (contrairement à 2018 qui a ~30 points), mais utiles
+comme futurs points d'ancrage :
+
+| Année | CO2 (g/km) | Malus brut |
+|---|---|---|
+| 2022 | 160 | 2 205 € |
+| 2022 | 200 | 18 188 € |
+| 2022 | 222 | 38 767 € |
+| 2022 | max (plafond) | 40 000 € |
+| 2023 | 138 | 400 € |
+| 2023 | 175 | 7 462 € |
+| 2023 | 198 | 20 396 € |
+| 2024 | 84 | 0 € |
+| 2024 | 144 | 1 386 € |
+| 2024 | max (plafond), atteint dès 225g | 60 000 € |
+
+Base légale confirmée pour la structure multi-année : CIBS art. L.421-59 (règle du barème par
+année de 1ère immatriculation, WLTP/NEDC/puissance administrative selon le cas), art. L.421-62
+(tous les barèmes WLTP depuis 2020), art. L.421-63 (barèmes NEDC jusqu'à 2020), art. L.421-64
+(barèmes en puissance administrative). Point notable non résolu : le texte mentionne que le
+malus est nul "pour les véhicules qui ont plus de quinze ans **ou** dont la première
+immatriculation est antérieure au 1er janvier 2015" — cette 2e clause pourrait être soit un
+simple rappel de la 1ère (15 ans avant la rédaction du texte), soit un vrai seuil absolu fixe
+indépendant de la date du jour. À vérifier avant de s'y fier pour un calcul.
 
 ## Taxe régionale (Y1) — tarifs cheval fiscal par région, 2026
 

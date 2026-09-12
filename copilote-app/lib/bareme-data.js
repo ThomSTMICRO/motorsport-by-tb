@@ -115,8 +115,19 @@ const TRANCHES_DECOTE_MOIS = [
 /**
  * Malus au poids (masse en ordre de marche / TMOM).
  * N'existe QUE pour les véhicules dont la première immatriculation est à partir du
- * 1er janvier 2022 (introduit à cette date). Pour un véhicule immatriculé avant,
- * aucune composante poids ne s'applique, quel que soit son poids réel.
+ * 1er janvier 2022 (CIBS art. L.421-72 à L.421-75, confirmé BOFiP BOI-AIS-MOB-10-20-40).
+ * Pour un véhicule immatriculé avant, aucune composante poids ne s'applique, quel que
+ * soit son poids réel.
+ *
+ * ⚠️ PAS ENCORE IMPLÉMENTÉ (voir docs/recherche-malus-carte-grise.md, section
+ * "Malus poids / TMOM"). Ce n'est PAS un tarif fixe par kg : c'est un barème PAR
+ * TRANCHES MARGINALES (comme l'impôt sur le revenu) — chaque tranche de poids a son
+ * propre tarif, sommés. Ex. confirmé (barème 2024) : 0-1599kg à 0€/kg, 1600-1799kg à
+ * 10€/kg, 1800-1899kg à 15€/kg (tranches au-delà non connues). S'y ajoutent : la même
+ * décote par ancienneté que le malus CO2, et un plafonnement pour que
+ * (malus CO2 + malus masse) ne dépasse jamais le tarif max du barème CO2 de l'année.
+ * Ne pas implémenter tant que la grille complète (toutes tranches) n'est pas obtenue —
+ * une implémentation partielle donnerait un chiffre faux avec une fausse assurance.
  */
 const MALUS_POIDS_INTRODUIT_LE = "2022-01-01";
 
