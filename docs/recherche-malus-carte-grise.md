@@ -55,30 +55,59 @@ consulté directement — bloqué par Cloudflare même via navigateur complet.
 
 ## Décote par âge (véhicule d'occasion importé) — réforme du 1er mars 2025
 
-Base légale : Article L421-7-2 du Code des impositions sur les biens et services (CIBS),
-introduit par la loi n° 2025-127 du 14 février 2025, en vigueur depuis le **1er mars 2025**.
-Remplace l'ancien système (10%/an, plus simple, applicable avant cette date).
+✅ **SOURCE PRIMAIRE CONFIRMÉE (12/09/2026)** : BOFiP, [BOI-AIS-MOB-10-20-40](https://bofip.impots.gouv.fr/bofip/13927-PGP.html/identifiant=BOI-AIS-MOB-10-20-40-20250528)
+(version du 28/05/2025), section "Détermination du coefficient forfaitaire de décote".
+Légifrance lui-même reste bloqué par Cloudflare, mais BOFiP (Bulletin officiel des finances
+publiques — la doctrine fiscale de l'administration, qui cite le texte de loi) ne l'est pas et
+a pu être consulté intégralement via navigateur complet (GitHub Actions).
 
-Principe : un véhicule d'occasion importé est traité comme un véhicule neuf, avec une décote
-liée à l'âge (calculé en mois glissants depuis la 1ère immatriculation, arrondi au mois supérieur).
+Base légale citée : CIBS art. L. 421-7-2, issu de l'article 29 de la loi n° 2025-127 du
+14 février 2025 de finances pour 2025, en vigueur depuis le **1er mars 2025**. Remplace l'ancien
+système de réduction proportionnelle de 10 %/an (applicable avant cette date).
 
-Points de la courbe connus :
-| Âge (mois) | Décote |
+Principe : l'ancienneté est comptée en mois de façon **glissante**, arrondie à **l'unité
+supérieure** (tout mois entamé compte comme un mois complet). C'est un **barème par palier**
+(pas une courbe continue) :
+
+| Ancienneté (mois) | Coefficient forfaitaire de décote |
 |---|---|
-| 1 | ~3% |
-| 12 | 12% |
-| 13-18 | 16% (coefficient retenu 0,84 — confirmé simulateur officiel, test antérieur) |
-| 36 (3 ans) | 28% |
-| 73-84 | ~48% (coefficient retenu 0,52 — confirmé simulateur officiel, test antérieur) |
-| **99** | **58%** ✅ **confirmé cas réel (Q5 2018)** |
-| 120 (10 ans) | 64% |
-| 156 | 82% |
-| 181 (15 ans 1 mois) | 100% (exonération totale) |
+| 1 à 3 | 3% |
+| 4 à 6 | 6% |
+| 7 à 9 | 9% |
+| 10 à 12 | 12% |
+| 13 à 18 | 16% |
+| 19 à 24 | 20% |
+| 25 à 36 | 28% |
+| 37 à 48 | 33% |
+| 49 à 60 | 38% |
+| 61 à 72 | 43% |
+| 73 à 84 | 48% |
+| 85 à 96 | 53% |
+| **97 à 108** | **58%** ✅ tranche exacte du cas réel Q5 (99 mois) |
+| 109 à 120 | 64% |
+| 121 à 132 | 70% |
+| 133 à 144 | 76% |
+| 145 à 156 | 82% |
+| 157 à 168 | 88% |
+| 169 à 180 | 94% |
+| À partir de 181 | 100% (exonération totale) |
 
-⚠️ Ce n'est PAS une formule mathématique exacte — seulement des points de repère interpolés.
-Texte primaire de l'article non consulté (Légifrance bloqué par Cloudflare).
-La vraie courbe semble légèrement convexe (accélère plus vite) entre 36 et 120 mois plutôt
-que parfaitement linéaire, d'après le point réel à 99 mois.
+**Double confirmation** : cette table (texte de loi, indépendant du cas Q5) place 99 mois dans
+la tranche 97-108 = 58% — exactement la valeur déduite précédemment de la facture réelle
+(2 786,76€). Les deux sources concordent parfaitement, ce n'est plus une estimation.
+
+Le BOFiP donne aussi deux exemples chiffrés qui confirment la règle d'arrondi des mois
+("glissant, arrondi à l'unité supérieure") :
+- Véhicule immatriculé le 13/02/2023, réimmatriculé en France le 10/04/2025 → 26 mois
+  entamés (25 complets + 1 entamé) → tranche 25-36 → 28% de décote. Malus WLTP 2023 brut
+  de 7 462€ → 7 462 × 0,72 = 5 372,64€ arrondi à 5 373€.
+- Véhicule immatriculé le 13/02/2019, réimmatriculé le 01/03/2025 → 73 mois entamés
+  (72 complets + 1 entamé) → tranche 73-84 → 48% de décote. Malus puissance administrative
+  2019 de 8 000€ → 8 000 × 0,52 = 4 160€.
+
+Ces deux exemples valident aussi la règle de calcul des mois déjà implémentée dans
+`copilote-app/lib/calculateur.ts` (`moisEntreDates`), vérifiée a posteriori : elle reproduit
+exactement 26 et 73 mois pour ces deux cas.
 
 ## Malus poids / TMOM
 
@@ -132,12 +161,17 @@ Grille complète non finalisée (problèmes techniques d'automatisation — voir
 
 ## Prochaines étapes suggérées
 
-1. Trouver le texte primaire de l'article L421-7-2 (CIBS) par un autre moyen que Légifrance
-   (bloqué par Cloudflare) — ex. Bulletin officiel des finances publiques (BOFiP), qui a été
-   trouvé dans les résultats de recherche mais pas encore consulté.
-2. Compléter la grille malus CO2 2018 gramme par gramme (actuellement partielle).
-3. Reconstituer les grilles malus CO2 pour les autres années pertinentes (2019-2025) selon
-   la même méthode.
-4. Reconcilier la divergence poids/TMOM (20€/kg vs 25€/kg pour 1900-1999kg).
-5. Collecter d'autres cas réels (comme celui-ci) pour affiner la courbe de décote avec plus
-   de points de calibration.
+1. ✅ **FAIT (12/09/2026)** : trouvé le texte primaire de la décote via BOFiP (voir section
+   ci-dessus) — BOFiP n'est pas bloqué par Cloudflare, contrairement à Légifrance. Bonne piste
+   à retenir pour toute future recherche de texte fiscal primaire.
+2. Compléter la grille malus CO2 2018 gramme par gramme (actuellement partielle) — via BOFiP,
+   qui a d'autres pages avec des exemples chiffrés utilisables comme points de calibration
+   (ex. barème WLTP 2023 @175g/km = 7 462€, vu dans un exemple de la page décote).
+3. Reconstituer les grilles malus CO2 pour les autres années pertinentes (2019-2027) selon
+   la même méthode — BOFiP est la source à privilégier maintenant qu'on sait qu'elle est
+   accessible.
+4. Reconcilier la divergence poids/TMOM (20€/kg vs 25€/kg pour 1900-1999kg) — probablement
+   aussi trouvable sur BOFiP (BOI-AIS-MOB-10-20-40, section sur le malus au poids).
+5. Collecter d'autres cas réels pour continuer à valider le moteur de calcul en conditions
+   réelles (le cas Q5 a déjà servi à vérifier Y1, Y3, la tranche de décote ET la règle
+   d'arrondi des mois).

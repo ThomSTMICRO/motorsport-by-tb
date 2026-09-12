@@ -78,25 +78,46 @@ export const BAREME_CO2_PAR_ANNEE: Record<number, { confiance: Confiance; seuil:
 };
 
 /**
- * Coefficient de décote forfaitaire par âge du véhicule (en mois, arrondi au mois supérieur),
- * applicable au malus CO2 des véhicules d'occasion importés — CIBS art. L421-7-2,
- * réforme en vigueur depuis le 1er mars 2025 (loi n° 2025-127 du 14/02/2025).
+ * Coefficient forfaitaire de décote par tranche d'ancienneté du véhicule (en mois,
+ * comptés de façon glissante et arrondis à l'unité supérieure — tout mois entamé
+ * compte comme un mois complet).
  *
- * ATTENTION : ce n'est PAS la formule légale exacte, seulement des points de repère
- * interpolés linéairement entre eux. Le texte primaire complet n'a pas encore été
- * obtenu (Légifrance bloqué par un pare-feu anti-robot). Un point réel (99 mois → 58%)
- * suggère que la vraie courbe est légèrement plus agressive qu'une interpolation linéaire
- * entre 36 et 120 mois.
+ * ✅ SOURCE PRIMAIRE CONFIRMÉE (12/09/2026) : BOFiP, BOI-AIS-MOB-10-20-40
+ * (version du 28/05/2025), section "Détermination du coefficient forfaitaire de
+ * décote" — CIBS art. L. 421-7-2, issu de l'article 29 de la loi n° 2025-127 du
+ * 14 février 2025 de finances pour 2025, en vigueur depuis le 1er mars 2025
+ * (remplace l'ancien système de réduction proportionnelle de 10 %/an).
+ *
+ * C'est un barème PAR PALIER (pas une courbe continue) : chaque tranche a un
+ * pourcentage fixe, aucune interpolation à faire — contrairement à ce qu'on
+ * supposait avant d'avoir trouvé ce texte.
+ *
+ * Vérifié à la fois par le texte de loi ET par un cas réel payé (Audi Q5 2018,
+ * 162g/km, 15CV, dépt 06 : 99 mois → tranche 97-108 → 58 %, exactement confirmé
+ * par la facture réelle de 2 786,76 €).
  */
-export const POINTS_DECOTE_MOIS: { mois: number; decote: number; confiance: Confiance }[] = [
-  { mois: 0, decote: 0, confiance: "estime" },
-  { mois: 1, decote: 0.03, confiance: "estime" },
-  { mois: 12, decote: 0.12, confiance: "estime" },
-  { mois: 36, decote: 0.28, confiance: "estime" },
-  { mois: 99, decote: 0.58, confiance: "confirme" }, // ✅ déduit d'un cas réel payé (Audi Q5 2018, 162g/km, 15CV, dépt 06)
-  { mois: 120, decote: 0.64, confiance: "estime" },
-  { mois: 156, decote: 0.82, confiance: "estime" },
-  { mois: 181, decote: 1.0, confiance: "estime" }, // exonération totale
+export const TRANCHES_DECOTE_MOIS: { min: number; max: number; decote: number }[] = [
+  { min: 0, max: 0, decote: 0.0 },
+  { min: 1, max: 3, decote: 0.03 },
+  { min: 4, max: 6, decote: 0.06 },
+  { min: 7, max: 9, decote: 0.09 },
+  { min: 10, max: 12, decote: 0.12 },
+  { min: 13, max: 18, decote: 0.16 },
+  { min: 19, max: 24, decote: 0.2 },
+  { min: 25, max: 36, decote: 0.28 },
+  { min: 37, max: 48, decote: 0.33 },
+  { min: 49, max: 60, decote: 0.38 },
+  { min: 61, max: 72, decote: 0.43 },
+  { min: 73, max: 84, decote: 0.48 },
+  { min: 85, max: 96, decote: 0.53 },
+  { min: 97, max: 108, decote: 0.58 }, // ✅ tranche du cas réel Q5 (99 mois)
+  { min: 109, max: 120, decote: 0.64 },
+  { min: 121, max: 132, decote: 0.7 },
+  { min: 133, max: 144, decote: 0.76 },
+  { min: 145, max: 156, decote: 0.82 },
+  { min: 157, max: 168, decote: 0.88 },
+  { min: 169, max: 180, decote: 0.94 },
+  { min: 181, max: Infinity, decote: 1.0 }, // exonération totale
 ];
 
 /**

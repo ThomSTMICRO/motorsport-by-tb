@@ -13,7 +13,7 @@
 
 import {
   BAREME_CO2_PAR_ANNEE,
-  POINTS_DECOTE_MOIS,
+  TRANCHES_DECOTE_MOIS,
   TARIF_CV_PAR_DEPARTEMENT_2026,
   FRAIS_FIXES,
   MALUS_POIDS_INTRODUIT_LE,
@@ -65,23 +65,15 @@ function moisEntreDates(dateDebut: string, dateFin: string): number {
   return Math.max(0, mois);
 }
 
-/** Interpolation linéaire entre les points de décote connus les plus proches. */
+/**
+ * Coefficient forfaitaire de décote — barème par palier fixe (pas d'interpolation),
+ * source primaire BOFiP confirmée (voir bareme-data.ts). Confiance "confirme" pour
+ * toute tranche puisque c'est le texte de loi lui-même, pas une estimation.
+ */
 function getCoefficientDecote(ageMois: number): { decote: number; confiance: Confiance } {
-  const points = POINTS_DECOTE_MOIS;
-  if (ageMois >= points[points.length - 1].mois) {
-    return { decote: 1.0, confiance: "estime" };
-  }
-  for (let i = 0; i < points.length - 1; i++) {
-    const a = points[i];
-    const b = points[i + 1];
-    if (ageMois >= a.mois && ageMois <= b.mois) {
-      const fraction = b.mois === a.mois ? 0 : (ageMois - a.mois) / (b.mois - a.mois);
-      const decote = a.decote + fraction * (b.decote - a.decote);
-      const confiance: Confiance = a.confiance === "confirme" || b.confiance === "confirme" ? "interpole" : "estime";
-      return { decote, confiance };
-    }
-  }
-  return { decote: 0, confiance: "estime" };
+  const tranche = TRANCHES_DECOTE_MOIS.find((t) => ageMois >= t.min && ageMois <= t.max);
+  if (!tranche) return { decote: 1.0, confiance: "confirme" }; // au-delà de la dernière tranche (181+) : exonération totale
+  return { decote: tranche.decote, confiance: "confirme" };
 }
 
 function getMalusCO2Brut(anneeImmatriculation: number, co2: number): { montant: number; confiance: Confiance } | null {
