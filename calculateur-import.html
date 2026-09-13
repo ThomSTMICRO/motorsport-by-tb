@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calculateur d'import | MOTORSPORT By TB</title>
+<meta name="description" content="Calculez le coût d'immatriculation (taxe régionale et malus écologique) d'un véhicule d'occasion importé en France.">
+<link rel="canonical" href="https://motorsportbytb.com/calculateur-import.html">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Fraunces:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-0:#FFFFFF; --bg-1:#F5F2E8; --bg-2:#FBFAF5;
+    --line:#E1DACB; --line-soft:#ECE7DA;
+    --ivory:#17241C; --ivory-dim:#4C574E; --ivory-faint:#838C81;
+    --brass:#8C5D18; --brass-bright:#B27A1E;
+    --red:#D5402A; --red-bright:#FF6B47; --red-hover:#A82C17;
+    --green-accent:#1E7A45;
+    --radius-sm:3px; --radius-md:8px; --maxw:760px;
+  }
+  *,*::before,*::after{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;background:var(--bg-0);color:var(--ivory);
+    font-family:'Fraunces',Georgia,serif;font-weight:400;line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,.display,label,.btn{font-family:'Oswald',sans-serif;font-weight:600;letter-spacing:0.01em;}
+  h1,h2{margin:0;}
+  p{margin:0 0 1em 0;}
+  a{color:var(--brass);text-decoration-color:var(--line);}
+  a:hover{color:var(--brass-bright);}
+  .mono{font-family:'JetBrains Mono',monospace;font-variant-numeric:tabular-nums;}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px;}
+  a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--brass);outline-offset:3px;}
+
+  .topbar{position:sticky;top:0;z-index:10;background:rgba(255,255,255,0.92);backdrop-filter:blur(6px);border-bottom:1px solid var(--line-soft);padding:16px 0;}
+  .back-link{display:inline-flex;align-items:center;gap:8px;text-decoration:none;color:var(--ivory-dim);font-family:'Oswald',sans-serif;font-size:13px;font-weight:500;letter-spacing:.03em;}
+  .back-link:hover{color:var(--ivory);}
+  .back-link svg{width:14px;height:14px;flex-shrink:0;}
+
+  main{padding:56px 0 88px;}
+  h1{font-size:clamp(28px,4vw,40px);line-height:1.15;margin-bottom:8px;}
+  .lede{color:var(--ivory-dim);font-size:16px;max-width:62ch;margin-bottom:8px;}
+  .caveat{color:var(--ivory-faint);font-size:13.5px;margin-bottom:40px;max-width:62ch;}
+  h2{font-size:19px;margin:0 0 16px;}
+
+  .btn{display:inline-block;font-size:14px;padding:12px 22px;border-radius:var(--radius-sm);text-decoration:none;cursor:pointer;border:1.5px solid transparent;transition:background .2s ease,border-color .2s ease,color .2s ease,transform .15s ease,box-shadow .2s ease;}
+  .btn:active{transform:translateY(1px);}
+  .btn-primary{background:linear-gradient(135deg,var(--red-bright),var(--red));color:#fff;box-shadow:0 8px 22px -6px rgba(232,72,47,0.55);}
+  .btn-primary:hover{background:linear-gradient(135deg,var(--red),var(--red-hover));box-shadow:0 10px 28px -6px rgba(232,72,47,0.7);}
+  .btn-primary:disabled{opacity:.5;cursor:default;box-shadow:none;}
+
+  form{background:var(--bg-1);border:1px solid var(--line-soft);border-radius:var(--radius-md);padding:28px;margin-bottom:32px;}
+  .champs{display:grid;grid-template-columns:1fr 1fr;gap:18px 20px;}
+  .champ{display:flex;flex-direction:column;gap:6px;}
+  .champ.pleine-largeur{grid-column:1/-1;}
+  label{font-size:12.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--ivory-dim);}
+  label .req{color:var(--red);}
+  .aide{font-family:'Fraunces',serif;font-weight:400;font-size:12.5px;color:var(--ivory-faint);letter-spacing:0;text-transform:none;}
+  input,select{
+    font-family:'Fraunces',Georgia,serif;font-size:15px;color:var(--ivory);
+    background:var(--bg-0);border:1.5px solid var(--line);border-radius:var(--radius-sm);
+    padding:10px 12px;
+  }
+  input:focus,select:focus{border-color:var(--brass);}
+  .checkbox-row{display:flex;align-items:center;gap:8px;grid-column:1/-1;}
+  .checkbox-row input{width:auto;}
+  .checkbox-row label{text-transform:none;letter-spacing:0;font-size:14px;color:var(--ivory);}
+  .actions{margin-top:22px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+  .erreur-champ{color:var(--red);font-size:12.5px;margin-top:16px;display:none;}
+  .erreur-champ.visible{display:block;}
+
+  .ledger{border:1px solid var(--line-soft);border-radius:var(--radius-md);overflow:hidden;background:var(--bg-0);margin-bottom:20px;}
+  .ledger-head{display:flex;justify-content:space-between;align-items:baseline;padding:14px 20px;background:var(--bg-1);border-bottom:1px solid var(--line-soft);}
+  .ledger-head .titre{font-family:'Oswald',sans-serif;font-weight:600;font-size:15px;}
+  .ledger-head .tag-exemple{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ivory-faint);}
+  .ligne{display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid var(--line-soft);}
+  .ligne .code{font-family:'JetBrains Mono',monospace;font-weight:500;color:var(--ivory-faint);width:26px;flex:none;font-size:13px;}
+  .ligne .libelle{flex:1;min-width:0;font-size:14.5px;}
+  .ligne .detail{display:block;color:var(--ivory-faint);font-size:12px;margin-top:2px;font-family:'JetBrains Mono',monospace;}
+  .ligne .montant{font-family:'JetBrains Mono',monospace;font-weight:500;flex:none;text-align:right;min-width:6em;font-size:14.5px;}
+  .chip{flex:none;font-family:'Oswald',sans-serif;font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;padding:3px 7px;border-radius:999px;font-weight:600;}
+  .chip.confirme{background:rgba(30,122,69,0.12);color:var(--green-accent);}
+  .chip.estime{background:rgba(140,93,24,0.12);color:var(--brass);}
+  .chip.interpole{background:var(--line-soft);color:var(--ivory-faint);}
+  .ligne.total{background:var(--bg-1);font-weight:600;border-bottom:none;}
+  .ligne.total .libelle{font-family:'Oswald',sans-serif;font-size:14px;}
+  .ligne.total .montant{font-size:19px;color:var(--red);font-weight:600;}
+  .avertissement{padding:12px 20px;font-size:12.5px;color:var(--ivory-dim);border-top:1px dashed var(--line-soft);line-height:1.5;background:var(--bg-2);}
+  .ledger.est-erreur .avertissement{color:var(--red-hover);border-top:none;}
+
+  hr{border:none;border-top:1px solid var(--line-soft);margin:48px 0;}
+  footer{background:var(--bg-1);border-top:1px solid var(--line-soft);padding:32px 0;}
+  .footer-row{display:flex;flex-wrap:wrap;gap:16px 28px;align-items:center;justify-content:space-between;font-size:13.5px;color:var(--ivory-dim);}
+  .footer-links{display:flex;flex-wrap:wrap;gap:16px;}
+  .footer-links a{color:var(--ivory-dim);text-decoration:none;}
+  .footer-links a:hover{color:var(--brass);}
+
+  @media (max-width:600px){ .champs{grid-template-columns:1fr;} .champ.moitie{grid-column:1/-1;} }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="wrap">
+    <a href="index.html" class="back-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>
+      MOTORSPORT By TB
+    </a>
+  </div>
+</div>
+
+<main>
+  <div class="wrap">
+    <h1>Calculateur d'import</h1>
+    <p class="lede">Coût d'immatriculation d'un véhicule d'occasion importé en France : taxe régionale (Y1) et malus écologique (Y3), calculés selon les barèmes officiels — jamais estimés à l'œil.</p>
+    <p class="caveat">Couverture actuelle : barème CO2 complet uniquement pour les véhicules immatriculés en <strong>2018</strong> ; tarif régional confirmé pour le département <strong>06</strong> uniquement (les autres départements listés sont des estimations sourcées, pas un texte officiel vérifié). Le malus au poids (véhicules immatriculés après 2022) n'est pas encore couvert.</p>
+
+    <form id="formulaire" novalidate>
+      <div class="champs">
+        <div class="champ">
+          <label for="departement">Département <span class="req">*</span></label>
+          <select id="departement" required></select>
+        </div>
+        <div class="champ">
+          <label for="dateMEC">1ère mise en circulation <span class="req">*</span></label>
+          <input type="date" id="dateMEC" required>
+        </div>
+        <div class="champ">
+          <label for="cv">Puissance fiscale <span class="req">*</span> <span class="aide">(CV, carte grise P.6)</span></label>
+          <input type="number" id="cv" min="1" step="1" required>
+        </div>
+        <div class="champ">
+          <label for="co2">Émissions de CO2 <span class="req">*</span> <span class="aide">(g/km, COC ou carte grise V.7)</span></label>
+          <input type="number" id="co2" min="0" step="1" required>
+        </div>
+        <div class="checkbox-row">
+          <input type="checkbox" id="electrique">
+          <label for="electrique">Véhicule électrique ou à hydrogène (exonéré de malus CO2)</label>
+        </div>
+      </div>
+      <div class="actions">
+        <button type="submit" class="btn btn-primary">Calculer</button>
+      </div>
+      <p class="erreur-champ" id="erreurChamp">Merci de renseigner tous les champs obligatoires.</p>
+    </form>
+
+    <h2>Résultat</h2>
+    <div id="resultat"></div>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap footer-row">
+    <span>© 2026 MOTORSPORT By TB — MTSPRT (SASU)</span>
+    <div class="footer-links">
+      <a href="index.html">Accueil</a>
+      <a href="mentions-legales.html">Mentions légales</a>
+      <a href="mailto:thomasbona.pro@gmail.com">thomasbona.pro@gmail.com</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+// =====================================================================
+// Moteur de calcul déterministe — identique à copilote-app/lib/*.js.
+// Aucune IA : tout est calculé localement dans le navigateur. Une donnée
+// manquante affiche une erreur explicite plutôt qu'un chiffre inventé.
+// Voir /docs/recherche-malus-carte-grise.md pour les sources.
+// =====================================================================
+
+const BAREME_CO2_PAR_ANNEE = {
+  2018: {
+    confiance: "estime",
+    seuil: 120, plafondCo2: 185, plafondMontant: 10500,
+    grille: [
+      { co2: 119, montant: 0 }, { co2: 120, montant: 50 }, { co2: 121, montant: 53 },
+      { co2: 122, montant: 60 }, { co2: 123, montant: 73 }, { co2: 124, montant: 90 },
+      { co2: 125, montant: 113 }, { co2: 126, montant: 140 }, { co2: 127, montant: 173 },
+      { co2: 128, montant: 210 }, { co2: 129, montant: 253 }, { co2: 130, montant: 300 },
+      { co2: 131, montant: 353 }, { co2: 132, montant: 410 }, { co2: 133, montant: 473 },
+      { co2: 134, montant: 540 }, { co2: 135, montant: 613 }, { co2: 136, montant: 690 },
+      { co2: 137, montant: 773 }, { co2: 138, montant: 860 }, { co2: 139, montant: 953 },
+      { co2: 140, montant: 1050 }, { co2: 141, montant: 1153 }, { co2: 142, montant: 1260 },
+      { co2: 143, montant: 1373 }, { co2: 144, montant: 1490 }, { co2: 145, montant: 1613 },
+      { co2: 146, montant: 1740 }, { co2: 147, montant: 1873 }, { co2: 148, montant: 2010 },
+      { co2: 149, montant: 2153 }, { co2: 154, montant: 2940 }, { co2: 155, montant: 3113 },
+      { co2: 156, montant: 3290 }, { co2: 157, montant: 3473 }, { co2: 158, montant: 3660 },
+      { co2: 159, montant: 3853 }, { co2: 160, montant: 4050 }, { co2: 161, montant: 4253 },
+      { co2: 162, montant: 4460 }, { co2: 163, montant: 4673 }, { co2: 185, montant: 10500 },
+    ],
+  },
+};
+
+const TRANCHES_DECOTE_MOIS = [
+  { min: 0, max: 0, decote: 0.0 }, { min: 1, max: 3, decote: 0.03 },
+  { min: 4, max: 6, decote: 0.06 }, { min: 7, max: 9, decote: 0.09 },
+  { min: 10, max: 12, decote: 0.12 }, { min: 13, max: 18, decote: 0.16 },
+  { min: 19, max: 24, decote: 0.2 }, { min: 25, max: 36, decote: 0.28 },
+  { min: 37, max: 48, decote: 0.33 }, { min: 49, max: 60, decote: 0.38 },
+  { min: 61, max: 72, decote: 0.43 }, { min: 73, max: 84, decote: 0.48 },
+  { min: 85, max: 96, decote: 0.53 }, { min: 97, max: 108, decote: 0.58 },
+  { min: 109, max: 120, decote: 0.64 }, { min: 121, max: 132, decote: 0.7 },
+  { min: 133, max: 144, decote: 0.76 }, { min: 145, max: 156, decote: 0.82 },
+  { min: 157, max: 168, decote: 0.88 }, { min: 169, max: 180, decote: 0.94 },
+  { min: 181, max: Infinity, decote: 1.0 },
+];
+
+const MALUS_POIDS_INTRODUIT_LE = "2022-01-01";
+
+const TARIF_PAR_REGION_2026 = {
+  "Auvergne-Rhône-Alpes": { tarif: 43.0, confiance: "estime" },
+  "Bourgogne-Franche-Comté": { tarif: 60.0, confiance: "estime" },
+  "Bretagne": { tarif: 60.0, confiance: "estime" },
+  "Centre-Val de Loire": { tarif: 60.0, confiance: "estime" },
+  "Corse": { tarif: 53.0, confiance: "estime" },
+  "Grand Est": { tarif: 60.0, confiance: "estime" },
+  "Hauts-de-France": { tarif: 43.0, confiance: "estime" },
+  "Île-de-France": { tarif: 68.95, confiance: "estime" },
+  "Normandie": { tarif: 60.0, confiance: "estime" },
+  "Nouvelle-Aquitaine": { tarif: 58.0, confiance: "estime" },
+  "Occitanie": { tarif: 59.5, confiance: "estime" },
+  "Pays de la Loire": { tarif: 60.0, confiance: "estime" },
+  "Provence-Alpes-Côte d'Azur": { tarif: 60.0, confiance: "confirme" },
+  "Martinique": { tarif: 30.0, confiance: "estime" },
+  "Mayotte": { tarif: 30.0, confiance: "estime" },
+};
+const DEPARTEMENTS = [
+  ["01","Ain","Auvergne-Rhône-Alpes"],["03","Allier","Auvergne-Rhône-Alpes"],["07","Ardèche","Auvergne-Rhône-Alpes"],
+  ["15","Cantal","Auvergne-Rhône-Alpes"],["26","Drôme","Auvergne-Rhône-Alpes"],["38","Isère","Auvergne-Rhône-Alpes"],
+  ["42","Loire","Auvergne-Rhône-Alpes"],["43","Haute-Loire","Auvergne-Rhône-Alpes"],["63","Puy-de-Dôme","Auvergne-Rhône-Alpes"],
+  ["69","Rhône","Auvergne-Rhône-Alpes"],["73","Savoie","Auvergne-Rhône-Alpes"],["74","Haute-Savoie","Auvergne-Rhône-Alpes"],
+  ["21","Côte-d'Or","Bourgogne-Franche-Comté"],["25","Doubs","Bourgogne-Franche-Comté"],["39","Jura","Bourgogne-Franche-Comté"],
+  ["58","Nièvre","Bourgogne-Franche-Comté"],["70","Haute-Saône","Bourgogne-Franche-Comté"],["71","Saône-et-Loire","Bourgogne-Franche-Comté"],
+  ["89","Yonne","Bourgogne-Franche-Comté"],["90","Territoire de Belfort","Bourgogne-Franche-Comté"],
+  ["22","Côtes-d'Armor","Bretagne"],["29","Finistère","Bretagne"],["35","Ille-et-Vilaine","Bretagne"],["56","Morbihan","Bretagne"],
+  ["18","Cher","Centre-Val de Loire"],["28","Eure-et-Loir","Centre-Val de Loire"],["36","Indre","Centre-Val de Loire"],
+  ["37","Indre-et-Loire","Centre-Val de Loire"],["41","Loir-et-Cher","Centre-Val de Loire"],["45","Loiret","Centre-Val de Loire"],
+  ["2A","Corse-du-Sud","Corse"],["2B","Haute-Corse","Corse"],
+  ["08","Ardennes","Grand Est"],["10","Aube","Grand Est"],["51","Marne","Grand Est"],["52","Haute-Marne","Grand Est"],
+  ["54","Meurthe-et-Moselle","Grand Est"],["55","Meuse","Grand Est"],["57","Moselle","Grand Est"],["67","Bas-Rhin","Grand Est"],
+  ["68","Haut-Rhin","Grand Est"],["88","Vosges","Grand Est"],
+  ["02","Aisne","Hauts-de-France"],["59","Nord","Hauts-de-France"],["60","Oise","Hauts-de-France"],
+  ["62","Pas-de-Calais","Hauts-de-France"],["80","Somme","Hauts-de-France"],
+  ["75","Paris","Île-de-France"],["77","Seine-et-Marne","Île-de-France"],["78","Yvelines","Île-de-France"],
+  ["91","Essonne","Île-de-France"],["92","Hauts-de-Seine","Île-de-France"],["93","Seine-Saint-Denis","Île-de-France"],
+  ["94","Val-de-Marne","Île-de-France"],["95","Val-d'Oise","Île-de-France"],
+  ["14","Calvados","Normandie"],["27","Eure","Normandie"],["50","Manche","Normandie"],["61","Orne","Normandie"],["76","Seine-Maritime","Normandie"],
+  ["16","Charente","Nouvelle-Aquitaine"],["17","Charente-Maritime","Nouvelle-Aquitaine"],["19","Corrèze","Nouvelle-Aquitaine"],
+  ["23","Creuse","Nouvelle-Aquitaine"],["24","Dordogne","Nouvelle-Aquitaine"],["33","Gironde","Nouvelle-Aquitaine"],
+  ["40","Landes","Nouvelle-Aquitaine"],["47","Lot-et-Garonne","Nouvelle-Aquitaine"],["64","Pyrénées-Atlantiques","Nouvelle-Aquitaine"],
+  ["79","Deux-Sèvres","Nouvelle-Aquitaine"],["86","Vienne","Nouvelle-Aquitaine"],["87","Haute-Vienne","Nouvelle-Aquitaine"],
+  ["09","Ariège","Occitanie"],["11","Aude","Occitanie"],["12","Aveyron","Occitanie"],["30","Gard","Occitanie"],
+  ["31","Haute-Garonne","Occitanie"],["32","Gers","Occitanie"],["34","Hérault","Occitanie"],["46","Lot","Occitanie"],
+  ["48","Lozère","Occitanie"],["65","Hautes-Pyrénées","Occitanie"],["66","Pyrénées-Orientales","Occitanie"],
+  ["81","Tarn","Occitanie"],["82","Tarn-et-Garonne","Occitanie"],
+  ["44","Loire-Atlantique","Pays de la Loire"],["49","Maine-et-Loire","Pays de la Loire"],["53","Mayenne","Pays de la Loire"],
+  ["72","Sarthe","Pays de la Loire"],["85","Vendée","Pays de la Loire"],
+  ["04","Alpes-de-Haute-Provence","Provence-Alpes-Côte d'Azur"],["05","Hautes-Alpes","Provence-Alpes-Côte d'Azur"],
+  ["06","Alpes-Maritimes","Provence-Alpes-Côte d'Azur"],["13","Bouches-du-Rhône","Provence-Alpes-Côte d'Azur"],
+  ["83","Var","Provence-Alpes-Côte d'Azur"],["84","Vaucluse","Provence-Alpes-Côte d'Azur"],
+  ["972","Martinique","Martinique"],["976","Mayotte","Mayotte"],
+];
+const TARIF_CV_PAR_DEPARTEMENT_2026 = Object.fromEntries(
+  DEPARTEMENTS.map(([code,, region]) => [code, TARIF_PAR_REGION_2026[region]])
+);
+const FRAIS_FIXES = { y4: 11.0, y5: 2.76, confiance: "confirme" };
+
+function moisEntreDates(dateDebut, dateFin) {
+  const d1 = new Date(dateDebut), d2 = new Date(dateFin);
+  let mois = (d2.getFullYear() - d1.getFullYear()) * 12 + (d2.getMonth() - d1.getMonth());
+  if (d2.getDate() > d1.getDate()) mois += 1;
+  return Math.max(0, mois);
+}
+function getCoefficientDecote(ageMois) {
+  const t = TRANCHES_DECOTE_MOIS.find((x) => ageMois >= x.min && ageMois <= x.max);
+  return t ? { decote: t.decote, confiance: "confirme" } : { decote: 1.0, confiance: "confirme" };
+}
+function getMalusCO2Brut(annee, co2) {
+  const b = BAREME_CO2_PAR_ANNEE[annee];
+  if (!b) return null;
+  if (co2 < b.seuil) return { montant: 0, confiance: b.confiance };
+  if (co2 >= b.plafondCo2) return { montant: b.plafondMontant, confiance: b.confiance };
+  const exact = b.grille.find((e) => e.co2 === co2);
+  if (exact) return { montant: exact.montant, confiance: b.confiance };
+  let avant = b.grille[0], apres = b.grille[b.grille.length - 1];
+  for (let i = 0; i < b.grille.length - 1; i++) {
+    if (b.grille[i].co2 <= co2 && b.grille[i + 1].co2 >= co2) { avant = b.grille[i]; apres = b.grille[i + 1]; break; }
+  }
+  if (avant.co2 === apres.co2) return { montant: avant.montant, confiance: b.confiance };
+  const f = (co2 - avant.co2) / (apres.co2 - avant.co2);
+  return { montant: Math.round(avant.montant + f * (apres.montant - avant.montant)), confiance: "interpole" };
+}
+
+function calculerCoutImport(entree) {
+  const avertissements = [];
+  const lignes = [];
+  const { departement, cvFiscaux, co2GKm, dateMiseEnCirculation, electriqueOuHydrogene } = entree;
+  if (!departement) return { ok: false, erreur: "Le département est requis." };
+  if (typeof cvFiscaux !== "number" || !(cvFiscaux > 0)) return { ok: false, erreur: "La puissance fiscale doit être un nombre positif." };
+  if (typeof co2GKm !== "number" || co2GKm < 0) return { ok: false, erreur: "Le CO2 doit être un nombre positif ou nul." };
+  if (!dateMiseEnCirculation || isNaN(new Date(dateMiseEnCirculation).getTime()))
+    return { ok: false, erreur: `Date de mise en circulation invalide : "${dateMiseEnCirculation}"` };
+
+  const dateCalcul = entree.dateCalcul || new Date().toISOString().slice(0, 10);
+  const annee = new Date(dateMiseEnCirculation).getFullYear();
+
+  const tarifRegional = TARIF_CV_PAR_DEPARTEMENT_2026[departement];
+  if (!tarifRegional) {
+    return { ok: false, erreur: `Tarif régional inconnu pour le département "${departement}".` };
+  }
+  const ageY1 = moisEntreDates(dateMiseEnCirculation, dateCalcul);
+  const decoteY1 = ageY1 > 120 ? 0.5 : 1.0;
+  const montantY1 = Math.round(cvFiscaux * tarifRegional.tarif * decoteY1);
+  lignes.push({ code: "Y1", libelle: "Taxe régionale (cheval fiscal)", montant: montantY1, confiance: tarifRegional.confiance,
+    detail: `${cvFiscaux} CV × ${tarifRegional.tarif.toFixed(2)} €/CV${decoteY1 < 1 ? " × 50 % (>10 ans)" : ""}` });
+
+  let montantY3 = 0, confianceY3 = "confirme", detailsY3 = [];
+  if (electriqueOuHydrogene) {
+    detailsY3.push("Véhicule électrique/hydrogène : exonéré");
+  } else {
+    const brut = getMalusCO2Brut(annee, co2GKm);
+    if (!brut) {
+      return { ok: false, erreur: `Barème malus CO2 non disponible pour l'année ${annee}. Seule l'année 2018 est documentée à ce jour.` };
+    }
+    confianceY3 = brut.confiance;
+    const ageMalus = moisEntreDates(dateMiseEnCirculation, dateCalcul);
+    const { decote, confiance: cd } = getCoefficientDecote(ageMalus);
+    montantY3 = Math.round(brut.montant * (1 - decote));
+    detailsY3.push(`Brut ${annee} @ ${co2GKm}g/km = ${brut.montant}€ · décote ${ageMalus} mois = ${(decote * 100).toFixed(0)}%`);
+    confianceY3 = cd === "estime" || confianceY3 === "estime" ? "estime" : cd;
+    if (ageMalus >= 181) { detailsY3.push("Plus de 181 mois : exonération totale"); montantY3 = 0; }
+    if (new Date(dateMiseEnCirculation) >= new Date(MALUS_POIDS_INTRODUIT_LE)) {
+      avertissements.push("Immatriculé après le 01/01/2022 : un malus au poids (TMOM) pourrait s'ajouter — non calculé ici (grille incomplète).");
+    }
+  }
+  lignes.push({ code: "Y3", libelle: "Malus CO2", montant: montantY3, confiance: confianceY3, detail: detailsY3.join(" · ") || "Exonéré" });
+  lignes.push({ code: "Y4", libelle: "Redevance d'acheminement", montant: FRAIS_FIXES.y4, confiance: FRAIS_FIXES.confiance, detail: "Montant fixe" });
+  lignes.push({ code: "Y5", libelle: "Frais de gestion", montant: FRAIS_FIXES.y5, confiance: FRAIS_FIXES.confiance, detail: "Montant fixe" });
+
+  const total = Math.round(lignes.reduce((s, l) => s + l.montant, 0) * 100) / 100;
+  if (lignes.some((l) => l.confiance !== "confirme")) {
+    avertissements.push("Certaines lignes sont estimées ou interpolées (pas un texte légal primaire pour cette ligne précise) — voir le détail de chaque ligne.");
+  }
+  return { ok: true, lignes, total, avertissements };
+}
+
+// =====================================================================
+// UI
+// =====================================================================
+const elDept = document.getElementById("departement");
+for (const [code, nom] of DEPARTEMENTS) {
+  const opt = document.createElement("option");
+  opt.value = code;
+  opt.textContent = `${code} — ${nom}`;
+  elDept.appendChild(opt);
+}
+elDept.value = "06";
+
+function libelleConfiance(c) { return c === "confirme" ? "confirmé" : c === "estime" ? "estimé" : "interpolé"; }
+
+function rendreLedger(resultat, estExemple) {
+  const box = document.createElement("div");
+  box.className = "ledger" + (resultat.ok ? "" : " est-erreur");
+  const head = document.createElement("div");
+  head.className = "ledger-head";
+  head.innerHTML = `<span class="titre">Détail du calcul</span>` + (estExemple ? `<span class="tag-exemple">Exemple réel · Audi Q5 2018</span>` : "");
+  box.appendChild(head);
+
+  if (!resultat.ok) {
+    const p = document.createElement("div");
+    p.className = "avertissement";
+    p.textContent = resultat.erreur;
+    box.appendChild(p);
+    return box;
+  }
+  for (const l of resultat.lignes) {
+    const row = document.createElement("div");
+    row.className = "ligne";
+    row.innerHTML = `
+      <span class="code">${l.code}</span>
+      <span class="libelle">${l.libelle}<span class="detail">${l.detail}</span></span>
+      <span class="chip ${l.confiance}">${libelleConfiance(l.confiance)}</span>
+      <span class="montant">${l.montant.toLocaleString("fr-FR",{minimumFractionDigits:2,maximumFractionDigits:2})} €</span>`;
+    box.appendChild(row);
+  }
+  const total = document.createElement("div");
+  total.className = "ligne total";
+  total.innerHTML = `<span class="code"></span><span class="libelle">Total à payer</span><span class="montant">${resultat.total.toLocaleString("fr-FR",{minimumFractionDigits:2,maximumFractionDigits:2})} €</span>`;
+  box.appendChild(total);
+  for (const a of resultat.avertissements) {
+    const p = document.createElement("div");
+    p.className = "avertissement";
+    p.textContent = a;
+    box.appendChild(p);
+  }
+  return box;
+}
+
+const elResultat = document.getElementById("resultat");
+// État de repos : exemple réel vérifié (voir docs/recherche-malus-carte-grise.md).
+elResultat.appendChild(rendreLedger(calculerCoutImport({
+  departement: "06", cvFiscaux: 15, co2GKm: 162,
+  dateMiseEnCirculation: "2018-06-13", dateCalcul: "2026-09-13",
+}), true));
+
+document.getElementById("formulaire").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const cv = parseFloat(document.getElementById("cv").value);
+  const co2 = parseFloat(document.getElementById("co2").value);
+  const dateMEC = document.getElementById("dateMEC").value;
+  const elErreur = document.getElementById("erreurChamp");
+  if (!dateMEC || isNaN(cv) || isNaN(co2)) {
+    elErreur.classList.add("visible");
+    return;
+  }
+  elErreur.classList.remove("visible");
+  const resultat = calculerCoutImport({
+    departement: elDept.value,
+    cvFiscaux: cv,
+    co2GKm: co2,
+    dateMiseEnCirculation: dateMEC,
+    electriqueOuHydrogene: document.getElementById("electrique").checked,
+  });
+  elResultat.innerHTML = "";
+  elResultat.appendChild(rendreLedger(resultat, false));
+  elResultat.scrollIntoView({ behavior: "smooth", block: "start" });
+});
+</script>
+</body>
+</html>
