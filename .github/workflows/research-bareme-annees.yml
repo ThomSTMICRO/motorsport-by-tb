@@ -6,7 +6,7 @@ on:
     paths: [.github/workflows/research-bareme-annees.yml]
 
 jobs:
-  query_source_api:
+  query_source_api_2:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/setup-node@v4
@@ -17,8 +17,8 @@ jobs:
           npm init -y >/dev/null 2>&1 || true
           npm install --no-save playwright@1.48.0
           npx playwright install chromium --with-deps
-      - name: Query /Default/source directly for CO2 (source=3) and poids (source=13) across years
-        timeout-minutes: 10
+      - name: Fill remaining years + per-gram refinement for key years + full region table
+        timeout-minutes: 12
         run: |
           node <<'EOF'
           const { chromium } = require('playwright');
@@ -34,73 +34,64 @@ jobs:
 
             const csrf = await page.evaluate(() => {
               const el = document.querySelector('input[name="_csrf_token"]');
-              if (el) return el.value;
-              const meta = document.querySelector('meta[name="csrf-token"]');
-              return meta ? meta.content : null;
+              return el ? el.value : null;
             });
-            console.log('CSRF token found:', csrf ? csrf.slice(0, 20) + '...' : 'NONE');
-            if (!csrf) { console.error('NO CSRF TOKEN, aborting'); process.exit(1); }
+            if (!csrf) { console.error('NO CSRF TOKEN'); process.exit(1); }
+            console.log('CSRF ok');
 
-            // Direct POST via fetch() inside the browser context (reuses cookies/session).
             const postSource = async (params) => {
               const body = new URLSearchParams({ ...params, _csrf_token: csrf }).toString();
               return page.evaluate(async ({ url, body }) => {
-                const res = await fetch(url, {
-                  method: 'POST',
-                  headers: { 'content-type': 'application/x-www-form-urlencoded' },
-                  body,
-                });
+                const res = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body });
                 return { status: res.status, text: await res.text() };
               }, { url: base + '/Default/source', body });
             };
 
-            // --- Sanity check: reproduce the known case (2026, CO2=162 -> should relate to 4460-ish scale, NOT 2018's) ---
-            const sanity = await postSource({ source: '3', annee: '2026', minCO2: '162', maxCO2: '162', paramPeriode: '1' });
-            console.log('SANITY (2026, CO2=162):', JSON.stringify(sanity));
-
-            // --- CO2 malus sweep: proof of concept across several years, moderate resolution first ---
+            // --- Missing years, 5g resolution (matches the first successful sweep) ---
             const co2Results = {};
-            const anneesTest = [2012, 2015, 2018, 2020, 2022, 2024, 2026];
-            for (const annee of anneesTest) {
+            const anneesManquantes = [2013, 2014, 2016, 2017, 2019, 2021, 2023, 2025];
+            for (const annee of anneesManquantes) {
               co2Results[annee] = {};
-              for (let co2 = 100; co2 <= 220; co2 += 5) {
+              for (let co2 = 90; co2 <= 230; co2 += 5) {
                 const r = await postSource({ source: '3', annee: String(annee), minCO2: String(co2), maxCO2: String(co2), paramPeriode: '1' });
                 co2Results[annee][co2] = r.status === 200 ? r.text : `ERR_${r.status}`;
-                await page.waitForTimeout(80); // be gentle with the government server
+                await page.waitForTimeout(100);
               }
               console.log(`Done annee=${annee}`);
             }
-            fs.writeFileSync('co2_par_annee.json', JSON.stringify(co2Results, null, 1));
-            console.log('\n=== CO2 RESULTS SAMPLE ===');
-            for (const annee of anneesTest) {
-              console.log(annee + ':', JSON.stringify(co2Results[annee]));
-            }
 
-            // --- Poids malus sweep: 2022-2026 ---
-            const poidsResults = {};
-            for (const annee of [2022, 2023, 2024, 2025, 2026]) {
-              poidsResults[annee] = {};
-              for (let poids = 1400; poids <= 2600; poids += 50) {
-                const r = await postSource({ source: '13', annee: String(annee), poids: String(poids) });
-                poidsResults[annee][poids] = r.status === 200 ? r.text : `ERR_${r.status}`;
-                await page.waitForTimeout(80);
+            // --- Per-gram refinement for the 4 most-used years ---
+            const finegrain = {};
+            for (const annee of [2018, 2022, 2024, 2026]) {
+              finegrain[annee] = {};
+              for (let co2 = 90; co2 <= 230; co2 += 1) {
+                const r = await postSource({ source: '3', annee: String(annee), minCO2: String(co2), maxCO2: String(co2), paramPeriode: '1' });
+                finegrain[annee][co2] = r.status === 200 ? r.text : `ERR_${r.status}`;
+                await page.waitForTimeout(100);
               }
-              console.log(`Done poids annee=${annee}`);
-            }
-            fs.writeFileSync('poids_par_annee.json', JSON.stringify(poidsResults, null, 1));
-            console.log('\n=== POIDS RESULTS ===');
-            for (const annee of Object.keys(poidsResults)) {
-              console.log(annee + ':', JSON.stringify(poidsResults[annee]));
+              console.log(`Done fine annee=${annee}`);
             }
 
-            // --- Regional tax lookup (source=1) with a few region codes ---
+            fs.writeFileSync('co2_par_annee_2.json', JSON.stringify(co2Results, null, 1));
+            fs.writeFileSync('co2_fin.json', JSON.stringify(finegrain, null, 1));
+
+            console.log('\n=== CO2 MANQUANTES ===');
+            for (const a of anneesManquantes) console.log(a + ':', JSON.stringify(co2Results[a]));
+
+            console.log('\n=== CO2 FIN (per-gram) ===');
+            for (const a of [2018, 2022, 2024, 2026]) console.log(a + ':', JSON.stringify(finegrain[a]));
+
+            // --- Full region table (13 metropolitan + a couple overseas), with annee param this time ---
+            const codesRegion = { '11':'IDF','24':'Centre-Val de Loire','27':'Bourgogne-Franche-Comte','28':'Normandie','32':'Hauts-de-France','44':'Grand Est','52':'Pays de la Loire','53':'Bretagne','75':'Nouvelle-Aquitaine','76':'Occitanie','84':'Auvergne-Rhone-Alpes','93':'PACA','94':'Corse' };
             const regionResults = {};
-            for (const code of ['93','11','84','32']) {
-              const r = await postSource({ source: '1', paramCodeREgion: code });
-              regionResults[code] = r.status === 200 ? r.text : `ERR_${r.status}`;
-              await page.waitForTimeout(80);
+            for (const [code, nom] of Object.entries(codesRegion)) {
+              const r = await postSource({ source: '1', paramCodeREgion: code, annee: '2026' });
+              regionResults[code] = { nom, reponse: r.status === 200 ? r.text : `ERR_${r.status}` };
+              await page.waitForTimeout(100);
             }
-            console.log('\n=== REGION RESULTS ===', JSON.stringify(regionResults));
+            fs.writeFileSync('regions.json', JSON.stringify(regionResults, null, 1));
+            console.log('\n=== REGIONS (avec annee=2026) ===');
+            console.log(JSON.stringify(regionResults, null, 1));
 
             await browser.close();
           })().catch(e => { console.error('SCRIPT_ERROR', e); process.exit(1); });
@@ -109,7 +100,8 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: bareme-source-data
+          name: bareme-source-data-2
           path: |
-            co2_par_annee.json
-            poids_par_annee.json
+            co2_par_annee_2.json
+            co2_fin.json
+            regions.json

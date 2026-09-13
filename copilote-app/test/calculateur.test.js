@@ -110,9 +110,10 @@ test("Département inconnu -> erreur explicite, jamais un tarif inventé", () =>
   assert.match(resultat.erreur, /971/);
 });
 
-test("Département métropolitain hors 06 : couvert via la table région (confiance estimée)", () => {
+test("Département métropolitain hors 06 : couvert via la table région (Île-de-France et Auvergne-Rhône-Alpes confirmées via l'API officielle)", () => {
   // 75 = Paris (Île-de-France), 69 = Rhône (Auvergne-Rhône-Alpes) : tarifs dérivés
-  // de la table région, confiance "estime" (pas "confirme" comme le 06).
+  // de la table région. Confiance "confirme" pour ces deux régions depuis le
+  // recoupement direct via l'API officielle (source=1) le 13/09/2026.
   const paris = calculerCoutImport({
     departement: "75",
     cvFiscaux: 10,
@@ -123,7 +124,7 @@ test("Département métropolitain hors 06 : couvert via la table région (confia
   assert.equal(paris.ok, true);
   const y1Paris = paris.lignes.find((l) => l.code === "Y1");
   assert.equal(y1Paris.montant, 690); // 10 CV x 68,95€/CV = 689,5 -> arrondi 690
-  assert.equal(y1Paris.confiance, "estime");
+  assert.equal(y1Paris.confiance, "confirme");
 
   const lyon = calculerCoutImport({
     departement: "69",
@@ -134,6 +135,50 @@ test("Département métropolitain hors 06 : couvert via la table région (confia
   });
   assert.equal(lyon.ok, true);
   assert.equal(lyon.lignes.find((l) => l.code === "Y1").montant, 430); // 10 CV x 43€/CV
+  assert.equal(lyon.lignes.find((l) => l.code === "Y1").confiance, "confirme");
+});
+
+test("Malus poids (TMOM) : appliqué pour un véhicule immatriculé après 2022 avec poids fourni", () => {
+  // 2024, 2100kg -> tranche 2100+ @ 30€/kg, baseAvant=8000 -> malus poids brut = 8000€.
+  // CO2 à 130g/km en 2024 -> malus CO2 brut = 310€. Total brut combiné = 8310€.
+  const resultat = calculerCoutImport({
+    departement: "06",
+    cvFiscaux: 10,
+    co2GKm: 130,
+    poidsKg: 2100,
+    dateMiseEnCirculation: "2024-01-01",
+    dateCalcul: "2024-01-01", // 0 mois -> décote 0%
+  });
+  assert.equal(resultat.ok, true);
+  const y3 = resultat.lignes.find((l) => l.code === "Y3");
+  assert.equal(y3.montant, 8310);
+  assert.match(y3.detail, /malus poids brut/);
+});
+
+test("Malus poids (TMOM) : aucune composante poids avant 2022 même avec un poids élevé", () => {
+  const resultat = calculerCoutImport({
+    departement: "06",
+    cvFiscaux: 15,
+    co2GKm: 162,
+    poidsKg: 2200, // poids élevé, mais sans effet : véhicule de 2018
+    dateMiseEnCirculation: "2018-01-01",
+    dateCalcul: "2026-04-10",
+  });
+  assert.equal(resultat.ok, true);
+  const y3 = resultat.lignes.find((l) => l.code === "Y3");
+  assert.equal(y3.montant, 1873); // identique au cas réel de calibration : le poids n'a aucun effet
+});
+
+test("Malus poids (TMOM) : avertissement clair si poids non fourni pour un véhicule post-2022", () => {
+  const resultat = calculerCoutImport({
+    departement: "06",
+    cvFiscaux: 10,
+    co2GKm: 130,
+    dateMiseEnCirculation: "2024-01-01",
+    dateCalcul: "2024-06-01",
+  });
+  assert.equal(resultat.ok, true);
+  assert.ok(resultat.avertissements.some((a) => /poids.*non.*fourni|aucun poids/i.test(a)));
 });
 
 test("Entrées invalides rejetées proprement", () => {

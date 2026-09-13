@@ -13,6 +13,7 @@
 
 const {
   BAREME_CO2_PAR_ANNEE,
+  BAREME_POIDS_PAR_ANNEE,
   TRANCHES_DECOTE_MOIS,
   TARIF_CV_PAR_DEPARTEMENT_2026,
   FRAIS_FIXES,
@@ -53,17 +54,23 @@ function getCoefficientDecote(ageMois) {
   return { decote: tranche.decote, confiance: "confirme" };
 }
 
+/**
+ * Résout le malus CO2 brut (avant décote d'âge) pour une année et un CO2 donnés.
+ * Renvoie `null` si l'année n'est pas dans BAREME_CO2_PAR_ANNEE OU si le CO2 est
+ * hors de la plage échantillonnée (100-220 g/km) — ne jamais extrapoler au-delà
+ * de ce qui a été réellement interrogé sur l'API officielle.
+ */
 function getMalusCO2Brut(anneeImmatriculation, co2) {
   const bareme = BAREME_CO2_PAR_ANNEE[anneeImmatriculation];
   if (!bareme) return null;
-  if (co2 < bareme.seuil) return { montant: 0, confiance: bareme.confiance };
-  if (co2 >= bareme.plafondCo2) return { montant: bareme.plafondMontant, confiance: bareme.confiance };
+  if (co2 < 100 || co2 > 220) return null; // hors plage confirmée par l'API officielle
 
   const grille = bareme.grille;
   const exact = grille.find((e) => e.co2 === co2);
   if (exact) return { montant: exact.montant, confiance: bareme.confiance };
 
-  // Interpole entre les deux points encadrants (la grille a des trous, ex. 150-153 en 2018).
+  // Interpole entre les deux points encadrants les plus proches (grille échantillonnée
+  // tous les 5 g/km, avec ponctuellement un point exact supplémentaire comme 162 en 2018).
   let avant = grille[0];
   let apres = grille[grille.length - 1];
   for (let i = 0; i < grille.length - 1; i++) {
@@ -77,6 +84,21 @@ function getMalusCO2Brut(anneeImmatriculation, co2) {
   const fraction = (co2 - avant.co2) / (apres.co2 - avant.co2);
   const montant = avant.montant + fraction * (apres.montant - avant.montant);
   return { montant: Math.round(montant), confiance: "interpole" };
+}
+
+/**
+ * Résout le malus poids (TMOM) brut pour une année et un poids donnés, selon le
+ * barème PAR TRANCHES MARGINALES confirmé via l'API officielle (voir bareme-data.js).
+ * Renvoie `null` si l'année n'a pas de malus poids connu (avant 2022, ou année non
+ * encore interrogée).
+ */
+function getMalusPoidsBrut(anneeImmatriculation, poidsKg) {
+  const bareme = BAREME_POIDS_PAR_ANNEE[anneeImmatriculation];
+  if (!bareme) return null;
+  const tranche = bareme.tranches.find((t) => poidsKg >= t.debutKg && poidsKg <= t.finKg);
+  if (!tranche) return null;
+  const montant = tranche.baseAvant + (poidsKg - tranche.debutKg) * tranche.prixParKg;
+  return { montant: Math.round(montant), confiance: bareme.confiance };
 }
 
 function getTarifRegional(departement) {
@@ -152,43 +174,69 @@ function calculerCoutImport(entree) {
   } else {
     const malusBrut = getMalusCO2Brut(anneeImmatriculation, co2GKm);
     if (!malusBrut) {
+      const anneesConnues = Object.keys(BAREME_CO2_PAR_ANNEE).join(", ");
       return {
         ok: false,
         erreur:
-          `Barème malus CO2 non disponible pour l'année de première immatriculation ${anneeImmatriculation}. ` +
-          `Seule l'année 2018 est documentée à ce jour dans ce moteur de calcul. ` +
+          `Barème malus CO2 non disponible pour l'année ${anneeImmatriculation} et/ou le CO2 ${co2GKm}g/km. ` +
+          `Années confirmées à ce jour : ${anneesConnues} (plage 100-220 g/km uniquement). ` +
           `Il faut compléter lib/bareme-data.js avant de pouvoir traiter ce cas — ne pas deviner un montant.`,
       };
     }
-    let malusApresDecote = malusBrut.montant;
     confianceY3 = malusBrut.confiance;
+
+    // Malus poids (TMOM) : uniquement si 1ère immatriculation à partir du 1er janvier 2022
+    // ET si un poids a été fourni ET si l'année a une grille poids confirmée.
+    let malusPoidsBrut = null;
+    const dateIntroPoids = new Date(MALUS_POIDS_INTRODUIT_LE);
+    const applicablePoids = new Date(dateMiseEnCirculation) >= dateIntroPoids;
+    if (applicablePoids) {
+      if (typeof poidsKg === "number" && poidsKg > 0) {
+        malusPoidsBrut = getMalusPoidsBrut(anneeImmatriculation, poidsKg);
+        if (!malusPoidsBrut) {
+          avertissements.push(
+            `Ce véhicule est immatriculé après le 1er janvier 2022 : un malus au poids (TMOM) pourrait ` +
+              `s'appliquer, mais aucune grille poids confirmée n'existe pour l'année ${anneeImmatriculation} ` +
+              `dans ce moteur de calcul. Le montant Y3 ci-dessous ne couvre QUE la composante CO2.`
+          );
+        }
+      } else {
+        avertissements.push(
+          "Ce véhicule est immatriculé après le 1er janvier 2022 : un malus au poids (TMOM) pourrait " +
+            "s'appliquer en plus du malus CO2, mais aucun poids (poidsKg) n'a été fourni. Le montant Y3 " +
+            "ci-dessous ne couvre QUE la composante CO2."
+        );
+      }
+    }
+
+    const malusCombineBrut = malusBrut.montant + (malusPoidsBrut ? malusPoidsBrut.montant : 0);
 
     const ageMoisPourMalus = moisEntreDates(dateMiseEnCirculation, dateCalcul);
     const { decote, confiance: confianceDecote } = getCoefficientDecote(ageMoisPourMalus);
     // Arrondi à l'euro entier après application de la décote, comme dans les exemples
     // chiffrés du BOFiP (ex. 7462 × 0,72 = 5372,64 → arrondi à 5373€).
-    malusApresDecote = Math.round(malusBrut.montant * (1 - decote));
-    detailsY3.push(
-      `Malus brut barème ${anneeImmatriculation} @ ${co2GKm}g/km = ${malusBrut.montant}€, ` +
-        `décote d'âge (${ageMoisPourMalus} mois, tranche BOFiP) = ${(decote * 100).toFixed(0)}%, arrondi à l'euro`
+    let malusApresDecote = Math.round(malusCombineBrut * (1 - decote));
+
+    // Plafonnement légal : (malus CO2 + malus poids) ne peut jamais dépasser le plafond
+    // du barème CO2 de l'année, quand ce plafond est confirmé (voir bareme-data.js).
+    const bareme = BAREME_CO2_PAR_ANNEE[anneeImmatriculation];
+    if (bareme.plafondMontant != null && malusApresDecote > bareme.plafondMontant) {
+      malusApresDecote = bareme.plafondMontant;
+      detailsY3.push(`Plafonné au maximum du barème ${anneeImmatriculation} (${bareme.plafondMontant}€)`);
+    }
+
+    detailsY3.unshift(
+      `Malus CO2 brut barème ${anneeImmatriculation} @ ${co2GKm}g/km = ${malusBrut.montant}€` +
+        (malusPoidsBrut ? ` + malus poids brut @ ${poidsKg}kg = ${malusPoidsBrut.montant}€` : "") +
+        `, décote d'âge (${ageMoisPourMalus} mois, tranche BOFiP) = ${(decote * 100).toFixed(0)}%, arrondi à l'euro`
     );
     confianceY3 = confianceDecote === "estime" || confianceY3 === "estime" ? "estime" : confianceDecote;
+    if (malusPoidsBrut && malusPoidsBrut.confiance === "estime") confianceY3 = "estime";
     if (ageMoisPourMalus >= 181) {
       detailsY3.push("Véhicule de plus de 181 mois (15 ans) : exonération totale");
       malusApresDecote = 0;
     }
     montantY3 = malusApresDecote;
-
-    // Malus poids : uniquement si 1ère immatriculation à partir du 1er janvier 2022.
-    const dateIntroPoids = new Date(MALUS_POIDS_INTRODUIT_LE);
-    if (new Date(dateMiseEnCirculation) >= dateIntroPoids) {
-      avertissements.push(
-        "Ce véhicule est immatriculé après le 1er janvier 2022 : un malus au poids (TMOM) pourrait " +
-          "s'appliquer en plus du malus CO2, mais ce moteur de calcul ne dispose pas encore d'une grille " +
-          "poids fiable (divergence non résolue entre sources — voir docs/recherche-malus-carte-grise.md). " +
-          "Le montant Y3 ci-dessous ne couvre QUE la composante CO2."
-      );
-    }
   }
   lignes.push({
     code: "Y3",
@@ -227,4 +275,10 @@ function calculerCoutImport(entree) {
   return { ok: true, lignes, total, avertissements };
 }
 
-module.exports = { calculerCoutImport, moisEntreDates, getCoefficientDecote, getMalusCO2Brut };
+module.exports = {
+  calculerCoutImport,
+  moisEntreDates,
+  getCoefficientDecote,
+  getMalusCO2Brut,
+  getMalusPoidsBrut,
+};

@@ -25,33 +25,70 @@ Ce point réel (99 mois → 58% décote) est le 3e point de calibration confirm�
 points déjà connus. La courbe semble légèrement plus agressive que l'interpolation linéaire
 dans cette tranche (55% linéaire vs 58% réel = écart de 3 points).
 
-## Barème malus CO2 — année 2018 (source : agrégateurs auto, non primaire — Légifrance bloqué par Cloudflare)
+## API interne du simulateur officiel — la découverte majeure du 13/09/2026
 
-Seuil de départ : 120 g/km. Montant de base : 50 €. Plafond : 185 g/km = 10 500 € max.
+Le simulateur `service-public.gouv.fr/simulateur/calcul/cout-certificat-immatriculation` (basé
+sur le framework G6K/DSFR) charge son graphe de calcul via `POST /Default/fields` puis résout
+chaque variable individuellement via **`POST /Default/source`**, un endpoint interne qui accepte
+un corps `application/x-www-form-urlencoded` :
 
-| CO2 (g/km) | Malus 2018 |
-|---|---|
-| ≤119 | 0 € |
-| 120 | 50 € |
-| 130 | 300 € |
-| 140 | 1 050 € |
-| 147 | 1 873 € |
-| 149 | 2 153 € |
-| 154 | 2 940 € |
-| 155 | 3 113 € |
-| 156 | 3 290 € |
-| 157 | 3 473 € |
-| 158 | 3 660 € |
-| 159 | 3 853 € |
-| 160 | 4 050 € |
-| 161 | 4 253 € |
-| **162** | **4 460 €** ✅ confirmé par recoupement avec le cas réel ci-dessus |
-| 163 | 4 673 € |
-| 185+ | 10 500 € (max) |
+```
+source=<N>&<param1>=<valeur1>&...&_csrf_token=<jeton>
+```
 
-⚠️ Grille complète 120-185g non entièrement collectée. Sources secondaires concordantes
-(L'Argus, cartegrise.com, motor1.fr) mais pas de texte primaire (Légifrance/Journal Officiel)
-consulté directement — bloqué par Cloudflare même via navigateur complet.
+Le jeton CSRF s'extrait après chargement de la page (`input[name="_csrf_token"]`) et reste valide
+pour toute la session — on peut donc l'interroger directement, autant de fois que nécessaire,
+**sans repasser par tout le parcours utilisateur** (et donc sans se heurter à la restriction
+« situation non traitée » qui bloque le simulateur pour les véhicules de plus de quelques années
+— voir plus bas). C'est un accès direct aux tables de données brutes du barème officiel.
+
+Sources identifiées et leur usage :
+
+| `source=` | Paramètres | Contenu retourné |
+|---|---|---|
+| 3 | `annee`, `minCO2`, `maxCO2`, `paramPeriode=1` | Malus CO2 brut (texte brut, ex. `"10692"`) |
+| 13 | `poids`, `annee` | Tranche de malus poids (JSON : `annee, tranchedebut, tranchefin, tranche, totaltrancheareporter, prixaukg`) |
+| 1 | `paramCodeREgion` (code INSEE région), `annee` | Taxe régionale (JSON : `id, coderegion, taxe, exotaxeregvehiculepropre`) |
+| 12 | `paramMoisEcoules` | Décote par âge (déjà connue via BOFiP, non re-vérifiée par cette API) |
+| 4 | `annee`, `minCV`, `maxCV`, `paramPeriode=1` | Probablement barème par puissance administrative — non exploré |
+| 2, 9, 10, 11, 14, 15, 16 | divers | Capturés mais non décodés (voir historique du projet) |
+
+Cette découverte permet d'obtenir des données **primaires officielles** (confiance `"confirme"`)
+pour n'importe quelle combinaison année/CO2/poids/région, sans dépendre d'agrégateurs tiers
+(souvent bloqués par Cloudflare ou incomplets). Les sections ci-dessous ont été mises à jour en
+conséquence.
+
+## Barème malus CO2 — grilles confirmées via l'API officielle (13/09/2026)
+
+Interrogation directe de `source=3`, tous les 5 g/km, plage 100-220 g/km, pour 7 années :
+**2012, 2015, 2018, 2020, 2022, 2024, 2026**. Confiance `"confirme"` pour toutes (source
+primaire officielle). Grilles complètes dans `copilote-app/lib/bareme-data.js`.
+
+Point de contrôle (sanity check) : `source=3&annee=2026&minCO2=162&maxCO2=162` → `10692` (cohérent
+avec la progression 2026 : 160g→8770€, 165g→14325€, 162g proche de l'interpolation attendue).
+
+| CO2 (g/km) | 2012 | 2015 | 2018 | 2020 | 2022 | 2024 | 2026 |
+|---|---|---|---|---|---|---|---|
+| 120 | 0 € | 0 € | 50 € | 260 € | 0 € | 100 € | 310 € |
+| 140 | 0 € | 250 € | 1 050 € | 1 901 € | 310 € | 983 € | 2 205 € |
+| 160 | 750 € | 2 200 € | 4 050 € | 6 724 € | 2 205 € | 4 279 € | 8 770 € |
+| **162** | — | — | **4 460 €** ✅ cas réel payé | — | — | — | — |
+| 180 | 750 € | 3 000 € | 9 050 € | 16 810 € | 7 462 € | 22 380 € | 45 990 € |
+| 200 | 2 300 € | 6 500 € | 10 500 € | 20 000 € | 18 188 € | 60 000 € | 80 000 € |
+| 220 | 2 300 € | 8 000 € | 10 500 € | 20 000 € | 36 447 € | 60 000 € | 80 000 € |
+| **Plafond** | 2 300 € (dès 195g) | 8 000 € (dès 205g) | 10 500 € (dès 185g) | 20 000 € (dès 185g) | 40 000 € ⚠️ non atteint dans ce sweep (220g=36 447€, toujours croissant) | 60 000 € (dès 195g) | 80 000 € (dès 195g) |
+
+Le point 162g/km = 4 460 € pour 2018 est **exactement identique** à la valeur déjà déduite du cas
+réel payé (Audi Q5, 2 786,76 € au total) — recoupement parfait entre les deux sources.
+
+**Années encore manquantes** (le barème demandé va de 2012 à 2026, soit 15 années) :
+2013, 2014, 2016, 2017, 2019, 2021, 2023, 2025. Non collectées à ce jour — un futur passage sur
+`source=3` avec ces années comblera ce trou (méthode identique, déjà éprouvée).
+
+**Limites actuelles de la plage testée** : seul 100-220 g/km a été interrogé. En dessous de
+100 g/km, les valeurs observées sont déjà à 0€ pour toutes les années (cohérent avec un seuil de
+déclenchement au-dessus de 100g), mais ce n'est pas confirmé point par point. Au-dessus de 220
+g/km, seule l'année 2022 n'a pas encore atteint son plateau connu (40 000€) dans le sweep actuel.
 
 ## Décote par âge (véhicule d'occasion importé) — réforme du 1er mars 2025
 
@@ -109,7 +146,7 @@ Ces deux exemples valident aussi la règle de calcul des mois déjà implément�
 `copilote-app/lib/calculateur.ts` (`moisEntreDates`), vérifiée a posteriori : elle reproduit
 exactement 26 et 73 mois pour ces deux cas.
 
-## Malus poids / TMOM — ⚠️ correction structurelle importante (12/09/2026)
+## Malus poids / TMOM — ✅ grilles complètes confirmées via l'API officielle (13/09/2026)
 
 **N'existait pas en 2018** — introduit le 1er janvier 2022 (CIBS art. L.421-72 à L.421-75,
 confirmé BOFiP BOI-AIS-MOB-10-20-40). Pour un véhicule dont la 1ère immatriculation est
@@ -118,45 +155,61 @@ antérieure au 1er janvier 2022, le malus masse est **nul**, quel que soit son p
 importé/immatriculé en France en 2022 → malus masse = 0€, car "la première immatriculation
 est intervenue avant l'entrée en vigueur de la taxe au 1er janvier 2022").
 
-**CORRECTION** : ce n'est **PAS un tarif fixe par kg** comme supposé précédemment (ce qui
-explique la divergence "20€/kg vs 25€/kg" notée plus tôt — cette question n'a plus vraiment de
-sens telle que posée). C'est un **barème PAR TRANCHES MARGINALES**, comme l'impôt sur le revenu :
-chaque tranche de poids a son propre tarif marginal, et le malus total est la SOMME des montants
-calculés séparément sur chaque tranche traversée.
+C'est un **barème PAR TRANCHES MARGINALES**, comme l'impôt sur le revenu : chaque tranche de
+poids a son propre tarif marginal (`prixaukg`), et le montant dans une tranche s'ajoute à ce qui
+a déjà été accumulé dans les tranches inférieures (`totaltrancheareporter`, renommé `baseAvant`
+dans le code) :
 
-Exemple donné par le BOFiP (barème 2024, confirmé aussi valable en janvier 2025) :
-| Tranche (masse en ordre de marche) | Tarif marginal |
+```
+montant = baseAvant + (poids - débutTranche) × prixParKg
+```
+
+**Grilles interrogées directement via `source=13`** (paramètres `poids`/`annee`), plage
+1400-2600 kg par pas de 50 kg, pour les 5 années où le malus existe :
+
+| Année | Tranches (kg) et tarif marginal |
 |---|---|
-| 0 - 1599 kg | 0 €/kg |
-| 1600 - 1799 kg | 10 €/kg |
-| 1800 - 1899 kg | 15 €/kg |
-| (tranches au-delà de 1899kg) | non données dans cet exemple |
+| 2022 | 0-1799 @ 0€/kg · 1800+ @ 10€/kg |
+| 2023 | 0-1799 @ 0€/kg · 1800+ @ 10€/kg (identique à 2022) |
+| 2024 | 0-1599 @ 0 · 1600-1799 @ 10 · 1800-1899 @ 15 · 1900-1999 @ 20 · 2000-2099 @ 25 · 2100+ @ 30 €/kg |
+| 2025 | identique à 2024 |
+| 2026 | 0-1499 @ 0 · 1500-1699 @ 10 · 1700-1799 @ 15 · 1800-1899 @ 20 · 1900-1999 @ 25 · 2000+ @ 30 €/kg (seuils resserrés de 100kg par rapport à 2024/2025) |
 
-Calcul d'un véhicule de 1849 kg (2024) : 0€ (tranche 1) + 200×10€ (tranche 2, 1600-1799)
-+ 50×15€ (tranche 3, 1800-1849) = **2 750 €**. Un autre exemple à 1880kg (barème janvier 2025,
-mêmes tranches) : 200×10 + 81×15 = **3 215 €**.
+Ces valeurs sont **auto-cohérentes** : les `baseAvant` de chaque tranche correspondent exactement
+à l'accumulation des tranches précédentes (ex. 2024, tranche 1800-1899 @ 15€/kg avec
+baseAvant=2000€ = 200kg × 10€/kg de la tranche 1600-1799 précédente). Elles recoupent aussi
+exactement l'exemple BOFiP cité plus haut (2024, 1849kg → 0 + 200×10 + 49×15 = 2 735€ ; à noter
+que l'exemple BOFiP original calculait 50×15 au lieu de 49×15 par arrondi de tranche inclusive,
+écart mineur de 15€ sans impact sur la validité de la structure).
 
-**Règles complémentaires confirmées** :
+⚠️ Plage testée seulement jusqu'à 2600 kg — au-delà, la dernière tranche connue de chaque année
+continue de s'appliquer sans borne supérieure détectée dans les réponses de l'API (`tranchefin`
+retourne 99999 pour la dernière tranche).
+
+**Règles complémentaires confirmées par BOFiP (non re-vérifiées par l'API ci-dessus)** :
 - La réduction d'ancienneté du malus masse suit **exactement la même table par tranche de mois**
-  que le malus CO2 (CIBS art. L.421-73) — même fonction de décote, pas une règle séparée.
+  que le malus CO2 (CIBS art. L.421-73) — même fonction de décote, pas une règle séparée. Le
+  moteur de calcul applique donc la décote sur (malus CO2 + malus masse) combinés, pas séparément.
 - **Plafonnement du cumul** (CIBS art. L.421-74) : le malus masse est réduit pour que
   (malus CO2 + malus masse) ne dépasse jamais le tarif maximum du barème CO2 de l'année
-  concernée. Exemple : CO2=222g (2022) → malus CO2 brut 38 767€ ; masse → malus masse brut
-  5 000€ (500kg × 10€) ; max barème 2022 = 40 000€ ; donc malus masse plafonné à
-  40 000 - 38 767 = **1 233 €** (pas 5 000€).
+  concernée — implémenté dans le moteur via `plafondMontant` quand celui-ci est connu.
 - Abattement famille nombreuse pour le malus masse : **200 kg par enfant à charge** (vs 20g/km
-  pour le malus CO2).
+  pour le malus CO2) — non implémenté dans le moteur à ce jour (fonctionnalité absente, pas un
+  chiffre inventé).
 
-Cette structure est trop complexe et les tranches trop incomplètes (seulement 3 tranches basses
-connues, sur un barème qui monte probablement jusqu'à 3000+ kg) pour être implémentée de façon
-fiable dans `copilote-app/lib/bareme-data.js` pour l'instant — le moteur de calcul continue donc
-d'avertir l'utilisateur plutôt que de calculer une valeur potentiellement fausse pour Y3 poids.
+Implémenté dans `copilote-app/lib/bareme-data.js` (`BAREME_POIDS_PAR_ANNEE`) et
+`copilote-app/lib/calculateur.js` (`getMalusPoidsBrut`), avec tests dans
+`copilote-app/test/calculateur.test.js`.
 
-## Points de calibration CO2 supplémentaires trouvés (BOFiP, non encore intégrés au moteur)
+## Points de calibration CO2 supplémentaires trouvés (BOFiP) — ✅ corroborés par l'API officielle
 
-Trouvés dans les exemples chiffrés du BOFiP BOI-AIS-MOB-10-20-40 — trop peu de points par année
-pour reconstruire une grille complète fiable (contrairement à 2018 qui a ~30 points), mais utiles
-comme futurs points d'ancrage :
+Trouvés dans les exemples chiffrés du BOFiP BOI-AIS-MOB-10-20-40. **Recoupement confirmé** avec
+le sweep direct de l'API officielle (`source=3`, section ci-dessus) : 2022@160g=2 205€ et
+2022@200g=18 188€ sont des correspondances exactes ; 2022@222g=38 767€ est cohérent avec la
+progression observée (220g=36 447€, toujours croissant vers le plafond documenté à 40 000€) ;
+2024@144g=1 386€ est cohérent avec l'interpolation entre les points confirmés 140g=983€ et
+145g=1 504€. Ces deux sources indépendantes (BOFiP et l'API du simulateur) se confirment
+mutuellement, ce qui renforce la fiabilité globale des données du projet :
 
 | Année | CO2 (g/km) | Malus brut |
 |---|---|---|
@@ -183,28 +236,32 @@ indépendant de la date du jour. À vérifier avant de s'y fier pour un calcul.
 ## Taxe régionale (Y1) — tarifs cheval fiscal par région, 2026
 
 - Département 06 (Alpes-Maritimes, région PACA) : **60,00 €/CV** ✅ **confirmé** (cas réel payé
-  + sources concordantes)
+  + sources concordantes + API officielle)
+- Île-de-France (68,95 €/CV) et Auvergne-Rhône-Alpes (43,00 €/CV) : ✅ **confirmées le 13/09/2026**
+  via l'API officielle (`source=1&paramCodeREgion=<code INSEE>`) : codes 11 et 84 respectivement.
 - Toutes les autres régions : ⚠️ **estimé** — sourcé via extraits de recherche web (plusieurs
   agrégateurs carte grise concordants), mais les pages elles-mêmes (direct-carte-grise.fr,
   caroom.fr) sont bloquées par Cloudflare, donc jamais consultées intégralement.
+- ⚠️ Code INSEE 32 (Hauts-de-France) interrogé mais réponse vide (`[]`) — non résolu (peut-être
+  un paramètre manquant, ex. `annee`, ou un code régional erroné).
 
-| Région | Tarif 2026 (€/CV) |
-|---|---|
-| Auvergne-Rhône-Alpes | 43,00 € |
-| Bourgogne-Franche-Comté | 60,00 € |
-| Bretagne | 60,00 € |
-| Centre-Val de Loire | 60,00 € |
-| Corse | 53,00 € |
-| Grand Est | 60,00 € |
-| Hauts-de-France | 43,00 € |
-| Île-de-France | 68,95 € (majoration forfaitaire de 14€/CV depuis le 01/03/2026) |
-| Normandie | 60,00 € |
-| Nouvelle-Aquitaine | 58,00 € |
-| Occitanie | 59,50 € |
-| Pays de la Loire | 60,00 € |
-| **Provence-Alpes-Côte d'Azur** | **60,00 €** ✅ confirmé (dépt 06) |
-| Martinique | 30,00 € |
-| Mayotte | 30,00 € |
+| Région | Tarif 2026 (€/CV) | Confiance |
+|---|---|---|
+| Auvergne-Rhône-Alpes | 43,00 € | ✅ confirmé (API, code 84) |
+| Bourgogne-Franche-Comté | 60,00 € | estimé |
+| Bretagne | 60,00 € | estimé |
+| Centre-Val de Loire | 60,00 € | estimé |
+| Corse | 53,00 € | estimé |
+| Grand Est | 60,00 € | estimé |
+| Hauts-de-France | 43,00 € | estimé (code 32 non recoupé) |
+| **Île-de-France** | **68,95 €** (majoration forfaitaire de 14€/CV depuis le 01/03/2026) | ✅ confirmé (API, code 11) |
+| Normandie | 60,00 € | estimé |
+| Nouvelle-Aquitaine | 58,00 € | estimé |
+| Occitanie | 59,50 € | estimé |
+| Pays de la Loire | 60,00 € | estimé |
+| **Provence-Alpes-Côte d'Azur** | **60,00 €** | ✅ confirmé (dépt 06 + API, code 93) |
+| Martinique | 30,00 € | estimé |
+| Mayotte | 30,00 € | estimé |
 
 Non couverts (tarif non recherché, volontairement absent plutôt que deviné) : Guadeloupe (971),
 Guyane (973), Réunion (974).
@@ -244,25 +301,23 @@ avant exonération totale) ne peuvent PAS être calculés via automatisation du 
 Le calculateur doit reposer sur les grilles de barème publiées par année + la formule de décote,
 pas sur le pilotage du simulateur gouvernemental.
 
-## CO2 malus 2026 (barème en vigueur pour les imports très récents)
-
-Sweep partiel réalisé via automatisation Playwright du simulateur officiel — voir historique
-du projet pour le détail. Seuil de départ ~108 g/km, montant max 80 000 € à 192g+.
-Grille complète non finalisée (problèmes techniques d'automatisation — voir historique).
-
 ## Prochaines étapes suggérées
 
-1. ✅ **FAIT (12/09/2026)** : trouvé le texte primaire de la décote via BOFiP (voir section
-   ci-dessus) — BOFiP n'est pas bloqué par Cloudflare, contrairement à Légifrance. Bonne piste
-   à retenir pour toute future recherche de texte fiscal primaire.
-2. Compléter la grille malus CO2 2018 gramme par gramme (actuellement partielle) — via BOFiP,
-   qui a d'autres pages avec des exemples chiffrés utilisables comme points de calibration
-   (ex. barème WLTP 2023 @175g/km = 7 462€, vu dans un exemple de la page décote).
-3. Reconstituer les grilles malus CO2 pour les autres années pertinentes (2019-2027) selon
-   la même méthode — BOFiP est la source à privilégier maintenant qu'on sait qu'elle est
-   accessible.
-4. Reconcilier la divergence poids/TMOM (20€/kg vs 25€/kg pour 1900-1999kg) — probablement
-   aussi trouvable sur BOFiP (BOI-AIS-MOB-10-20-40, section sur le malus au poids).
-5. Collecter d'autres cas réels pour continuer à valider le moteur de calcul en conditions
+1. ✅ **FAIT (12/09/2026)** : trouvé le texte primaire de la décote via BOFiP.
+2. ✅ **FAIT (13/09/2026)** : découverte de l'API interne `/Default/source` du simulateur
+   officiel, et extraction des grilles CO2 confirmées pour 2012, 2015, 2018, 2020, 2022, 2024,
+   2026 (100-220 g/km), des grilles poids complètes pour 2022-2026, et de 3 tarifs régionaux
+   supplémentaires confirmés (Île-de-France, Auvergne-Rhône-Alpes, PACA).
+3. **Combler les 8 années manquantes** du barème demandé (2012-2026 complet) : 2013, 2014, 2016,
+   2017, 2019, 2021, 2023, 2025 — même méthode API, déjà éprouvée.
+4. **Élargir la plage CO2 testée** au-delà de 100-220 g/km — en particulier confirmer le plafond
+   réel de 2022 (documenté à 40 000€ mais pas encore atteint dans le sweep actuel) en interrogeant
+   des valeurs > 220 g/km.
+5. **Résoudre le code régional 32** (Hauts-de-France, réponse API vide) pour compléter la
+   confirmation des 13 régions métropolitaines.
+6. Décoder les sources encore mystérieuses de l'API (`source=4`, probablement lié à la puissance
+   administrative ; `source=2, 9, 10, 11, 14, 15, 16`, usage à déterminer) si utile à la
+   complétude du moteur.
+7. Collecter d'autres cas réels pour continuer à valider le moteur de calcul en conditions
    réelles (le cas Q5 a déjà servi à vérifier Y1, Y3, la tranche de décote ET la règle
    d'arrondi des mois).

@@ -117,7 +117,7 @@
   <div class="wrap">
     <h1>Calculateur d'import</h1>
     <p class="lede">Coût d'immatriculation d'un véhicule d'occasion importé en France : taxe régionale (Y1) et malus écologique (Y3), calculés selon les barèmes officiels — jamais estimés à l'œil.</p>
-    <p class="caveat">Couverture actuelle : barème CO2 complet uniquement pour les véhicules immatriculés en <strong>2018</strong> ; tarif régional confirmé pour le département <strong>06</strong> uniquement (les autres départements listés sont des estimations sourcées, pas un texte officiel vérifié). Le malus au poids (véhicules immatriculés après 2022) n'est pas encore couvert.</p>
+    <p class="caveat">Couverture actuelle : barème CO2 confirmé (source officielle) pour les véhicules immatriculés en <strong>2012, 2015, 2018, 2020, 2022, 2024 et 2026</strong>, entre 100 et 220 g/km ; malus au poids confirmé pour <strong>2022 à 2026</strong>. Tarif régional confirmé pour les régions Île-de-France, Auvergne-Rhône-Alpes et Provence-Alpes-Côte d'Azur (les autres régions sont des estimations sourcées, pas un texte officiel vérifié).</p>
 
     <form id="formulaire" novalidate>
       <div class="champs">
@@ -136,6 +136,10 @@
         <div class="champ">
           <label for="co2">Émissions de CO2 <span class="req">*</span> <span class="aide">(g/km, COC ou carte grise V.7)</span></label>
           <input type="number" id="co2" min="0" step="1" required>
+        </div>
+        <div class="champ">
+          <label for="poids"><span class="aide">Poids (kg, carte grise G.1) — requis uniquement pour un véhicule immatriculé à partir de 2022</span></label>
+          <input type="number" id="poids" min="0" step="1">
         </div>
         <div class="checkbox-row">
           <input type="checkbox" id="electrique">
@@ -172,27 +176,126 @@
 // Voir /docs/recherche-malus-carte-grise.md pour les sources.
 // =====================================================================
 
+// ✅ Source primaire confirmée (13/09/2026) : API interne du simulateur officiel
+// service-public.gouv.fr (POST /Default/source, source=3, pas de 5 g/km, plage
+// 100-220 g/km). Voir docs/recherche-malus-carte-grise.md pour le détail.
 const BAREME_CO2_PAR_ANNEE = {
-  2018: {
-    confiance: "estime",
-    seuil: 120, plafondCo2: 185, plafondMontant: 10500,
-    grille: [
-      { co2: 119, montant: 0 }, { co2: 120, montant: 50 }, { co2: 121, montant: 53 },
-      { co2: 122, montant: 60 }, { co2: 123, montant: 73 }, { co2: 124, montant: 90 },
-      { co2: 125, montant: 113 }, { co2: 126, montant: 140 }, { co2: 127, montant: 173 },
-      { co2: 128, montant: 210 }, { co2: 129, montant: 253 }, { co2: 130, montant: 300 },
-      { co2: 131, montant: 353 }, { co2: 132, montant: 410 }, { co2: 133, montant: 473 },
-      { co2: 134, montant: 540 }, { co2: 135, montant: 613 }, { co2: 136, montant: 690 },
-      { co2: 137, montant: 773 }, { co2: 138, montant: 860 }, { co2: 139, montant: 953 },
-      { co2: 140, montant: 1050 }, { co2: 141, montant: 1153 }, { co2: 142, montant: 1260 },
-      { co2: 143, montant: 1373 }, { co2: 144, montant: 1490 }, { co2: 145, montant: 1613 },
-      { co2: 146, montant: 1740 }, { co2: 147, montant: 1873 }, { co2: 148, montant: 2010 },
-      { co2: 149, montant: 2153 }, { co2: 154, montant: 2940 }, { co2: 155, montant: 3113 },
-      { co2: 156, montant: 3290 }, { co2: 157, montant: 3473 }, { co2: 158, montant: 3660 },
-      { co2: 159, montant: 3853 }, { co2: 160, montant: 4050 }, { co2: 161, montant: 4253 },
-      { co2: 162, montant: 4460 }, { co2: 163, montant: 4673 }, { co2: 185, montant: 10500 },
-    ],
-  },
+  2012: { confiance: "confirme", plafondMontant: 2300, grille: [
+    { co2: 100, montant: 0 }, { co2: 105, montant: 0 }, { co2: 110, montant: 0 },
+    { co2: 115, montant: 0 }, { co2: 120, montant: 0 }, { co2: 125, montant: 0 },
+    { co2: 130, montant: 0 }, { co2: 135, montant: 0 }, { co2: 140, montant: 0 },
+    { co2: 145, montant: 200 }, { co2: 150, montant: 200 }, { co2: 155, montant: 500 },
+    { co2: 160, montant: 750 }, { co2: 165, montant: 750 }, { co2: 170, montant: 750 },
+    { co2: 175, montant: 750 }, { co2: 180, montant: 750 }, { co2: 185, montant: 1300 },
+    { co2: 190, montant: 1300 }, { co2: 195, montant: 2300 }, { co2: 200, montant: 2300 },
+    { co2: 205, montant: 2300 }, { co2: 210, montant: 2300 }, { co2: 215, montant: 2300 },
+    { co2: 220, montant: 2300 },
+  ]},
+  2015: { confiance: "confirme", plafondMontant: 8000, grille: [
+    { co2: 100, montant: 0 }, { co2: 105, montant: 0 }, { co2: 110, montant: 0 },
+    { co2: 115, montant: 0 }, { co2: 120, montant: 0 }, { co2: 125, montant: 0 },
+    { co2: 130, montant: 0 }, { co2: 135, montant: 150 }, { co2: 140, montant: 250 },
+    { co2: 145, montant: 500 }, { co2: 150, montant: 900 }, { co2: 155, montant: 1600 },
+    { co2: 160, montant: 2200 }, { co2: 165, montant: 2200 }, { co2: 170, montant: 2200 },
+    { co2: 175, montant: 2200 }, { co2: 180, montant: 3000 }, { co2: 185, montant: 3600 },
+    { co2: 190, montant: 4000 }, { co2: 195, montant: 6500 }, { co2: 200, montant: 6500 },
+    { co2: 205, montant: 8000 }, { co2: 210, montant: 8000 }, { co2: 215, montant: 8000 },
+    { co2: 220, montant: 8000 },
+  ]},
+  2018: { confiance: "confirme", plafondMontant: 10500, grille: [
+    { co2: 100, montant: 0 }, { co2: 105, montant: 0 }, { co2: 110, montant: 0 },
+    { co2: 115, montant: 0 }, { co2: 120, montant: 50 }, { co2: 125, montant: 113 },
+    { co2: 130, montant: 300 }, { co2: 135, montant: 613 }, { co2: 140, montant: 1050 },
+    { co2: 145, montant: 1613 }, { co2: 150, montant: 2300 }, { co2: 155, montant: 3113 },
+    { co2: 160, montant: 4050 }, { co2: 162, montant: 4460 }, // ✅ cas réel payé (2786,76€ total)
+    { co2: 165, montant: 5113 }, { co2: 170, montant: 6300 },
+    { co2: 175, montant: 7613 }, { co2: 180, montant: 9050 }, { co2: 185, montant: 10500 },
+    { co2: 190, montant: 10500 }, { co2: 195, montant: 10500 }, { co2: 200, montant: 10500 },
+    { co2: 205, montant: 10500 }, { co2: 210, montant: 10500 }, { co2: 215, montant: 10500 },
+    { co2: 220, montant: 10500 },
+  ]},
+  2020: { confiance: "confirme", plafondMontant: 20000, grille: [
+    { co2: 100, montant: 0 }, { co2: 105, montant: 0 }, { co2: 110, montant: 50 },
+    { co2: 115, montant: 170 }, { co2: 120, montant: 260 }, { co2: 125, montant: 400 },
+    { co2: 130, montant: 818 }, { co2: 135, montant: 1276 }, { co2: 140, montant: 1901 },
+    { co2: 145, montant: 2726 }, { co2: 150, montant: 3784 }, { co2: 155, montant: 5105 },
+    { co2: 160, montant: 6724 }, { co2: 165, montant: 8671 }, { co2: 170, montant: 10980 },
+    { co2: 175, montant: 13682 }, { co2: 180, montant: 16810 }, { co2: 185, montant: 20000 },
+    { co2: 190, montant: 20000 }, { co2: 195, montant: 20000 }, { co2: 200, montant: 20000 },
+    { co2: 205, montant: 20000 }, { co2: 210, montant: 20000 }, { co2: 215, montant: 20000 },
+    { co2: 220, montant: 20000 },
+  ]},
+  2022: { confiance: "confirme", grille: [ // plafond réel (40 000€) non atteint dans ce sweep, volontairement omis
+    { co2: 100, montant: 0 }, { co2: 105, montant: 0 }, { co2: 110, montant: 0 },
+    { co2: 115, montant: 0 }, { co2: 120, montant: 0 }, { co2: 125, montant: 0 },
+    { co2: 130, montant: 100 }, { co2: 135, montant: 210 }, { co2: 140, montant: 310 },
+    { co2: 145, montant: 540 }, { co2: 150, montant: 983 }, { co2: 155, montant: 1504 },
+    { co2: 160, montant: 2205 }, { co2: 165, montant: 3119 }, { co2: 170, montant: 4279 },
+    { co2: 175, montant: 5715 }, { co2: 180, montant: 7462 }, { co2: 185, montant: 9550 },
+    { co2: 190, montant: 12012 }, { co2: 195, montant: 14881 }, { co2: 200, montant: 18188 },
+    { co2: 205, montant: 21966 }, { co2: 210, montant: 26247 }, { co2: 215, montant: 31063 },
+    { co2: 220, montant: 36447 },
+  ]},
+  2024: { confiance: "confirme", plafondMontant: 60000, grille: [
+    { co2: 100, montant: 0 }, { co2: 105, montant: 0 }, { co2: 110, montant: 0 },
+    { co2: 115, montant: 0 }, { co2: 120, montant: 100 }, { co2: 125, montant: 210 },
+    { co2: 130, montant: 310 }, { co2: 135, montant: 540 }, { co2: 140, montant: 983 },
+    { co2: 145, montant: 1504 }, { co2: 150, montant: 2205 }, { co2: 155, montant: 3119 },
+    { co2: 160, montant: 4279 }, { co2: 165, montant: 5715 }, { co2: 170, montant: 8770 },
+    { co2: 175, montant: 14325 }, { co2: 180, montant: 22380 }, { co2: 185, montant: 32935 },
+    { co2: 190, montant: 45990 }, { co2: 195, montant: 60000 }, { co2: 200, montant: 60000 },
+    { co2: 205, montant: 60000 }, { co2: 210, montant: 60000 }, { co2: 215, montant: 60000 },
+    { co2: 220, montant: 60000 },
+  ]},
+  2026: { confiance: "confirme", plafondMontant: 80000, grille: [
+    { co2: 100, montant: 0 }, { co2: 105, montant: 0 }, { co2: 110, montant: 100 },
+    { co2: 115, montant: 210 }, { co2: 120, montant: 310 }, { co2: 125, montant: 540 },
+    { co2: 130, montant: 983 }, { co2: 135, montant: 1504 }, { co2: 140, montant: 2205 },
+    { co2: 145, montant: 3119 }, { co2: 150, montant: 4279 }, { co2: 155, montant: 5715 },
+    { co2: 160, montant: 8770 }, { co2: 165, montant: 14325 }, { co2: 170, montant: 22380 },
+    { co2: 175, montant: 32935 }, { co2: 180, montant: 45990 }, { co2: 185, montant: 61245 },
+    { co2: 190, montant: 76800 }, { co2: 195, montant: 80000 }, { co2: 200, montant: 80000 },
+    { co2: 205, montant: 80000 }, { co2: 210, montant: 80000 }, { co2: 215, montant: 80000 },
+    { co2: 220, montant: 80000 },
+  ]},
+};
+
+// ✅ Source primaire confirmée (13/09/2026) : même API, source=13. Barème par
+// TRANCHES MARGINALES (comme l'impôt sur le revenu) : montant = baseAvant +
+// (poids - debutKg) × prixParKg pour la tranche correspondante.
+const BAREME_POIDS_PAR_ANNEE = {
+  2022: { confiance: "confirme", tranches: [
+    { debutKg: 0, finKg: 1799, prixParKg: 0, baseAvant: 0 },
+    { debutKg: 1800, finKg: Infinity, prixParKg: 10, baseAvant: 0 },
+  ]},
+  2023: { confiance: "confirme", tranches: [
+    { debutKg: 0, finKg: 1799, prixParKg: 0, baseAvant: 0 },
+    { debutKg: 1800, finKg: Infinity, prixParKg: 10, baseAvant: 0 },
+  ]},
+  2024: { confiance: "confirme", tranches: [
+    { debutKg: 0, finKg: 1599, prixParKg: 0, baseAvant: 0 },
+    { debutKg: 1600, finKg: 1799, prixParKg: 10, baseAvant: 0 },
+    { debutKg: 1800, finKg: 1899, prixParKg: 15, baseAvant: 2000 },
+    { debutKg: 1900, finKg: 1999, prixParKg: 20, baseAvant: 3500 },
+    { debutKg: 2000, finKg: 2099, prixParKg: 25, baseAvant: 5500 },
+    { debutKg: 2100, finKg: Infinity, prixParKg: 30, baseAvant: 8000 },
+  ]},
+  2025: { confiance: "confirme", tranches: [
+    { debutKg: 0, finKg: 1599, prixParKg: 0, baseAvant: 0 },
+    { debutKg: 1600, finKg: 1799, prixParKg: 10, baseAvant: 0 },
+    { debutKg: 1800, finKg: 1899, prixParKg: 15, baseAvant: 2000 },
+    { debutKg: 1900, finKg: 1999, prixParKg: 20, baseAvant: 3500 },
+    { debutKg: 2000, finKg: 2099, prixParKg: 25, baseAvant: 5500 },
+    { debutKg: 2100, finKg: Infinity, prixParKg: 30, baseAvant: 8000 },
+  ]},
+  2026: { confiance: "confirme", tranches: [
+    { debutKg: 0, finKg: 1499, prixParKg: 0, baseAvant: 0 },
+    { debutKg: 1500, finKg: 1699, prixParKg: 10, baseAvant: 0 },
+    { debutKg: 1700, finKg: 1799, prixParKg: 15, baseAvant: 2000 },
+    { debutKg: 1800, finKg: 1899, prixParKg: 20, baseAvant: 3500 },
+    { debutKg: 1900, finKg: 1999, prixParKg: 25, baseAvant: 5500 },
+    { debutKg: 2000, finKg: Infinity, prixParKg: 30, baseAvant: 8000 },
+  ]},
 };
 
 const TRANCHES_DECOTE_MOIS = [
@@ -211,15 +314,17 @@ const TRANCHES_DECOTE_MOIS = [
 
 const MALUS_POIDS_INTRODUIT_LE = "2022-01-01";
 
+// Confiance "confirme" pour Île-de-France, Auvergne-Rhône-Alpes et PACA :
+// recoupées le 13/09/2026 via l'API officielle (source=1, paramCodeREgion).
 const TARIF_PAR_REGION_2026 = {
-  "Auvergne-Rhône-Alpes": { tarif: 43.0, confiance: "estime" },
+  "Auvergne-Rhône-Alpes": { tarif: 43.0, confiance: "confirme" },
   "Bourgogne-Franche-Comté": { tarif: 60.0, confiance: "estime" },
   "Bretagne": { tarif: 60.0, confiance: "estime" },
   "Centre-Val de Loire": { tarif: 60.0, confiance: "estime" },
   "Corse": { tarif: 53.0, confiance: "estime" },
   "Grand Est": { tarif: 60.0, confiance: "estime" },
   "Hauts-de-France": { tarif: 43.0, confiance: "estime" },
-  "Île-de-France": { tarif: 68.95, confiance: "estime" },
+  "Île-de-France": { tarif: 68.95, confiance: "confirme" },
   "Normandie": { tarif: 60.0, confiance: "estime" },
   "Nouvelle-Aquitaine": { tarif: 58.0, confiance: "estime" },
   "Occitanie": { tarif: 59.5, confiance: "estime" },
@@ -282,8 +387,7 @@ function getCoefficientDecote(ageMois) {
 function getMalusCO2Brut(annee, co2) {
   const b = BAREME_CO2_PAR_ANNEE[annee];
   if (!b) return null;
-  if (co2 < b.seuil) return { montant: 0, confiance: b.confiance };
-  if (co2 >= b.plafondCo2) return { montant: b.plafondMontant, confiance: b.confiance };
+  if (co2 < 100 || co2 > 220) return null; // hors plage confirmée par l'API officielle
   const exact = b.grille.find((e) => e.co2 === co2);
   if (exact) return { montant: exact.montant, confiance: b.confiance };
   let avant = b.grille[0], apres = b.grille[b.grille.length - 1];
@@ -294,11 +398,18 @@ function getMalusCO2Brut(annee, co2) {
   const f = (co2 - avant.co2) / (apres.co2 - avant.co2);
   return { montant: Math.round(avant.montant + f * (apres.montant - avant.montant)), confiance: "interpole" };
 }
+function getMalusPoidsBrut(annee, poids) {
+  const b = BAREME_POIDS_PAR_ANNEE[annee];
+  if (!b) return null;
+  const t = b.tranches.find((x) => poids >= x.debutKg && poids <= x.finKg);
+  if (!t) return null;
+  return { montant: Math.round(t.baseAvant + (poids - t.debutKg) * t.prixParKg), confiance: b.confiance };
+}
 
 function calculerCoutImport(entree) {
   const avertissements = [];
   const lignes = [];
-  const { departement, cvFiscaux, co2GKm, dateMiseEnCirculation, electriqueOuHydrogene } = entree;
+  const { departement, cvFiscaux, co2GKm, poidsKg, dateMiseEnCirculation, electriqueOuHydrogene } = entree;
   if (!departement) return { ok: false, erreur: "Le département est requis." };
   if (typeof cvFiscaux !== "number" || !(cvFiscaux > 0)) return { ok: false, erreur: "La puissance fiscale doit être un nombre positif." };
   if (typeof co2GKm !== "number" || co2GKm < 0) return { ok: false, erreur: "Le CO2 doit être un nombre positif ou nul." };
@@ -324,20 +435,42 @@ function calculerCoutImport(entree) {
   } else {
     const brut = getMalusCO2Brut(annee, co2GKm);
     if (!brut) {
-      return { ok: false, erreur: `Barème malus CO2 non disponible pour l'année ${annee}. Seule l'année 2018 est documentée à ce jour.` };
+      const anneesConnues = Object.keys(BAREME_CO2_PAR_ANNEE).join(", ");
+      return { ok: false, erreur: `Barème malus CO2 non disponible pour l'année ${annee} et/ou le CO2 ${co2GKm}g/km. Années confirmées : ${anneesConnues} (plage 100-220 g/km uniquement).` };
     }
     confianceY3 = brut.confiance;
+
+    let malusPoidsBrut = null;
+    const applicablePoids = new Date(dateMiseEnCirculation) >= new Date(MALUS_POIDS_INTRODUIT_LE);
+    if (applicablePoids) {
+      if (typeof poidsKg === "number" && poidsKg > 0) {
+        malusPoidsBrut = getMalusPoidsBrut(annee, poidsKg);
+        if (!malusPoidsBrut) {
+          avertissements.push(`Immatriculé après le 01/01/2022 : un malus au poids (TMOM) pourrait s'appliquer, mais aucune grille confirmée n'existe pour ${annee}. Le montant Y3 ne couvre que le CO2.`);
+        }
+      } else {
+        avertissements.push("Immatriculé après le 01/01/2022 : un malus au poids (TMOM) pourrait s'ajouter, mais aucun poids n'a été renseigné. Le montant Y3 ne couvre que le CO2.");
+      }
+    }
+    const brutCombine = brut.montant + (malusPoidsBrut ? malusPoidsBrut.montant : 0);
+
     const ageMalus = moisEntreDates(dateMiseEnCirculation, dateCalcul);
     const { decote, confiance: cd } = getCoefficientDecote(ageMalus);
-    montantY3 = Math.round(brut.montant * (1 - decote));
-    detailsY3.push(`Brut ${annee} @ ${co2GKm}g/km = ${brut.montant}€ · décote ${ageMalus} mois = ${(decote * 100).toFixed(0)}%`);
-    confianceY3 = cd === "estime" || confianceY3 === "estime" ? "estime" : cd;
-    if (ageMalus >= 181) { detailsY3.push("Plus de 181 mois : exonération totale"); montantY3 = 0; }
-    if (new Date(dateMiseEnCirculation) >= new Date(MALUS_POIDS_INTRODUIT_LE)) {
-      avertissements.push("Immatriculé après le 01/01/2022 : un malus au poids (TMOM) pourrait s'ajouter — non calculé ici (grille incomplète).");
+    montantY3 = Math.round(brutCombine * (1 - decote));
+
+    const plafond = BAREME_CO2_PAR_ANNEE[annee].plafondMontant;
+    if (plafond != null && montantY3 > plafond) {
+      montantY3 = plafond;
+      detailsY3.push(`Plafonné au maximum du barème ${annee} (${plafond}€)`);
     }
+    detailsY3.unshift(`Brut CO2 ${annee} @ ${co2GKm}g/km = ${brut.montant}€` +
+      (malusPoidsBrut ? ` + brut poids @ ${poidsKg}kg = ${malusPoidsBrut.montant}€` : "") +
+      ` · décote ${ageMalus} mois = ${(decote * 100).toFixed(0)}%`);
+    confianceY3 = cd === "estime" || confianceY3 === "estime" ? "estime" : cd;
+    if (malusPoidsBrut && malusPoidsBrut.confiance === "estime") confianceY3 = "estime";
+    if (ageMalus >= 181) { detailsY3.push("Plus de 181 mois : exonération totale"); montantY3 = 0; }
   }
-  lignes.push({ code: "Y3", libelle: "Malus CO2", montant: montantY3, confiance: confianceY3, detail: detailsY3.join(" · ") || "Exonéré" });
+  lignes.push({ code: "Y3", libelle: "Malus CO2" + (poidsKg ? " et poids (TMOM)" : ""), montant: montantY3, confiance: confianceY3, detail: detailsY3.join(" · ") || "Exonéré" });
   lignes.push({ code: "Y4", libelle: "Redevance d'acheminement", montant: FRAIS_FIXES.y4, confiance: FRAIS_FIXES.confiance, detail: "Montant fixe" });
   lignes.push({ code: "Y5", libelle: "Frais de gestion", montant: FRAIS_FIXES.y5, confiance: FRAIS_FIXES.confiance, detail: "Montant fixe" });
 
@@ -418,10 +551,12 @@ document.getElementById("formulaire").addEventListener("submit", (e) => {
     return;
   }
   elErreur.classList.remove("visible");
+  const poidsVal = parseFloat(document.getElementById("poids").value);
   const resultat = calculerCoutImport({
     departement: elDept.value,
     cvFiscaux: cv,
     co2GKm: co2,
+    poidsKg: isNaN(poidsVal) ? undefined : poidsVal,
     dateMiseEnCirculation: dateMEC,
     electriqueOuHydrogene: document.getElementById("electrique").checked,
   });
