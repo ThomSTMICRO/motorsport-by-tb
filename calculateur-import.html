@@ -141,9 +141,28 @@
           <label for="poids"><span class="aide">Poids (kg, carte grise G.1) — requis uniquement pour un véhicule immatriculé à partir de 2022</span></label>
           <input type="number" id="poids" min="0" step="1">
         </div>
+        <div class="champ">
+          <label for="energie"><span class="aide">Type d'énergie — utile uniquement pour la réduction de poids hybride sur le malus poids</span></label>
+          <select id="energie">
+            <option value="">Non précisé / essence / diesel</option>
+            <option value="hybride-non-rechargeable">Hybride non rechargeable</option>
+            <option value="hybride-rechargeable">Hybride rechargeable</option>
+          </select>
+        </div>
+        <div class="champ" id="champAutonomie" hidden>
+          <label for="autonomie50km"><span class="aide">Autonomie électrique ≥ 50 km (carte grise) ?</span></label>
+          <select id="autonomie50km">
+            <option value="non">Non</option>
+            <option value="oui">Oui</option>
+          </select>
+        </div>
         <div class="checkbox-row">
           <input type="checkbox" id="electrique">
-          <label for="electrique">Véhicule électrique ou à hydrogène (exonéré de malus CO2)</label>
+          <label for="electrique">Véhicule électrique ou à hydrogène (exonéré de malus CO2 et poids)</label>
+        </div>
+        <div class="checkbox-row">
+          <input type="checkbox" id="invalidite">
+          <label for="invalidite">Titulaire d'une carte mobilité inclusion / invalidité (exonéré de malus CO2 et poids)</label>
         </div>
       </div>
       <div class="actions">
@@ -565,11 +584,20 @@ function getMalusPoidsBrut(annee, poids) {
   if (!t) return null;
   return { montant: Math.round(t.baseAvant + (poids - t.debutKg) * t.prixParKg), confiance: b.confiance };
 }
+// ✅ Règles R78/R79 du moteur de règles officiel (extraites le 13/09/2026 via /Default/fields).
+function getReductionPoidsHybride(dateMiseEnCirculation, energie, autonomie50km) {
+  if (energie !== "hybride-non-rechargeable" && energie !== "hybride-rechargeable") return 0;
+  const date = new Date(dateMiseEnCirculation);
+  if (energie === "hybride-rechargeable" && autonomie50km) {
+    return date > new Date("2024-12-31") ? 200 : 0;
+  }
+  return date > new Date("2023-12-31") ? 100 : 0;
+}
 
 function calculerCoutImport(entree) {
   const avertissements = [];
   const lignes = [];
-  const { departement, cvFiscaux, co2GKm, poidsKg, dateMiseEnCirculation, electriqueOuHydrogene } = entree;
+  const { departement, cvFiscaux, co2GKm, poidsKg, dateMiseEnCirculation, electriqueOuHydrogene, invalidite, energie, autonomieElectriqueAuMoins50Km } = entree;
   if (!departement) return { ok: false, erreur: "Le département est requis." };
   if (typeof cvFiscaux !== "number" || !(cvFiscaux > 0)) return { ok: false, erreur: "La puissance fiscale doit être un nombre positif." };
   if (typeof co2GKm !== "number" || co2GKm < 0) return { ok: false, erreur: "Le CO2 doit être un nombre positif ou nul." };
@@ -590,9 +618,16 @@ function calculerCoutImport(entree) {
   lignes.push({ code: "Y1", libelle: "Taxe régionale (cheval fiscal)", montant: montantY1, confiance: tarifRegional.confiance,
     detail: `${cvFiscaux} CV × ${tarifRegional.tarif.toFixed(2)} €/CV${decoteY1 < 1 ? " × 50 % (>10 ans)" : ""}` });
 
-  let montantY3 = 0, confianceY3 = "confirme", detailsY3 = [];
+  let montantY3 = 0, confianceY3 = "confirme", detailsY3 = [], poidsPrisEnCompte = false;
+  const dateAvant2015 = new Date(dateMiseEnCirculation) < new Date("2015-01-01");
   if (electriqueOuHydrogene) {
-    detailsY3.push("Véhicule électrique/hydrogène : exonéré");
+    detailsY3.push("Véhicule électrique/hydrogène : exonéré de malus CO2 et poids");
+  } else if (invalidite) {
+    // ✅ Règle R48/R60/R68/R80 du moteur officiel : exonération totale CO2+poids.
+    detailsY3.push("Titulaire d'une carte mobilité inclusion / invalidité : exonéré de malus CO2 et poids");
+  } else if (dateAvant2015) {
+    // ✅ Règle R68 du moteur officiel : 1ère immatriculation avant le 01/01/2015 -> exonéré.
+    detailsY3.push("1ère immatriculation antérieure au 01/01/2015 : exonéré de malus CO2");
   } else {
     const brut = getMalusCO2Brut(annee, co2GKm);
     if (!brut) {
@@ -605,7 +640,14 @@ function calculerCoutImport(entree) {
     const applicablePoids = new Date(dateMiseEnCirculation) >= new Date(MALUS_POIDS_INTRODUIT_LE);
     if (applicablePoids) {
       if (typeof poidsKg === "number" && poidsKg > 0) {
-        malusPoidsBrut = getMalusPoidsBrut(annee, poidsKg);
+        // ✅ Règles R78/R79 : réduction de poids hybride avant lecture du barème TMOM.
+        const reductionHybride = getReductionPoidsHybride(dateMiseEnCirculation, energie, autonomieElectriqueAuMoins50Km);
+        const poidsRetenu = Math.max(0, poidsKg - reductionHybride);
+        malusPoidsBrut = getMalusPoidsBrut(annee, poidsRetenu);
+        if (malusPoidsBrut) {
+          poidsPrisEnCompte = true;
+          if (reductionHybride > 0) detailsY3.push(`Poids retenu après réduction hybride de ${reductionHybride}kg : ${poidsRetenu}kg`);
+        }
         if (!malusPoidsBrut) {
           avertissements.push(`Immatriculé après le 01/01/2022 : un malus au poids (TMOM) pourrait s'appliquer, mais aucune grille confirmée n'existe pour ${annee}. Le montant Y3 ne couvre que le CO2.`);
         }
@@ -632,7 +674,7 @@ function calculerCoutImport(entree) {
     if (malusPoidsBrut && malusPoidsBrut.confiance === "estime") confianceY3 = "estime";
     if (ageMalus >= 181) { detailsY3.push("Plus de 181 mois : exonération totale"); montantY3 = 0; }
   }
-  lignes.push({ code: "Y3", libelle: "Malus CO2" + (poidsKg ? " et poids (TMOM)" : ""), montant: montantY3, confiance: confianceY3, detail: detailsY3.join(" · ") || "Exonéré" });
+  lignes.push({ code: "Y3", libelle: "Malus CO2" + (poidsPrisEnCompte ? " et poids (TMOM)" : ""), montant: montantY3, confiance: confianceY3, detail: detailsY3.join(" · ") || "Exonéré" });
   lignes.push({ code: "Y4", libelle: "Taxe fixe", montant: FRAIS_FIXES.y4, confiance: FRAIS_FIXES.confiance, detail: "Montant fixe" });
 
   // Arrondi du SOUS-TOTAL Y1+Y2+Y3+Y4 à l'euro, PUIS ajout de Y5 (confirmé par 2 cas réels).
@@ -718,6 +760,7 @@ document.getElementById("formulaire").addEventListener("submit", (e) => {
   }
   elErreur.classList.remove("visible");
   const poidsVal = parseFloat(document.getElementById("poids").value);
+  const energieVal = document.getElementById("energie").value || undefined;
   const resultat = calculerCoutImport({
     departement: elDept.value,
     cvFiscaux: cv,
@@ -725,10 +768,20 @@ document.getElementById("formulaire").addEventListener("submit", (e) => {
     poidsKg: isNaN(poidsVal) ? undefined : poidsVal,
     dateMiseEnCirculation: dateMEC,
     electriqueOuHydrogene: document.getElementById("electrique").checked,
+    invalidite: document.getElementById("invalidite").checked,
+    energie: energieVal,
+    autonomieElectriqueAuMoins50Km: energieVal === "hybride-rechargeable" && document.getElementById("autonomie50km").value === "oui",
   });
   elResultat.innerHTML = "";
   elResultat.appendChild(rendreLedger(resultat, false));
   elResultat.scrollIntoView({ behavior: "smooth", block: "start" });
+});
+
+// Affiche le champ autonomie électrique uniquement pour un hybride rechargeable.
+const elEnergie = document.getElementById("energie");
+const elChampAutonomie = document.getElementById("champAutonomie");
+elEnergie.addEventListener("change", () => {
+  elChampAutonomie.hidden = elEnergie.value !== "hybride-rechargeable";
 });
 </script>
 </body>

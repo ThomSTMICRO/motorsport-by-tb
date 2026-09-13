@@ -341,6 +341,71 @@ par région.
 - Y5 = 2,76 €
 - Total fixe = 13,76 € ✅ confirmé (cas réel)
 
+## Champs manquants du formulaire — analyse du moteur de règles officiel (13/09/2026)
+
+Suite à un signalement utilisateur ("il manque des questions"), inspection de `/Default/fields`
+sur le simulateur officiel : 197 "règles" au total, mais ce sont en très grande majorité de la
+**logique d'affichage du formulaire** (montrer/masquer telle question selon les réponses
+précédentes), PAS les formules de calcul elles-mêmes — celles-ci vivent dans les métadonnées
+`datas` (propriété `unparsedContent` quand elle existe) et dans l'API `/Default/source` déjà
+exploitée pour les barèmes CO2/poids/région.
+
+**"Genre national du véhicule" n'est PAS une vraie question** : `retourGenre` est un champ de
+type `text` avec `unparsedSource`/`unparsedIndex` — un texte AFFICHÉ, calculé automatiquement à
+partir d'autres réponses (probablement `typeVehicule`), pas une saisie utilisateur. Rien à
+ajouter au formulaire de ce côté.
+
+**Réception communautaire = 'non'** : la règle R49 (id 110-114) montre que répondre 'non' à cette
+question **masque le panel suivant entier** (`hideObject panel stepId=1 panelId=3`) et efface les
+champs département/poids déjà saisis. Autrement dit, **le simulateur officiel lui-même ne calcule
+rien pour ce cas** via ce parcours — ce n'est donc pas une lacune de notre outil, c'est une
+limite du simulateur source lui-même. Non implémenté, à raison.
+
+**Trois règles de calcul exactes et non ambiguës ont été trouvées et implémentées** (confiance
+`"confirme"`, texte de règle cité verbatim ci-dessous) :
+
+1. **R48/R60/R68/R80 — Invalidité (carte mobilité inclusion)** : la condition
+   `(defined(invalidite) && invalidite = 'oui')` apparaît dans la règle R68
+   ("Soumis au malus CO² ou pas" → `MalusCO2_OrNot = false`) ET dans R80
+   ("exonerationTMOM"/"TMOM_Finale = 0"). Un titulaire d'une carte mobilité inclusion/invalidité
+   est donc **exonéré à 100% de malus CO2 ET poids**, sans condition de CO2, poids ou ancienneté.
+   Implémenté via `entree.invalidite` (booléen).
+
+2. **R68 — Exonération malus CO2 pour 1ère immatriculation avant le 01/01/2015** : la même règle
+   R68 inclut `dateMiseEnCirculation < 1/1/2015` comme condition indépendante d'exonération
+   totale du malus CO2 — **distincte** de la règle des 181 mois (15 ans) glissants déjà connue
+   (celle-ci se recalcule chaque jour ; celle-là est un seuil absolu fixe). Un véhicule
+   immatriculé le 31/12/2014 est donc exonéré aujourd'hui même s'il a "seulement" ~140 mois
+   (moins de 181). Implémenté : vérification systématique de la date absolue en plus de la
+   règle des 181 mois.
+
+3. **R78/R79 — Réduction de poids pour hybrides avant calcul du TMOM** :
+   - R79 : `hybrideNonRechargeable = 1 || (hybrideRechargeable = 1 && Autonomie50Km = 'Non')`
+     ET `dateMiseEnCirculation > 31/12/2023` → `reducPoidsHybride = 100` (−100 kg avant lecture
+     du barème TMOM).
+   - R78 : `hybrideRechargeable = 1 && Autonomie50Km = 'Oui'` ET
+     `dateMiseEnCirculation > 31/12/2024` → `reducPoidsHybrideRecharg = 200` (−200 kg).
+   - Ces deux fenêtres de date ne se recouvrent pas : un hybride rechargeable ≥50km immatriculé
+     en 2024 ne bénéficie d'AUCUNE des deux réductions (la règle R79 exclut explicitement
+     `Autonomie50Km = 'Oui'`, et R78 n'entre en vigueur qu'au 01/01/2025). Comportement
+     implémenté fidèlement, même s'il ressemble à un trou législatif transitoire.
+   - Implémenté via `entree.energie` ("hybride-non-rechargeable" | "hybride-rechargeable") et
+     `entree.autonomieElectriqueAuMoins50Km` (booléen, pertinent seulement pour le rechargeable).
+
+**Piste non implémentée, faute de donnée de référence exacte** : réduction du malus pour
+véhicules **E85 (superéthanol)** — règle R72/R73 confirmée (`reducCO2_E85 = round(TauxCO2Saisi *
+0.4)` si `receptionCommunautaire = 'oui'` et CO2 ≤ 250g/km), MAIS la condition d'activation
+(`ReductionMalusCO2_E85`) dépend du code interne de l'énergie E85 dans la table de correspondance
+`source=8` (`énergie` → libellé), qui n'a pas encore été récupérée. À faire dans une prochaine
+passe si utile (marché des véhicules flex-fuel E85 étant relativement restreint en import
+d'occasion).
+
+Autres champs identifiés mais hors périmètre de ce calculateur (véhicules particuliers
+uniquement) : `typeVehicule`/`VehiculeTourisme` (le malus ne s'applique qu'aux voitures de
+tourisme VT/M1, pas aux utilitaires), `vehiculeDeCollection` (exonération collection, non
+implémentée), cas "personne morale 8+ places" (réduction spécifique aux entreprises, non
+implémentée — hors du scope "particulier important un véhicule").
+
 ## Limite majeure du simulateur officiel (service-public.gouv.fr)
 
 **Le simulateur officiel refuse de calculer le coût pour l'import d'un véhicule d'occasion dont

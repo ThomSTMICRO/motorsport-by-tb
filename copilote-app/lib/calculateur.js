@@ -29,6 +29,12 @@ const {
  * @property {string} [dateCalcul] - Date du calcul (import/démarche), AAAA-MM-JJ. Défaut : aujourd'hui.
  * @property {number} [poidsKg] - Masse en ordre de marche en kg (optionnel)
  * @property {boolean} [electriqueOuHydrogene] - true si électrique/hydrogène (exonéré)
+ * @property {boolean} [invalidite] - true si titulaire d'une carte mobilité inclusion /
+ *   invalidité (exonération totale malus CO2 + poids, règle R48/R60/R68/R80 du simulateur officiel)
+ * @property {"essence"|"diesel"|"hybride-non-rechargeable"|"hybride-rechargeable"} [energie] -
+ *   uniquement utilisé pour la réduction de poids hybride sur le malus TMOM (règles R78/R79)
+ * @property {boolean} [autonomieElectriqueAuMoins50Km] - pertinent seulement si
+ *   energie="hybride-rechargeable" (règle R78)
  */
 
 /**
@@ -115,6 +121,31 @@ function getMalusPoidsBrut(anneeImmatriculation, poidsKg) {
   return { montant: Math.round(montant), confiance: bareme.confiance };
 }
 
+/**
+ * Réduction de poids (en kg) appliquée AVANT la lecture du barème TMOM, pour les
+ * véhicules hybrides. Source primaire : règles R78/R79 du moteur de règles officiel
+ * (service-public.gouv.fr, extraites via /Default/fields le 13/09/2026) :
+ *
+ * - R79 : hybride NON rechargeable, OU hybride rechargeable avec autonomie électrique
+ *   < 50km, ET 1ère immatriculation strictement après le 31/12/2023 → -100 kg.
+ * - R78 : hybride rechargeable avec autonomie électrique ≥ 50km, ET 1ère immatriculation
+ *   strictement après le 31/12/2024 → -200 kg.
+ *
+ * Ces deux conditions de date sont exclusives l'une de l'autre (pas de recouvrement :
+ * un hybride rechargeable ≥50km immatriculé en 2024 ne bénéficie d'AUCUNE réduction,
+ * ni celle-ci ni celle de R79, car R79 exclut explicitement Autonomie50Km='Oui').
+ * Comportement vérifié fidèlement, même s'il peut sembler être un trou législatif.
+ */
+function getReductionPoidsHybride(dateMiseEnCirculation, energie, autonomieElectriqueAuMoins50Km) {
+  if (energie !== "hybride-non-rechargeable" && energie !== "hybride-rechargeable") return 0;
+  const date = new Date(dateMiseEnCirculation);
+  if (energie === "hybride-rechargeable" && autonomieElectriqueAuMoins50Km) {
+    return date > new Date("2024-12-31") ? 200 : 0;
+  }
+  // hybride non rechargeable, OU hybride rechargeable avec autonomie < 50km
+  return date > new Date("2023-12-31") ? 100 : 0;
+}
+
 function getTarifRegional(departement) {
   const entree = TARIF_CV_PAR_DEPARTEMENT_2026[departement];
   if (!entree) return null;
@@ -136,7 +167,17 @@ function calculerCoutImport(entree) {
   if (!entree || typeof entree !== "object") {
     return { ok: false, erreur: "Entrée invalide : objet attendu." };
   }
-  const { departement, cvFiscaux, co2GKm, dateMiseEnCirculation, poidsKg, electriqueOuHydrogene } = entree;
+  const {
+    departement,
+    cvFiscaux,
+    co2GKm,
+    dateMiseEnCirculation,
+    poidsKg,
+    electriqueOuHydrogene,
+    invalidite,
+    energie,
+    autonomieElectriqueAuMoins50Km,
+  } = entree;
   if (!departement || typeof departement !== "string") {
     return { ok: false, erreur: "Le département est requis (ex. \"06\")." };
   }
@@ -183,10 +224,24 @@ function calculerCoutImport(entree) {
   // --- Y3 : malus CO2 (+ poids, si applicable) ---
   let montantY3 = 0;
   let confianceY3 = "confirme";
+  let poidsPrisEnCompte = false;
   const detailsY3 = [];
 
+  const dateAvant2015 = new Date(dateMiseEnCirculation) < new Date("2015-01-01");
+
   if (electriqueOuHydrogene) {
-    detailsY3.push("Véhicule électrique/hydrogène : exonéré de malus CO2");
+    detailsY3.push("Véhicule électrique/hydrogène : exonéré de malus CO2 et poids");
+  } else if (invalidite) {
+    // ✅ Règle R48/R60/R68/R80 du moteur officiel : titulaire d'une carte mobilité
+    // inclusion / invalidité → exonération TOTALE (CO2 ET poids), sans condition d'âge
+    // ni de CO2/puissance.
+    detailsY3.push("Titulaire d'une carte mobilité inclusion / invalidité : exonéré de malus CO2 et poids");
+  } else if (dateAvant2015) {
+    // ✅ Règle R68 du moteur officiel : 1ère immatriculation strictement antérieure au
+    // 1er janvier 2015 → aucun malus CO2 dû, indépendamment de la règle des 181 mois
+    // (15 ans) glissants déjà implémentée par ailleurs. Le malus poids ne s'applique de
+    // toute façon jamais ici (introduit seulement en 2022, bien après cette date).
+    detailsY3.push("1ère immatriculation antérieure au 01/01/2015 : exonéré de malus CO2");
   } else {
     const malusBrut = getMalusCO2Brut(anneeImmatriculation, co2GKm);
     if (!malusBrut) {
@@ -208,7 +263,17 @@ function calculerCoutImport(entree) {
     const applicablePoids = new Date(dateMiseEnCirculation) >= dateIntroPoids;
     if (applicablePoids) {
       if (typeof poidsKg === "number" && poidsKg > 0) {
-        malusPoidsBrut = getMalusPoidsBrut(anneeImmatriculation, poidsKg);
+        // ✅ Règles R78/R79 du moteur officiel : réduction de poids pour véhicules
+        // hybrides avant lecture du barème TMOM (voir getReductionPoidsHybride).
+        const reductionHybride = getReductionPoidsHybride(dateMiseEnCirculation, energie, autonomieElectriqueAuMoins50Km);
+        const poidsRetenu = Math.max(0, poidsKg - reductionHybride);
+        malusPoidsBrut = getMalusPoidsBrut(anneeImmatriculation, poidsRetenu);
+        if (malusPoidsBrut) {
+          poidsPrisEnCompte = true;
+          if (reductionHybride > 0) {
+            detailsY3.push(`Poids retenu après réduction hybride de ${reductionHybride}kg : ${poidsRetenu}kg`);
+          }
+        }
         if (!malusPoidsBrut) {
           avertissements.push(
             `Ce véhicule est immatriculé après le 1er janvier 2022 : un malus au poids (TMOM) pourrait ` +
@@ -260,7 +325,7 @@ function calculerCoutImport(entree) {
   }
   lignes.push({
     code: "Y3",
-    libelle: "Malus CO2" + (poidsKg ? " et poids (TMOM)" : ""),
+    libelle: "Malus CO2" + (poidsPrisEnCompte ? " et poids (TMOM)" : ""),
     montant: montantY3,
     confiance: confianceY3,
     detail: detailsY3.join(" — ") || "Exonéré",

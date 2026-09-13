@@ -116,17 +116,19 @@ test("Véhicule de plus de 181 mois : exonération totale du malus", () => {
 });
 
 test("Année de barème inconnue -> erreur explicite, jamais un chiffre inventé", () => {
-  // Le barème 2012-2026 est désormais complet (voir bareme-data.js) : 2010 reste hors
-  // de toute grille connue, donc toujours un bon cas de test pour l'erreur explicite.
+  // Le barème 2012-2026 est désormais complet (voir bareme-data.js). 2010 est
+  // maintenant un cas d'EXONÉRATION valide (règle R68 : avant le 01/01/2015), pas une
+  // erreur — voir le test dédié plus bas. 2027 reste hors de toute grille connue et
+  // n'est pas concerné par l'exonération pré-2015 : bon cas de test pour l'erreur.
   const resultat = calculerCoutImport({
     departement: "06",
     cvFiscaux: 10,
     co2GKm: 150,
-    dateMiseEnCirculation: "2010-01-01",
-    dateCalcul: "2026-09-12",
+    dateMiseEnCirculation: "2027-01-01",
+    dateCalcul: "2027-09-12",
   });
   assert.equal(resultat.ok, false);
-  assert.match(resultat.erreur, /2010/);
+  assert.match(resultat.erreur, /2027/);
 });
 
 test("Département inconnu -> erreur explicite, jamais un tarif inventé", () => {
@@ -215,6 +217,84 @@ test("Malus poids (TMOM) : avertissement clair si poids non fourni pour un véhi
   });
   assert.equal(resultat.ok, true);
   assert.ok(resultat.avertissements.some((a) => /poids.*non.*fourni|aucun poids/i.test(a)));
+});
+
+test("Invalidité (carte mobilité inclusion) : exonération totale malus CO2 ET poids", () => {
+  // ✅ Règle R48/R60/R68/R80 du moteur officiel (extraite le 13/09/2026) : quel que
+  // soit le CO2, le poids ou l'année, invalidite='oui' exonère totalement.
+  const resultat = calculerCoutImport({
+    departement: "06",
+    cvFiscaux: 32,
+    co2GKm: 220, // très élevé, sans effet
+    poidsKg: 2500, // très élevé, sans effet
+    dateMiseEnCirculation: "2024-01-01",
+    dateCalcul: "2026-01-01",
+    invalidite: true,
+  });
+  assert.equal(resultat.ok, true);
+  const y3 = resultat.lignes.find((l) => l.code === "Y3");
+  assert.equal(y3.montant, 0);
+  assert.match(y3.detail, /invalidité|mobilité inclusion/i);
+});
+
+test("Exonération malus CO2 pour 1ère immatriculation antérieure au 01/01/2015 (règle R68, indépendante des 181 mois)", () => {
+  const resultat = calculerCoutImport({
+    departement: "06",
+    cvFiscaux: 10,
+    co2GKm: 200, // élevé, sans effet
+    dateMiseEnCirculation: "2014-12-31",
+    dateCalcul: "2026-01-01", // seulement ~145 mois : la règle des 181 mois ne s'appliquerait pas seule
+  });
+  assert.equal(resultat.ok, true);
+  const y3 = resultat.lignes.find((l) => l.code === "Y3");
+  assert.equal(y3.montant, 0);
+  assert.match(y3.detail, /01\/01\/2015/);
+
+  // Un jour plus tard (01/01/2015), la règle ne s'applique plus : malus normal attendu.
+  const resultatApres = calculerCoutImport({
+    departement: "06",
+    cvFiscaux: 10,
+    co2GKm: 200,
+    dateMiseEnCirculation: "2015-01-01",
+    dateCalcul: "2015-01-01",
+  });
+  assert.equal(resultatApres.ok, true);
+  assert.notEqual(resultatApres.lignes.find((l) => l.code === "Y3").montant, 0);
+});
+
+test("Réduction de poids hybride avant lecture du barème TMOM (règles R78/R79)", () => {
+  // 2024, hybride non rechargeable, 1700kg -> réduction de 100kg -> poids retenu 1600kg,
+  // qui tombe dans la tranche 0-1599 à 0€/kg... donc à la limite. Utilisons 1750kg pour
+  // un effet net visible : 1750-100=1650kg -> tranche 1600-1799 @ 10€/kg -> 500€ brut,
+  // au lieu de 1750kg sans réduction -> tranche 1800-1899 impossible (1750<1800) donc
+  // même tranche en fait. Choisissons plutôt un poids qui change de tranche : 1850kg.
+  // Sans réduction : tranche 1800-1899 @ 15€/kg, baseAvant=2000 -> 2000+50*15=2750€.
+  // Avec réduction hybride -100kg : poids retenu 1750kg -> tranche 1600-1799 @ 10€/kg,
+  // baseAvant=0 -> 0+150*10=1500€. Différence nette et vérifiable.
+  const sansHybride = calculerCoutImport({
+    departement: "06", cvFiscaux: 10, co2GKm: 130, poidsKg: 1850,
+    dateMiseEnCirculation: "2024-06-01", dateCalcul: "2024-06-01",
+  });
+  const avecHybride = calculerCoutImport({
+    departement: "06", cvFiscaux: 10, co2GKm: 130, poidsKg: 1850,
+    dateMiseEnCirculation: "2024-06-01", dateCalcul: "2024-06-01",
+    energie: "hybride-non-rechargeable",
+  });
+  assert.equal(sansHybride.ok, true);
+  assert.equal(avecHybride.ok, true);
+  const y3Sans = sansHybride.lignes.find((l) => l.code === "Y3").montant;
+  const y3Avec = avecHybride.lignes.find((l) => l.code === "Y3").montant;
+  assert.ok(y3Avec < y3Sans, `Y3 avec réduction hybride (${y3Avec}) doit être < sans (${y3Sans})`);
+  assert.match(avecHybride.lignes.find((l) => l.code === "Y3").detail, /réduction hybride de 100kg/);
+
+  // Avant le 01/01/2024, la réduction ne s'applique pas encore (date > 31/12/2023 requis).
+  const avant2024 = calculerCoutImport({
+    departement: "06", cvFiscaux: 10, co2GKm: 130, poidsKg: 1850,
+    dateMiseEnCirculation: "2023-06-01", dateCalcul: "2023-06-01",
+    energie: "hybride-non-rechargeable",
+  });
+  assert.equal(avant2024.ok, true);
+  assert.doesNotMatch(avant2024.lignes.find((l) => l.code === "Y3").detail, /réduction hybride/);
 });
 
 test("Entrées invalides rejetées proprement", () => {
