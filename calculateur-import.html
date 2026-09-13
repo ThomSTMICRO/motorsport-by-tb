@@ -533,9 +533,11 @@ const TARIF_CV_PAR_DEPARTEMENT_2026 = Object.fromEntries(
 const FRAIS_FIXES = { y4: 11.0, y5: 2.76, confiance: "confirme" };
 
 function moisEntreDates(dateDebut, dateFin) {
+  // Sur une date anniversaire EXACTE (même jour du mois), un mois supplémentaire est
+  // entamé — confirmé par un cas réel du simulateur officiel (13/09/2026, voir docs).
   const d1 = new Date(dateDebut), d2 = new Date(dateFin);
   let mois = (d2.getFullYear() - d1.getFullYear()) * 12 + (d2.getMonth() - d1.getMonth());
-  if (d2.getDate() > d1.getDate()) mois += 1;
+  if (d2.getDate() >= d1.getDate()) mois += 1;
   return Math.max(0, mois);
 }
 function getCoefficientDecote(ageMois) {
@@ -583,7 +585,8 @@ function calculerCoutImport(entree) {
   }
   const ageY1 = moisEntreDates(dateMiseEnCirculation, dateCalcul);
   const decoteY1 = ageY1 > 120 ? 0.5 : 1.0;
-  const montantY1 = Math.round(cvFiscaux * tarifRegional.tarif * decoteY1);
+  // Pas d'arrondi individuel : seul le sous-total Y1+Y2+Y3+Y4 est arrondi (voir plus bas).
+  const montantY1 = Math.round(cvFiscaux * tarifRegional.tarif * decoteY1 * 100) / 100;
   lignes.push({ code: "Y1", libelle: "Taxe régionale (cheval fiscal)", montant: montantY1, confiance: tarifRegional.confiance,
     detail: `${cvFiscaux} CV × ${tarifRegional.tarif.toFixed(2)} €/CV${decoteY1 < 1 ? " × 50 % (>10 ans)" : ""}` });
 
@@ -614,7 +617,8 @@ function calculerCoutImport(entree) {
 
     const ageMalus = moisEntreDates(dateMiseEnCirculation, dateCalcul);
     const { decote, confiance: cd } = getCoefficientDecote(ageMalus);
-    montantY3 = Math.round(brutCombine * (1 - decote));
+    // Pas d'arrondi individuel : seul le sous-total Y1+Y2+Y3+Y4 est arrondi (voir plus bas).
+    montantY3 = Math.round(brutCombine * (1 - decote) * 100) / 100;
 
     const plafond = BAREME_CO2_PAR_ANNEE[annee].plafondMontant;
     if (plafond != null && montantY3 > plafond) {
@@ -629,10 +633,14 @@ function calculerCoutImport(entree) {
     if (ageMalus >= 181) { detailsY3.push("Plus de 181 mois : exonération totale"); montantY3 = 0; }
   }
   lignes.push({ code: "Y3", libelle: "Malus CO2" + (poidsKg ? " et poids (TMOM)" : ""), montant: montantY3, confiance: confianceY3, detail: detailsY3.join(" · ") || "Exonéré" });
-  lignes.push({ code: "Y4", libelle: "Redevance d'acheminement", montant: FRAIS_FIXES.y4, confiance: FRAIS_FIXES.confiance, detail: "Montant fixe" });
-  lignes.push({ code: "Y5", libelle: "Frais de gestion", montant: FRAIS_FIXES.y5, confiance: FRAIS_FIXES.confiance, detail: "Montant fixe" });
+  lignes.push({ code: "Y4", libelle: "Taxe fixe", montant: FRAIS_FIXES.y4, confiance: FRAIS_FIXES.confiance, detail: "Montant fixe" });
 
-  const total = Math.round(lignes.reduce((s, l) => s + l.montant, 0) * 100) / 100;
+  // Arrondi du SOUS-TOTAL Y1+Y2+Y3+Y4 à l'euro, PUIS ajout de Y5 (confirmé par 2 cas réels).
+  const sousTotal = lignes.reduce((s, l) => s + l.montant, 0);
+  const sousTotalArrondi = Math.round(sousTotal);
+  lignes.push({ code: "Y5", libelle: "Redevance d'acheminement", montant: FRAIS_FIXES.y5, confiance: FRAIS_FIXES.confiance,
+    detail: `Ajoutée après arrondi du sous-total (${sousTotal.toFixed(2)}€ → ${sousTotalArrondi}€)` });
+  const total = Math.round((sousTotalArrondi + FRAIS_FIXES.y5) * 100) / 100;
   if (lignes.some((l) => l.confiance !== "confirme")) {
     avertissements.push("Certaines lignes sont estimées ou interpolées (pas un texte légal primaire pour cette ligne précise) — voir le détail de chaque ligne.");
   }

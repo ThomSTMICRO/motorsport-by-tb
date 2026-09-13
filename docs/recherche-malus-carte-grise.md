@@ -25,6 +25,52 @@ Ce point réel (99 mois → 58% décote) est le 3e point de calibration confirm�
 points déjà connus. La courbe semble légèrement plus agressive que l'interpolation linéaire
 dans cette tranche (55% linéaire vs 58% réel = écart de 3 points).
 
+## Cas réel validé (calibration #2) — capture d'écran du simulateur officiel (13/09/2026)
+
+Fourni directement par l'utilisateur (captures d'écran de service-public.gouv.fr) : véhicule
+immatriculé le **13/09/2019**, département **38 (Isère, région Auvergne-Rhône-Alpes)**,
+**32 CV fiscaux**, essence, **170 g/km CO2**, calcul fait le **13/09/2026** (exactement 7 ans
+jour pour jour). Résultat affiché par le simulateur officiel :
+
+| Poste | Montant officiel |
+|---|---|
+| Y1 — Taxe régionale | 1 376,00 € |
+| Y2 — Majoration véhicule de transport | 0,00 € |
+| Y3 — Malus CO2 et TMOM (dont Malus CO2 : 2 298,30 €, TMOM : 0,00 €) | 2 298,30 € |
+| Y4 — Taxe fixe | 11,00 € |
+| *Sous-total arrondi* | *3 685,00 €* |
+| Y5 — Redevance d'acheminement | 2,76 € |
+| **Y6 — Taxes à payer** | **3 687,76 €** |
+
+Ce cas a révélé **deux corrections majeures** au moteur de calcul, toutes deux vérifiées et
+appliquées (`copilote-app/lib/calculateur.js`, `calculateur-import.html`, tests) :
+
+1. **Règle de comptage des mois sur une date anniversaire exacte.** Y1 = 32×43 = 1 376,00€
+   confirme le tarif régional 38→Auvergne-Rhône-Alpes (43€/CV) déjà connu. Mais Y3 = 2 298,30€
+   ne correspond PAS à la décote attendue avec 84 mois calendaires exacts (tranche 73-84 = 48%,
+   ce qui donnerait 4 890 × 0,52 = 2 542,80€). En résolvant : 4 890€ (malus CO2 brut 2019 @170g/km,
+   déjà confirmé indépendamment via l'API officielle) × **47% retenu = 2 298,30€ exactement**,
+   ce qui correspond à la tranche **85-96 mois (53% de décote)**, pas 73-84. Conclusion : sur une
+   date anniversaire EXACTE (même jour du mois que la 1ère immatriculation), le simulateur
+   officiel compte un mois supplémentaire entamé. `moisEntreDates` corrigé (`>=` au lieu de `>`
+   sur la comparaison du jour du mois) — vérifié que cela ne casse aucun des deux exemples BOFiP
+   déjà confirmés (qui ne tombent pas sur une date anniversaire exacte).
+
+2. **Un seul arrondi, au niveau du sous-total — pas ligne par ligne.** Le simulateur affiche
+   explicitement "Sous-total arrondi à 3 685,00 €" = arrondi de Y1+Y2+Y3+Y4 = 1 376,00 + 2 298,30
+   + 11,00 = 3 685,30€ → arrondi à 3 685€. Y5 (2,76€, avec centimes) est ajouté APRÈS cet arrondi
+   pour obtenir 3 687,76€. Ceci contredit l'interprétation précédente (arrondir Y3 seul à l'euro,
+   comme les exemples BOFiP semblaient le suggérer) — mais comme le cas Q5 a tous ses autres
+   postes entiers (Y1=900, Y4=11), les deux méthodes de calcul donnaient par coïncidence le même
+   total dans ce premier cas (`round(a+b) = a+round(b)` quand `a` est entier), ce qui n'avait pas
+   permis de détecter l'erreur plus tôt. Moteur corrigé : Y1 et Y3 gardent leurs centimes, seul
+   le sous-total (Y1+Y2+Y3+Y4) est arrondi à l'euro, Y5 est ajouté ensuite. Vérifié : reproduit
+   EXACTEMENT les deux cas réels (2 786,76€ et 3 687,76€) au centime près.
+
+Corollaire mineur : les libellés Y4/Y5 étaient inversés dans notre moteur ("Redevance
+d'acheminement" pour 11€, "Frais de gestion" pour 2,76€) — corrigés pour correspondre à
+l'officiel (Y4 = "Taxe fixe" = 11€, Y5 = "Redevance d'acheminement" = 2,76€).
+
 ## API interne du simulateur officiel — la découverte majeure du 13/09/2026
 
 Le simulateur `service-public.gouv.fr/simulateur/calcul/cout-certificat-immatriculation` (basé

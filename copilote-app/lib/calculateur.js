@@ -31,15 +31,27 @@ const {
  * @property {boolean} [electriqueOuHydrogene] - true si électrique/hydrogène (exonéré)
  */
 
-/** Nombre de mois entre deux dates, compté de façon glissante et arrondi à l'unité
- *  supérieure (tout mois entamé compte comme un mois complet) — règle confirmée par
- *  deux exemples chiffrés du BOFiP (26 mois et 73 mois, tous deux reproduits exactement
- *  par cette fonction). */
+/**
+ * Nombre de mois entre deux dates, compté de façon glissante et arrondi à l'unité
+ * supérieure (tout mois entamé compte comme un mois complet).
+ *
+ * Règle confirmée par DEUX exemples chiffrés du BOFiP (26 mois et 73 mois) ET par un
+ * 3e cas réel obtenu directement sur le simulateur officiel (13/09/2026) : véhicule
+ * immatriculé le 13/09/2019, calcul fait le 13/09/2026 — EXACTEMENT 7 ans jour pour
+ * jour (84 mois calendaires pleins). Le simulateur officiel applique pourtant la
+ * décote de la tranche 85-96 mois (53%), pas 73-84 (48%) : 4 890€ (malus CO2 brut
+ * 2019 @ 170g/km, déjà confirmé via l'API) × 47% retenu = 2 298,30€, exactement la
+ * valeur affichée par le simulateur (Y3 = 2 298,30€, dépt 38/Isère, 32 CV, Y1 = 1 376€
+ * confirmé aussi). Conclusion : sur une date anniversaire EXACTE (même jour du mois),
+ * un mois supplémentaire est entamé — d'où le `>=` ci-dessous (et non `>`). Vérifié :
+ * ce changement ne casse aucun des deux exemples BOFiP (qui ne tombent pas sur une
+ * date anniversaire exacte).
+ */
 function moisEntreDates(dateDebut, dateFin) {
   const d1 = new Date(dateDebut);
   const d2 = new Date(dateFin);
   let mois = (d2.getFullYear() - d1.getFullYear()) * 12 + (d2.getMonth() - d1.getMonth());
-  if (d2.getDate() > d1.getDate()) mois += 1;
+  if (d2.getDate() >= d1.getDate()) mois += 1;
   return Math.max(0, mois);
 }
 
@@ -157,13 +169,15 @@ function calculerCoutImport(entree) {
   }
   const ageMoisPourY1 = moisEntreDates(dateMiseEnCirculation, dateCalcul);
   const decoteY1 = ageMoisPourY1 > 120 ? 0.5 : 1.0; // règle générale : décote régionale de 50% au-delà de 10 ans
-  const montantY1 = Math.round(cvFiscaux * tarifRegional.tarif * decoteY1);
+  // ⚠️ PAS d'arrondi individuel ici (voir note sur le calcul du total plus bas) : le
+  // simulateur officiel n'arrondit que le sous-total Y1+Y2+Y3+Y4, pas chaque ligne.
+  const montantY1 = Math.round(cvFiscaux * tarifRegional.tarif * decoteY1 * 100) / 100;
   lignes.push({
     code: "Y1",
     libelle: "Taxe régionale (cheval fiscal)",
     montant: montantY1,
     confiance: tarifRegional.confiance,
-    detail: `${cvFiscaux} CV × ${tarifRegional.tarif.toFixed(2)} €/CV${decoteY1 < 1 ? " × 50% (véhicule >10 ans)" : ""}, arrondi à l'euro`,
+    detail: `${cvFiscaux} CV × ${tarifRegional.tarif.toFixed(2)} €/CV${decoteY1 < 1 ? " × 50% (véhicule >10 ans)" : ""}`,
   });
 
   // --- Y3 : malus CO2 (+ poids, si applicable) ---
@@ -215,9 +229,13 @@ function calculerCoutImport(entree) {
 
     const ageMoisPourMalus = moisEntreDates(dateMiseEnCirculation, dateCalcul);
     const { decote, confiance: confianceDecote } = getCoefficientDecote(ageMoisPourMalus);
-    // Arrondi à l'euro entier après application de la décote, comme dans les exemples
-    // chiffrés du BOFiP (ex. 7462 × 0,72 = 5372,64 → arrondi à 5373€).
-    let malusApresDecote = Math.round(malusCombineBrut * (1 - decote));
+    // ⚠️ PAS d'arrondi individuel à l'euro ici (contrairement à ce qui était supposé
+    // précédemment à partir des exemples BOFiP isolés). Cas réel de calibration #2
+    // (simulateur officiel, 13/09/2026, véhicule 2019/dépt 38) : Y3 affiché avec des
+    // centimes (2 298,30€ = 4890 × 0,47 exactement, non arrondi) — c'est le SOUS-TOTAL
+    // Y1+Y2+Y3+Y4 qui est arrondi à l'euro, une seule fois, pas chaque ligne (voir plus
+    // bas dans le calcul du total). Gardé ici avec centimes.
+    let malusApresDecote = Math.round(malusCombineBrut * (1 - decote) * 100) / 100;
 
     // Plafonnement légal : (malus CO2 + malus poids) ne peut jamais dépasser le plafond
     // du barème CO2 de l'année, quand ce plafond est confirmé (voir bareme-data.js).
@@ -230,7 +248,7 @@ function calculerCoutImport(entree) {
     detailsY3.unshift(
       `Malus CO2 brut barème ${anneeImmatriculation} @ ${co2GKm}g/km = ${malusBrut.montant}€` +
         (malusPoidsBrut ? ` + malus poids brut @ ${poidsKg}kg = ${malusPoidsBrut.montant}€` : "") +
-        `, décote d'âge (${ageMoisPourMalus} mois, tranche BOFiP) = ${(decote * 100).toFixed(0)}%, arrondi à l'euro`
+        `, décote d'âge (${ageMoisPourMalus} mois, tranche BOFiP) = ${(decote * 100).toFixed(0)}%`
     );
     confianceY3 = confianceDecote === "estime" || confianceY3 === "estime" ? "estime" : confianceDecote;
     if (malusPoidsBrut && malusPoidsBrut.confiance === "estime") confianceY3 = "estime";
@@ -248,23 +266,32 @@ function calculerCoutImport(entree) {
     detail: detailsY3.join(" — ") || "Exonéré",
   });
 
-  // --- Y4 / Y5 : frais fixes ---
+  // --- Y4 : taxe fixe (libellé confirmé par le simulateur officiel, cas réel #2) ---
   lignes.push({
     code: "Y4",
-    libelle: "Redevance d'acheminement",
+    libelle: "Taxe fixe",
     montant: FRAIS_FIXES.y4,
     confiance: FRAIS_FIXES.confiance,
     detail: "Montant fixe",
   });
+
+  // --- Total : arrondi du SOUS-TOTAL Y1+Y2+Y3+Y4 à l'euro, PUIS ajout de Y5 ---
+  // ✅ Règle confirmée par 2 cas réels (Q5 2018 et cas réel #2, simulateur officiel,
+  // 13/09/2026) : Y1 et Y3 sont gardés avec centimes (pas d'arrondi individuel), et
+  // c'est la SOMME Y1+Y2+Y3+Y4 qui est arrondie une seule fois à l'euro entier — le
+  // libellé officiel l'affiche explicitement comme "Sous-total arrondi". Y5 (redevance
+  // d'acheminement, avec centimes) est ajouté APRÈS cet arrondi pour obtenir le total.
+  // Vérifié : reproduit exactement 2 786,76€ (Q5) et 3 687,76€ (cas réel #2).
+  const sousTotal = lignes.reduce((s, l) => s + l.montant, 0); // Y2 (majoration transport) non modélisé, toujours 0
+  const sousTotalArrondi = Math.round(sousTotal);
   lignes.push({
     code: "Y5",
-    libelle: "Frais de gestion",
+    libelle: "Redevance d'acheminement",
     montant: FRAIS_FIXES.y5,
     confiance: FRAIS_FIXES.confiance,
-    detail: "Montant fixe",
+    detail: `Ajoutée après arrondi du sous-total Y1+Y2+Y3+Y4 (${sousTotal.toFixed(2)}€ → ${sousTotalArrondi}€)`,
   });
-
-  const total = Math.round(lignes.reduce((s, l) => s + l.montant, 0) * 100) / 100;
+  const total = Math.round((sousTotalArrondi + FRAIS_FIXES.y5) * 100) / 100;
 
   if (lignes.some((l) => l.confiance !== "confirme")) {
     avertissements.push(
