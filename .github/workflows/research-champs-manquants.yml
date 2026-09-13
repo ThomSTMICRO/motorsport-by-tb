@@ -17,82 +17,47 @@ jobs:
           npm init -y >/dev/null 2>&1 || true
           npm install --no-save playwright@1.48.0
           npx playwright install chromium --with-deps
-      - name: Fill questionnaire varying energie / reception / handicap / genre, keep everything else fixed
-        timeout-minutes: 10
+      - name: Dump rule formulas for énergie / invalidité / réception communautaire
+        timeout-minutes: 8
         run: |
           node <<'EOF'
           const { chromium } = require('playwright');
           const base = 'https://www.service-public.gouv.fr/simulateur/calcul/cout-certificat-immatriculation';
 
-          // Remplit le questionnaire "1ere immatriculation en France d'un véhicule importé"
-          // avec un jeu de valeurs de base, en ne changeant qu'UN champ à la fois par rapport
-          // au cas réel déjà confirmé (2019-09-13, 32CV, essence, 170g/km, dept 38, calcul 2026-09-13).
-          async function remplirEtLire(page, overrides) {
-            await page.goto(base, { waitUntil: 'networkidle', timeout: 45000 });
-            await page.waitForTimeout(800);
-            try { await page.click('button:has-text("Accepter")', { timeout: 3000 }); } catch (e) {}
-
-            // NOTE: sélecteurs à ajuster une fois la structure réelle du formulaire observée.
-            // On imprime le HTML de chaque étape pour diagnostiquer si un sélecteur échoue.
-            const log = (msg) => console.log(`[${JSON.stringify(overrides)}] ${msg}`);
-
-            try {
-              // Démarche
-              await page.click('text=Immatriculer un véhicule', { timeout: 5000 }).catch(() => {});
-              await page.waitForTimeout(300);
-            } catch (e) { log('etape demarche: ' + e.message); }
-
-            // Dump le texte visible de la page à ce stade pour inspection manuelle dans les logs
-            const bodyText = await page.evaluate(() => document.body.innerText.slice(0, 3000));
-            log('BODY_SNAPSHOT: ' + bodyText.replace(/\n+/g, ' | '));
-          }
-
           (async () => {
             const browser = await chromium.launch();
             const page = await browser.newPage();
-
-            // Étape 1 : observer juste la structure du formulaire (quelles questions, quelles
-            // valeurs possibles pour énergie / réception communautaire / carrosserie handicap /
-            // genre national) avant de tenter un remplissage automatique complet.
             await page.goto(base, { waitUntil: 'networkidle', timeout: 45000 });
             await page.waitForTimeout(1000);
             try { await page.click('button:has-text("Accepter")', { timeout: 3000 }); } catch (e) {}
 
-            const html1 = await page.content();
-            console.log('=== PAGE INITIALE (longueur) ===', html1.length);
-
-            const csrf = await page.evaluate(() => {
-              const el = document.querySelector('input[name="_csrf_token"]');
-              return el ? el.value : null;
-            });
-            console.log('CSRF:', csrf ? 'ok' : 'MANQUANT');
-
-            // Récupère le graphe de champs complet (/Default/fields) pour inspecter les
-            // définitions des variables liées à énergie / réception / handicap / genre.
             const fieldsRes = await page.evaluate(async (url) => {
               const res = await fetch(url + '/Default/fields', { method: 'POST', headers: {'content-type':'application/x-www-form-urlencoded'}, body: '' });
               return { status: res.status, text: await res.text() };
             }, base);
-            console.log('FIELDS status:', fieldsRes.status);
+            console.log('FIELDS status:', fieldsRes.status, 'length:', fieldsRes.text.length);
 
-            if (fieldsRes.status === 200) {
-              try {
-                const json = JSON.parse(fieldsRes.text);
-                const datas = json.datas || {};
-                const keysOfInterest = Object.keys(datas).filter(k =>
-                  /energie|reception|communaut|handicap|invalid|genre|carross/i.test(k)
-                );
-                console.log('CLES INTERESSANTES:', JSON.stringify(keysOfInterest));
-                for (const k of keysOfInterest) {
-                  console.log(`--- ${k} ---`);
-                  console.log(JSON.stringify(datas[k]).slice(0, 2000));
-                }
-                // Liste aussi TOUTES les clés pour une vue d'ensemble
-                console.log('TOUTES LES CLES:', JSON.stringify(Object.keys(datas)));
-              } catch (e) {
-                console.log('PARSE ERROR:', e.message);
-                console.log('RAW (premiers 5000 caracteres):', fieldsRes.text.slice(0, 5000));
-              }
+            const json = JSON.parse(fieldsRes.text);
+            console.log('TOP-LEVEL KEYS:', JSON.stringify(Object.keys(json)));
+
+            const rules = json.rules || {};
+            console.log('RULES TYPE:', Array.isArray(rules) ? 'array' : typeof rules, 'COUNT:', Array.isArray(rules) ? rules.length : Object.keys(rules).length);
+
+            // IDs collectés depuis la 1ère passe pour energie / invalidite / receptionCommunautaire
+            const idsInteret = [96,97,98,99,100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,121,122,123,124,152,153,154,155,161,163,166,167,168,169,170,173,174,175,176,177];
+
+            const getRule = (id) => Array.isArray(rules) ? rules.find(r => r.id === id || r.Id === id) : rules[id];
+
+            for (const id of idsInteret) {
+              const r = getRule(id);
+              if (r) console.log(`RULE ${id}:`, JSON.stringify(r).slice(0, 800));
+            }
+
+            // Dump aussi les datas liées au calcul final pour voir leur "evaluate"/formule si présente
+            const datas = json.datas || {};
+            const clesCalcul = ['Y1deBase','Y1Finale','infoSurtaxeY1_Idf','vehiculeExonereTaxeY1','ReductionMalusCO2_E85','reducCO2_E85','reducPA_E85','Hybrid_Recharg_Exonere','reducPoidsHybride','reducPoidsHybrideRecharg','hybrideRechargeable','hybrideNonRechargeable','typeVehicule','VehiculeTourisme','vehiculeDeCollection','demarcheExonere'];
+            for (const k of clesCalcul) {
+              if (datas[k]) console.log(`DATA ${k}:`, JSON.stringify(datas[k]).slice(0, 1000));
             }
 
             await browser.close();
