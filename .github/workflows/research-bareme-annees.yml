@@ -6,7 +6,7 @@ on:
     paths: [.github/workflows/research-bareme-annees.yml]
 
 jobs:
-  extract_simulator_data:
+  query_source_api:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/setup-node@v4
@@ -17,154 +17,99 @@ jobs:
           npm init -y >/dev/null 2>&1 || true
           npm install --no-save playwright@1.48.0
           npx playwright install chromium --with-deps
-      - name: Fill the same questionnaire as before while capturing all /Default/* traffic
-        timeout-minutes: 6
+      - name: Query /Default/source directly for CO2 (source=3) and poids (source=13) across years
+        timeout-minutes: 10
         run: |
           node <<'EOF'
           const { chromium } = require('playwright');
           const fs = require('fs');
           (async () => {
             const browser = await chromium.launch();
-            const page = await browser.newPage({ viewport: { width: 1600, height: 3000 } });
+            const page = await browser.newPage();
+            const base = 'https://www.service-public.gouv.fr/simulateur/calcul/cout-certificat-immatriculation';
 
-            const capturedUrls = new Set();
-            const responses = {};
-            const requests = [];
-            page.on('request', (req) => {
-              const url = req.url();
-              if (url.includes('/Default/')) {
-                requests.push({ url, method: req.method(), postData: req.postData() });
-              }
-            });
-            page.on('response', async (res) => {
-              const url = res.url();
-              if (url.includes('/Default/')) {
-                capturedUrls.add(url);
-                try {
-                  const ct = res.headers()['content-type'] || '';
-                  if (ct.includes('json') || ct.includes('text')) {
-                    responses[url] = (responses[url] || '') + '\n<<<NEXT>>>\n' + await res.text();
-                  }
-                } catch (e) {}
-              }
-            });
-
-            async function forceUnhideOnly(id) {
-              return page.evaluate((elId) => {
-                const el = document.getElementById(elId);
-                if (!el) return 'NO_EL';
-                let node = el, changed = [];
-                for (let i = 0; i < 6 && node; i++) {
-                  const cs = getComputedStyle(node);
-                  if (cs.display === 'none') { node.style.display = 'block'; changed.push(node.id || node.className); }
-                  node = node.parentElement;
-                }
-                return changed.join(',') || 'NONE_HIDDEN';
-              }, id);
-            }
-            async function set(id, value, isSelect) {
-              try {
-                await forceUnhideOnly(id);
-                if (isSelect) await page.selectOption('#'+id, {label: value}, {timeout: 5000}).catch(() => page.selectOption('#'+id, value, {timeout: 5000}));
-                else await page.fill('#'+id, value, {force: true, timeout: 5000});
-                await page.waitForTimeout(400);
-                return true;
-              } catch (e) { console.log('SET_FAIL', id, e.message.split('\n')[0]); return false; }
-            }
-            async function forceUnhideAndClick(inputId) {
-              await forceUnhideOnly(inputId);
-              await page.waitForTimeout(200);
-              try { await page.click(`label[for="${inputId}"]`, { timeout: 3000 }); return true; }
-              catch (e) { console.log('CLICK_FAIL', inputId, e.message.split('\n')[0]); return false; }
-            }
-
-            console.log('Loading simulator...');
-            await page.goto('https://www.service-public.gouv.fr/simulateur/calcul/cout-certificat-immatriculation', { waitUntil: 'networkidle', timeout: 45000 });
+            await page.goto(base, { waitUntil: 'networkidle', timeout: 45000 });
             await page.waitForTimeout(1000);
             try { await page.click('button:has-text("Accepter")', { timeout: 3000 }); } catch (e) {}
 
-            console.log('Filling questionnaire: occasion importee...');
-            await set('demarche', "Immatriculation d'un véhicule d'occasion", true);
-            await page.waitForTimeout(800);
-            await forceUnhideAndClick('franceOuImport_2');
-            await page.waitForTimeout(600);
-            await set('typeVehicule', 'Véhicule de tourisme (VT ou M1) ex-Voiture particulière (VP)', true);
-            await page.waitForTimeout(500);
-            await set('dateMiseEnCirculation', '2026-06-01', false);
-            await set('PuissanceAdmSaisie', '15', false);
-            await page.waitForTimeout(500);
-            await forceUnhideAndClick('vehiculeElectric_2');
-            await page.waitForTimeout(600);
-            await set('energie', 'Essence (ES)', true);
-            await page.waitForTimeout(500);
-            for (const id of ['Autonomie50Km_2','invalidite_2','receptionCommunautaire_2','vehicule_8Places_2','PersonMoraleLocataireOuProprietaire_2','personneMorale_2']) {
-              await forceUnhideAndClick(id);
-              await page.waitForTimeout(200);
-            }
-            await set('poidsSaisi', '1400', false);
-            await page.waitForTimeout(300);
-            await forceUnhideOnly('TauxCO2Saisi');
-            await page.fill('#TauxCO2Saisi', '162', { force: true, timeout: 5000 });
-            await page.waitForTimeout(300);
-            await set('departement', '06 - Alpes-Maritimes', true);
-            await page.waitForTimeout(1000);
+            const csrf = await page.evaluate(() => {
+              const el = document.querySelector('input[name="_csrf_token"]');
+              if (el) return el.value;
+              const meta = document.querySelector('meta[name="csrf-token"]');
+              return meta ? meta.content : null;
+            });
+            console.log('CSRF token found:', csrf ? csrf.slice(0, 20) + '...' : 'NONE');
+            if (!csrf) { console.error('NO CSRF TOKEN, aborting'); process.exit(1); }
 
-            console.log('Clicking "Afficher le resultat"...');
-            await page.click('button:has-text("Afficher le résultat")', { timeout: 8000 }).catch(e => console.log('CLICK_RESULT_FAIL', e.message.split('\n')[0]));
-            await page.waitForTimeout(1500);
+            // Direct POST via fetch() inside the browser context (reuses cookies/session).
+            const postSource = async (params) => {
+              const body = new URLSearchParams({ ...params, _csrf_token: csrf }).toString();
+              return page.evaluate(async ({ url, body }) => {
+                const res = await fetch(url, {
+                  method: 'POST',
+                  headers: { 'content-type': 'application/x-www-form-urlencoded' },
+                  body,
+                });
+                return { status: res.status, text: await res.text() };
+              }, { url: base + '/Default/source', body });
+            };
 
-            console.log('\n=== ALL /Default/* REQUESTS (' + requests.length + ') ===');
-            for (const r of requests) console.log('  ' + r.method + ' ' + r.url + (r.postData ? '  BODY:' + r.postData.slice(0,300) : ''));
+            // --- Sanity check: reproduce the known case (2026, CO2=162 -> should relate to 4460-ish scale, NOT 2018's) ---
+            const sanity = await postSource({ source: '3', annee: '2026', minCO2: '162', maxCO2: '162', paramPeriode: '1' });
+            console.log('SANITY (2026, CO2=162):', JSON.stringify(sanity));
 
-            console.log('\n=== ALL /Default/* URLS CAPTURED (' + capturedUrls.size + ') ===');
-            for (const u of capturedUrls) console.log(' ', u);
-
-            const fieldsUrl = [...capturedUrls].find(u => u.includes('/fields'));
-            console.log('\nfieldsUrl:', fieldsUrl);
-            if (fieldsUrl && responses[fieldsUrl]) {
-              fs.writeFileSync('fields.json', responses[fieldsUrl]);
-              const json = JSON.parse(responses[fieldsUrl]);
-              console.log('Top-level keys:', Object.keys(json));
-              const datas = json.datas || {};
-              const dataKeys = Object.keys(datas);
-              console.log('datas key count:', dataKeys.length);
-              const interesting = dataKeys.filter(k => {
-                const blob = JSON.stringify(datas[k]);
-                return /co2|bareme|malus|tarif|masse|poids/i.test(k) || /unparsedSource|unparsedIndex/.test(blob);
-              });
-              console.log('\n=== INTERESTING DATA KEYS (' + interesting.length + ') ===');
-              for (const k of interesting) {
-                console.log('\n--- ' + k + ' ---');
-                console.log(JSON.stringify(datas[k]).slice(0, 1500));
+            // --- CO2 malus sweep: proof of concept across several years, moderate resolution first ---
+            const co2Results = {};
+            const anneesTest = [2012, 2015, 2018, 2020, 2022, 2024, 2026];
+            for (const annee of anneesTest) {
+              co2Results[annee] = {};
+              for (let co2 = 100; co2 <= 220; co2 += 5) {
+                const r = await postSource({ source: '3', annee: String(annee), minCO2: String(co2), maxCO2: String(co2), paramPeriode: '1' });
+                co2Results[annee][co2] = r.status === 200 ? r.text : `ERR_${r.status}`;
+                await page.waitForTimeout(80); // be gentle with the government server
               }
-
-              console.log('\n=== json.sources ===');
-              console.log(JSON.stringify(json.sources).slice(0, 4000));
-              console.log('\n=== json.profiles ===');
-              console.log(JSON.stringify(json.profiles).slice(0, 2000));
+              console.log(`Done annee=${annee}`);
+            }
+            fs.writeFileSync('co2_par_annee.json', JSON.stringify(co2Results, null, 1));
+            console.log('\n=== CO2 RESULTS SAMPLE ===');
+            for (const annee of anneesTest) {
+              console.log(annee + ':', JSON.stringify(co2Results[annee]));
             }
 
-            console.log('\n=== NON-FIELDS RESPONSES CAPTURED (' + Object.keys(responses).length + ' total) ===');
-            for (const [url, body] of Object.entries(responses)) {
-              if (url === fieldsUrl) continue;
-              console.log('\n--- ' + url + ' (' + body.length + ' chars) ---');
-              console.log(body.slice(0, 2500));
+            // --- Poids malus sweep: 2022-2026 ---
+            const poidsResults = {};
+            for (const annee of [2022, 2023, 2024, 2025, 2026]) {
+              poidsResults[annee] = {};
+              for (let poids = 1400; poids <= 2600; poids += 50) {
+                const r = await postSource({ source: '13', annee: String(annee), poids: String(poids) });
+                poidsResults[annee][poids] = r.status === 200 ? r.text : `ERR_${r.status}`;
+                await page.waitForTimeout(80);
+              }
+              console.log(`Done poids annee=${annee}`);
+            }
+            fs.writeFileSync('poids_par_annee.json', JSON.stringify(poidsResults, null, 1));
+            console.log('\n=== POIDS RESULTS ===');
+            for (const annee of Object.keys(poidsResults)) {
+              console.log(annee + ':', JSON.stringify(poidsResults[annee]));
             }
 
-            const txt = await page.evaluate(() => document.body.innerText);
-            const idx = txt.indexOf('Y1');
-            console.log('\n=== RESULT ON PAGE ===');
-            console.log(idx >= 0 ? txt.slice(idx, idx + 800) : 'NO Y1 FOUND (situation non traitee?) -- body snippet:\n' + txt.slice(0, 1500));
+            // --- Regional tax lookup (source=1) with a few region codes ---
+            const regionResults = {};
+            for (const code of ['93','11','84','32']) {
+              const r = await postSource({ source: '1', paramCodeREgion: code });
+              regionResults[code] = r.status === 200 ? r.text : `ERR_${r.status}`;
+              await page.waitForTimeout(80);
+            }
+            console.log('\n=== REGION RESULTS ===', JSON.stringify(regionResults));
 
-            fs.writeFileSync('all_urls.json', JSON.stringify([...capturedUrls], null, 1));
             await browser.close();
           })().catch(e => { console.error('SCRIPT_ERROR', e); process.exit(1); });
           EOF
-      - name: Upload captured data
+      - name: Upload results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: simulator-data
+          name: bareme-source-data
           path: |
-            fields.json
-            all_urls.json
+            co2_par_annee.json
+            poids_par_annee.json
