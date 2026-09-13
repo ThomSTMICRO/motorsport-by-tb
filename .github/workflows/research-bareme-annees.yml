@@ -6,7 +6,7 @@ on:
     paths: [.github/workflows/research-bareme-annees.yml]
 
 jobs:
-  fetch_baremes:
+  extract_simulator_data:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/setup-node@v4
@@ -17,43 +17,82 @@ jobs:
           npm init -y >/dev/null 2>&1 || true
           npm install --no-save playwright@1.48.0
           npx playwright install chromium --with-deps
-      - name: Fetch lunil.com year-by-year retrospective and makeamove.fr full text
-        timeout-minutes: 5
+      - name: Capture all /Default/* network requests and dump the fields+source JSON
+        timeout-minutes: 6
         run: |
           node <<'EOF'
           const { chromium } = require('playwright');
+          const fs = require('fs');
           (async () => {
             const browser = await chromium.launch();
-            async function probe(url, dumpChars) {
-              console.log('\n\n======== FETCH: ' + url + ' ========');
-              const page = await browser.newPage({ userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36' });
-              try {
-                const res = await page.goto(url, { waitUntil: 'networkidle', timeout: 25000 });
-                console.log('HTTP status:', res ? res.status() : 0);
-                await page.waitForTimeout(1500);
-                const rows = await page.evaluate(() => {
-                  const out = [];
-                  document.querySelectorAll('table').forEach((table, i) => {
-                    out.push('--- TABLE ' + i + ' ---');
-                    table.querySelectorAll('tr').forEach(tr => {
-                      const cells = Array.from(tr.querySelectorAll('td,th')).map(td => td.textContent.trim());
-                      if (cells.length) out.push(cells.join(' | '));
-                    });
-                  });
-                  return out;
-                });
-                console.log('TABLES FOUND: ' + rows.filter(r => r.startsWith('--- TABLE')).length);
-                rows.forEach(r => console.log('  ', r));
-                const txt = await page.evaluate(() => document.body.innerText);
-                console.log('FULL BODY TEXT LENGTH:', txt.length);
-                console.log('FULL BODY TEXT:\n', txt.slice(0, dumpChars || 3000));
-              } catch (e) {
-                console.log('FETCH_ERROR', e.message.split('\n')[0]);
+            const page = await browser.newPage();
+            const capturedUrls = new Set();
+            const responses = {};
+
+            page.on('response', async (res) => {
+              const url = res.url();
+              if (url.includes('/Default/')) {
+                capturedUrls.add(url);
+                try {
+                  const ct = res.headers()['content-type'] || '';
+                  if (ct.includes('json') || ct.includes('text')) {
+                    const body = await res.text();
+                    responses[url] = body;
+                  }
+                } catch (e) {}
               }
-              await page.close();
+            });
+
+            console.log('Loading simulator page...');
+            await page.goto('https://www.service-public.gouv.fr/simulateur/calcul/cout-certificat-immatriculation', { waitUntil: 'networkidle', timeout: 45000 });
+            await page.waitForTimeout(2000);
+
+            console.log('\n=== ALL /Default/* URLS CAPTURED ===');
+            for (const u of capturedUrls) console.log(' ', u);
+
+            // Find the main "fields" JSON (the big config blob).
+            const fieldsUrl = [...capturedUrls].find(u => u.includes('/fields'));
+            console.log('\nfieldsUrl:', fieldsUrl);
+            if (fieldsUrl && responses[fieldsUrl]) {
+              const json = JSON.parse(responses[fieldsUrl]);
+              fs.writeFileSync('fields.json', JSON.stringify(json, null, 1));
+              console.log('Top-level keys:', Object.keys(json));
+              const datas = json.datas || {};
+              const dataKeys = Object.keys(datas);
+              console.log('datas key count:', dataKeys.length);
+
+              // Find any data entries that look malus/CO2/bareme related, and any with unparsedSource/unparsedIndex.
+              const interesting = [];
+              for (const k of dataKeys) {
+                const entry = datas[k];
+                const blob = JSON.stringify(entry);
+                if (/co2|bareme|malus|tarif|masse|poids/i.test(k) || /unparsedSource|unparsedIndex/.test(blob)) {
+                  interesting.push(k);
+                }
+              }
+              console.log('\n=== INTERESTING DATA KEYS (' + interesting.length + ') ===');
+              for (const k of interesting) {
+                console.log('\n--- ' + k + ' ---');
+                console.log(JSON.stringify(datas[k], null, 1).slice(0, 2000));
+              }
             }
-            await probe('https://www.lunil.com/tous-les-malus-ecologiques-annee-par-annee/', 20000);
-            await probe('https://makeamove.fr/simulateur-fiscal-automobile/malus-poids/', 8000);
+
+            console.log('\n=== ALL OTHER CAPTURED JSON/TEXT RESPONSES (non-fields) ===');
+            for (const [url, body] of Object.entries(responses)) {
+              if (url === fieldsUrl) continue;
+              console.log('\n--- ' + url + ' (' + body.length + ' chars) ---');
+              console.log(body.slice(0, 3000));
+            }
+
+            fs.writeFileSync('all_urls.json', JSON.stringify([...capturedUrls], null, 1));
             await browser.close();
           })().catch(e => { console.error('SCRIPT_ERROR', e); process.exit(1); });
           EOF
+      - name: Upload captured data
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: simulator-data
+          path: |
+            fields.json
+            all_urls.json
