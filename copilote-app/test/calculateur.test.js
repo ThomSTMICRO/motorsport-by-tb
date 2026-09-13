@@ -85,15 +85,17 @@ test("Véhicule de plus de 181 mois : exonération totale du malus", () => {
 });
 
 test("Année de barème inconnue -> erreur explicite, jamais un chiffre inventé", () => {
+  // Le barème 2012-2026 est désormais complet (voir bareme-data.js) : 2010 reste hors
+  // de toute grille connue, donc toujours un bon cas de test pour l'erreur explicite.
   const resultat = calculerCoutImport({
     departement: "06",
     cvFiscaux: 10,
     co2GKm: 150,
-    dateMiseEnCirculation: "2021-01-01",
+    dateMiseEnCirculation: "2010-01-01",
     dateCalcul: "2026-09-12",
   });
   assert.equal(resultat.ok, false);
-  assert.match(resultat.erreur, /2021/);
+  assert.match(resultat.erreur, /2010/);
 });
 
 test("Département inconnu -> erreur explicite, jamais un tarif inventé", () => {

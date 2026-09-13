@@ -57,15 +57,17 @@ function getCoefficientDecote(ageMois) {
 /**
  * Résout le malus CO2 brut (avant décote d'âge) pour une année et un CO2 donnés.
  * Renvoie `null` si l'année n'est pas dans BAREME_CO2_PAR_ANNEE OU si le CO2 est
- * hors de la plage échantillonnée (100-220 g/km) — ne jamais extrapoler au-delà
- * de ce qui a été réellement interrogé sur l'API officielle.
+ * hors de la plage échantillonnée pour CETTE année (chaque grille a ses propres bornes
+ * min/max — 100-220 g/km pour les 7 premières années interrogées, 90-230 g/km pour les
+ * 8 complétées ensuite) — ne jamais extrapoler au-delà de ce qui a été réellement
+ * interrogé sur l'API officielle.
  */
 function getMalusCO2Brut(anneeImmatriculation, co2) {
   const bareme = BAREME_CO2_PAR_ANNEE[anneeImmatriculation];
   if (!bareme) return null;
-  if (co2 < 100 || co2 > 220) return null; // hors plage confirmée par l'API officielle
-
   const grille = bareme.grille;
+  if (co2 < grille[0].co2 || co2 > grille[grille.length - 1].co2) return null; // hors plage confirmée pour cette année
+
   const exact = grille.find((e) => e.co2 === co2);
   if (exact) return { montant: exact.montant, confiance: bareme.confiance };
 

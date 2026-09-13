@@ -117,7 +117,7 @@
   <div class="wrap">
     <h1>Calculateur d'import</h1>
     <p class="lede">Coût d'immatriculation d'un véhicule d'occasion importé en France : taxe régionale (Y1) et malus écologique (Y3), calculés selon les barèmes officiels — jamais estimés à l'œil.</p>
-    <p class="caveat">Couverture actuelle : barème CO2 confirmé (source officielle) pour les véhicules immatriculés en <strong>2012, 2015, 2018, 2020, 2022, 2024 et 2026</strong>, entre 100 et 220 g/km ; malus au poids confirmé pour <strong>2022 à 2026</strong>. Tarif régional confirmé pour les régions Île-de-France, Auvergne-Rhône-Alpes et Provence-Alpes-Côte d'Azur (les autres régions sont des estimations sourcées, pas un texte officiel vérifié).</p>
+    <p class="caveat">Couverture actuelle : barème CO2 confirmé (source officielle) pour <strong>toutes les années de 2012 à 2026</strong>, entre 90/100 et 220/230 g/km selon l'année ; malus au poids confirmé pour <strong>2022 à 2026</strong>. Tarif régional confirmé pour les régions Île-de-France, Auvergne-Rhône-Alpes et Provence-Alpes-Côte d'Azur (les autres régions sont des estimations sourcées, pas un texte officiel vérifié).</p>
 
     <form id="formulaire" novalidate>
       <div class="champs">
@@ -180,84 +180,242 @@
 // service-public.gouv.fr (POST /Default/source, source=3, pas de 5 g/km, plage
 // 100-220 g/km). Voir docs/recherche-malus-carte-grise.md pour le détail.
 const BAREME_CO2_PAR_ANNEE = {
-  2012: { confiance: "confirme", plafondMontant: 2300, grille: [
-    { co2: 100, montant: 0 }, { co2: 105, montant: 0 }, { co2: 110, montant: 0 },
-    { co2: 115, montant: 0 }, { co2: 120, montant: 0 }, { co2: 125, montant: 0 },
-    { co2: 130, montant: 0 }, { co2: 135, montant: 0 }, { co2: 140, montant: 0 },
-    { co2: 145, montant: 200 }, { co2: 150, montant: 200 }, { co2: 155, montant: 500 },
-    { co2: 160, montant: 750 }, { co2: 165, montant: 750 }, { co2: 170, montant: 750 },
-    { co2: 175, montant: 750 }, { co2: 180, montant: 750 }, { co2: 185, montant: 1300 },
-    { co2: 190, montant: 1300 }, { co2: 195, montant: 2300 }, { co2: 200, montant: 2300 },
-    { co2: 205, montant: 2300 }, { co2: 210, montant: 2300 }, { co2: 215, montant: 2300 },
-    { co2: 220, montant: 2300 },
-  ]},
-  2015: { confiance: "confirme", plafondMontant: 8000, grille: [
-    { co2: 100, montant: 0 }, { co2: 105, montant: 0 }, { co2: 110, montant: 0 },
-    { co2: 115, montant: 0 }, { co2: 120, montant: 0 }, { co2: 125, montant: 0 },
-    { co2: 130, montant: 0 }, { co2: 135, montant: 150 }, { co2: 140, montant: 250 },
-    { co2: 145, montant: 500 }, { co2: 150, montant: 900 }, { co2: 155, montant: 1600 },
-    { co2: 160, montant: 2200 }, { co2: 165, montant: 2200 }, { co2: 170, montant: 2200 },
-    { co2: 175, montant: 2200 }, { co2: 180, montant: 3000 }, { co2: 185, montant: 3600 },
-    { co2: 190, montant: 4000 }, { co2: 195, montant: 6500 }, { co2: 200, montant: 6500 },
-    { co2: 205, montant: 8000 }, { co2: 210, montant: 8000 }, { co2: 215, montant: 8000 },
-    { co2: 220, montant: 8000 },
-  ]},
-  2018: { confiance: "confirme", plafondMontant: 10500, grille: [
-    { co2: 100, montant: 0 }, { co2: 105, montant: 0 }, { co2: 110, montant: 0 },
-    { co2: 115, montant: 0 }, { co2: 120, montant: 50 }, { co2: 125, montant: 113 },
-    { co2: 130, montant: 300 }, { co2: 135, montant: 613 }, { co2: 140, montant: 1050 },
-    { co2: 145, montant: 1613 }, { co2: 150, montant: 2300 }, { co2: 155, montant: 3113 },
-    { co2: 160, montant: 4050 }, { co2: 162, montant: 4460 }, // ✅ cas réel payé (2786,76€ total)
-    { co2: 165, montant: 5113 }, { co2: 170, montant: 6300 },
-    { co2: 175, montant: 7613 }, { co2: 180, montant: 9050 }, { co2: 185, montant: 10500 },
-    { co2: 190, montant: 10500 }, { co2: 195, montant: 10500 }, { co2: 200, montant: 10500 },
-    { co2: 205, montant: 10500 }, { co2: 210, montant: 10500 }, { co2: 215, montant: 10500 },
-    { co2: 220, montant: 10500 },
-  ]},
-  2020: { confiance: "confirme", plafondMontant: 20000, grille: [
-    { co2: 100, montant: 0 }, { co2: 105, montant: 0 }, { co2: 110, montant: 50 },
-    { co2: 115, montant: 170 }, { co2: 120, montant: 260 }, { co2: 125, montant: 400 },
-    { co2: 130, montant: 818 }, { co2: 135, montant: 1276 }, { co2: 140, montant: 1901 },
-    { co2: 145, montant: 2726 }, { co2: 150, montant: 3784 }, { co2: 155, montant: 5105 },
-    { co2: 160, montant: 6724 }, { co2: 165, montant: 8671 }, { co2: 170, montant: 10980 },
-    { co2: 175, montant: 13682 }, { co2: 180, montant: 16810 }, { co2: 185, montant: 20000 },
-    { co2: 190, montant: 20000 }, { co2: 195, montant: 20000 }, { co2: 200, montant: 20000 },
-    { co2: 205, montant: 20000 }, { co2: 210, montant: 20000 }, { co2: 215, montant: 20000 },
-    { co2: 220, montant: 20000 },
-  ]},
-  2022: { confiance: "confirme", grille: [ // plafond réel (40 000€) non atteint dans ce sweep, volontairement omis
-    { co2: 100, montant: 0 }, { co2: 105, montant: 0 }, { co2: 110, montant: 0 },
-    { co2: 115, montant: 0 }, { co2: 120, montant: 0 }, { co2: 125, montant: 0 },
-    { co2: 130, montant: 100 }, { co2: 135, montant: 210 }, { co2: 140, montant: 310 },
-    { co2: 145, montant: 540 }, { co2: 150, montant: 983 }, { co2: 155, montant: 1504 },
-    { co2: 160, montant: 2205 }, { co2: 165, montant: 3119 }, { co2: 170, montant: 4279 },
-    { co2: 175, montant: 5715 }, { co2: 180, montant: 7462 }, { co2: 185, montant: 9550 },
-    { co2: 190, montant: 12012 }, { co2: 195, montant: 14881 }, { co2: 200, montant: 18188 },
-    { co2: 205, montant: 21966 }, { co2: 210, montant: 26247 }, { co2: 215, montant: 31063 },
-    { co2: 220, montant: 36447 },
-  ]},
-  2024: { confiance: "confirme", plafondMontant: 60000, grille: [
-    { co2: 100, montant: 0 }, { co2: 105, montant: 0 }, { co2: 110, montant: 0 },
-    { co2: 115, montant: 0 }, { co2: 120, montant: 100 }, { co2: 125, montant: 210 },
-    { co2: 130, montant: 310 }, { co2: 135, montant: 540 }, { co2: 140, montant: 983 },
-    { co2: 145, montant: 1504 }, { co2: 150, montant: 2205 }, { co2: 155, montant: 3119 },
-    { co2: 160, montant: 4279 }, { co2: 165, montant: 5715 }, { co2: 170, montant: 8770 },
-    { co2: 175, montant: 14325 }, { co2: 180, montant: 22380 }, { co2: 185, montant: 32935 },
-    { co2: 190, montant: 45990 }, { co2: 195, montant: 60000 }, { co2: 200, montant: 60000 },
-    { co2: 205, montant: 60000 }, { co2: 210, montant: 60000 }, { co2: 215, montant: 60000 },
-    { co2: 220, montant: 60000 },
-  ]},
-  2026: { confiance: "confirme", plafondMontant: 80000, grille: [
-    { co2: 100, montant: 0 }, { co2: 105, montant: 0 }, { co2: 110, montant: 100 },
-    { co2: 115, montant: 210 }, { co2: 120, montant: 310 }, { co2: 125, montant: 540 },
-    { co2: 130, montant: 983 }, { co2: 135, montant: 1504 }, { co2: 140, montant: 2205 },
-    { co2: 145, montant: 3119 }, { co2: 150, montant: 4279 }, { co2: 155, montant: 5715 },
-    { co2: 160, montant: 8770 }, { co2: 165, montant: 14325 }, { co2: 170, montant: 22380 },
-    { co2: 175, montant: 32935 }, { co2: 180, montant: 45990 }, { co2: 185, montant: 61245 },
-    { co2: 190, montant: 76800 }, { co2: 195, montant: 80000 }, { co2: 200, montant: 80000 },
-    { co2: 205, montant: 80000 }, { co2: 210, montant: 80000 }, { co2: 215, montant: 80000 },
-    { co2: 220, montant: 80000 },
-  ]},
+  2012: {
+    confiance: "confirme",
+    plafondMontant: 2300, // plateau confirmé dès 195 g/km
+    grille: [
+      { co2: 100, montant: 0 }, { co2: 105, montant: 0 }, { co2: 110, montant: 0 },
+      { co2: 115, montant: 0 }, { co2: 120, montant: 0 }, { co2: 125, montant: 0 },
+      { co2: 130, montant: 0 }, { co2: 135, montant: 0 }, { co2: 140, montant: 0 },
+      { co2: 145, montant: 200 }, { co2: 150, montant: 200 }, { co2: 155, montant: 500 },
+      { co2: 160, montant: 750 }, { co2: 165, montant: 750 }, { co2: 170, montant: 750 },
+      { co2: 175, montant: 750 }, { co2: 180, montant: 750 }, { co2: 185, montant: 1300 },
+      { co2: 190, montant: 1300 }, { co2: 195, montant: 2300 }, { co2: 200, montant: 2300 },
+      { co2: 205, montant: 2300 }, { co2: 210, montant: 2300 }, { co2: 215, montant: 2300 },
+      { co2: 220, montant: 2300 },
+    ],
+  },
+  2013: {
+    confiance: "confirme",
+    plafondMontant: 6000, // plateau confirmé dès 205 g/km
+    grille: [
+      { co2: 90, montant: 0 }, { co2: 95, montant: 0 }, { co2: 100, montant: 0 },
+      { co2: 105, montant: 0 }, { co2: 110, montant: 0 }, { co2: 115, montant: 0 },
+      { co2: 120, montant: 0 }, { co2: 125, montant: 0 }, { co2: 130, montant: 0 },
+      { co2: 135, montant: 0 }, { co2: 140, montant: 100 }, { co2: 145, montant: 300 },
+      { co2: 150, montant: 400 }, { co2: 155, montant: 1000 }, { co2: 160, montant: 1500 },
+      { co2: 165, montant: 1500 }, { co2: 170, montant: 1500 }, { co2: 175, montant: 1500 },
+      { co2: 180, montant: 2000 }, { co2: 185, montant: 2600 }, { co2: 190, montant: 3000 },
+      { co2: 195, montant: 5000 }, { co2: 200, montant: 5000 }, { co2: 205, montant: 6000 },
+      { co2: 210, montant: 6000 }, { co2: 215, montant: 6000 }, { co2: 220, montant: 6000 },
+      { co2: 225, montant: 6000 }, { co2: 230, montant: 6000 },
+    ],
+  },
+  2014: {
+    confiance: "confirme",
+    plafondMontant: 8000, // plateau confirmé dès 205 g/km (grille identique à 2015/2016)
+    grille: [
+      { co2: 90, montant: 0 }, { co2: 95, montant: 0 }, { co2: 100, montant: 0 },
+      { co2: 105, montant: 0 }, { co2: 110, montant: 0 }, { co2: 115, montant: 0 },
+      { co2: 120, montant: 0 }, { co2: 125, montant: 0 }, { co2: 130, montant: 0 },
+      { co2: 135, montant: 150 }, { co2: 140, montant: 250 }, { co2: 145, montant: 500 },
+      { co2: 150, montant: 900 }, { co2: 155, montant: 1600 }, { co2: 160, montant: 2200 },
+      { co2: 165, montant: 2200 }, { co2: 170, montant: 2200 }, { co2: 175, montant: 2200 },
+      { co2: 180, montant: 3000 }, { co2: 185, montant: 3600 }, { co2: 190, montant: 4000 },
+      { co2: 195, montant: 6500 }, { co2: 200, montant: 6500 }, { co2: 205, montant: 8000 },
+      { co2: 210, montant: 8000 }, { co2: 215, montant: 8000 }, { co2: 220, montant: 8000 },
+      { co2: 225, montant: 8000 }, { co2: 230, montant: 8000 },
+    ],
+  },
+  2015: {
+    confiance: "confirme",
+    plafondMontant: 8000, // plateau confirmé dès 205 g/km
+    grille: [
+      { co2: 100, montant: 0 }, { co2: 105, montant: 0 }, { co2: 110, montant: 0 },
+      { co2: 115, montant: 0 }, { co2: 120, montant: 0 }, { co2: 125, montant: 0 },
+      { co2: 130, montant: 0 }, { co2: 135, montant: 150 }, { co2: 140, montant: 250 },
+      { co2: 145, montant: 500 }, { co2: 150, montant: 900 }, { co2: 155, montant: 1600 },
+      { co2: 160, montant: 2200 }, { co2: 165, montant: 2200 }, { co2: 170, montant: 2200 },
+      { co2: 175, montant: 2200 }, { co2: 180, montant: 3000 }, { co2: 185, montant: 3600 },
+      { co2: 190, montant: 4000 }, { co2: 195, montant: 6500 }, { co2: 200, montant: 6500 },
+      { co2: 205, montant: 8000 }, { co2: 210, montant: 8000 }, { co2: 215, montant: 8000 },
+      { co2: 220, montant: 8000 },
+    ],
+  },
+  2016: {
+    confiance: "confirme",
+    plafondMontant: 8000, // plateau confirmé dès 205 g/km (grille identique à 2014/2015)
+    grille: [
+      { co2: 90, montant: 0 }, { co2: 95, montant: 0 }, { co2: 100, montant: 0 },
+      { co2: 105, montant: 0 }, { co2: 110, montant: 0 }, { co2: 115, montant: 0 },
+      { co2: 120, montant: 0 }, { co2: 125, montant: 0 }, { co2: 130, montant: 0 },
+      { co2: 135, montant: 150 }, { co2: 140, montant: 250 }, { co2: 145, montant: 500 },
+      { co2: 150, montant: 900 }, { co2: 155, montant: 1600 }, { co2: 160, montant: 2200 },
+      { co2: 165, montant: 2200 }, { co2: 170, montant: 2200 }, { co2: 175, montant: 2200 },
+      { co2: 180, montant: 3000 }, { co2: 185, montant: 3600 }, { co2: 190, montant: 4000 },
+      { co2: 195, montant: 6500 }, { co2: 200, montant: 6500 }, { co2: 205, montant: 8000 },
+      { co2: 210, montant: 8000 }, { co2: 215, montant: 8000 }, { co2: 220, montant: 8000 },
+      { co2: 225, montant: 8000 }, { co2: 230, montant: 8000 },
+    ],
+  },
+  2017: {
+    confiance: "confirme",
+    plafondMontant: 10000, // plateau confirmé dès 195 g/km
+    grille: [
+      { co2: 90, montant: 0 }, { co2: 95, montant: 0 }, { co2: 100, montant: 0 },
+      { co2: 105, montant: 0 }, { co2: 110, montant: 0 }, { co2: 115, montant: 0 },
+      { co2: 120, montant: 0 }, { co2: 125, montant: 0 }, { co2: 130, montant: 73 },
+      { co2: 135, montant: 210 }, { co2: 140, montant: 473 }, { co2: 145, montant: 860 },
+      { co2: 150, montant: 1373 }, { co2: 155, montant: 2010 }, { co2: 160, montant: 2773 },
+      { co2: 165, montant: 3660 }, { co2: 170, montant: 4673 }, { co2: 175, montant: 5810 },
+      { co2: 180, montant: 7073 }, { co2: 185, montant: 8460 }, { co2: 190, montant: 9973 },
+      { co2: 195, montant: 10000 }, { co2: 200, montant: 10000 }, { co2: 205, montant: 10000 },
+      { co2: 210, montant: 10000 }, { co2: 215, montant: 10000 }, { co2: 220, montant: 10000 },
+      { co2: 225, montant: 10000 }, { co2: 230, montant: 10000 },
+    ],
+  },
+  2018: {
+    confiance: "confirme", // upgradé depuis "estime" : recoupé exactement avec l'API officielle ET le cas réel payé (162g/km = 4460€)
+    plafondMontant: 10500, // plateau confirmé dès 185 g/km
+    grille: [
+      { co2: 100, montant: 0 }, { co2: 105, montant: 0 }, { co2: 110, montant: 0 },
+      { co2: 115, montant: 0 }, { co2: 120, montant: 50 }, { co2: 125, montant: 113 },
+      { co2: 130, montant: 300 }, { co2: 135, montant: 613 }, { co2: 140, montant: 1050 },
+      { co2: 145, montant: 1613 }, { co2: 150, montant: 2300 }, { co2: 155, montant: 3113 },
+      { co2: 160, montant: 4050 }, { co2: 162, montant: 4460 }, // ✅ point exact recoupé avec le cas réel payé (2786,76€ total)
+      { co2: 165, montant: 5113 }, { co2: 170, montant: 6300 },
+      { co2: 175, montant: 7613 }, { co2: 180, montant: 9050 }, { co2: 185, montant: 10500 },
+      { co2: 190, montant: 10500 }, { co2: 195, montant: 10500 }, { co2: 200, montant: 10500 },
+      { co2: 205, montant: 10500 }, { co2: 210, montant: 10500 }, { co2: 215, montant: 10500 },
+      { co2: 220, montant: 10500 },
+    ],
+  },
+  2019: {
+    confiance: "confirme",
+    plafondMontant: 10500, // plateau confirmé dès 195 g/km
+    grille: [
+      { co2: 90, montant: 0 }, { co2: 95, montant: 0 }, { co2: 100, montant: 0 },
+      { co2: 105, montant: 0 }, { co2: 110, montant: 0 }, { co2: 115, montant: 0 },
+      { co2: 120, montant: 50 }, { co2: 125, montant: 75 }, { co2: 130, montant: 140 },
+      { co2: 135, montant: 353 }, { co2: 140, montant: 690 }, { co2: 145, montant: 1101 },
+      { co2: 150, montant: 1613 }, { co2: 155, montant: 2300 }, { co2: 160, montant: 3113 },
+      { co2: 165, montant: 3853 }, { co2: 170, montant: 4890 }, { co2: 175, montant: 6053 },
+      { co2: 180, montant: 7340 }, { co2: 185, montant: 8753 }, { co2: 190, montant: 10290 },
+      { co2: 195, montant: 10500 }, { co2: 200, montant: 10500 }, { co2: 205, montant: 10500 },
+      { co2: 210, montant: 10500 }, { co2: 215, montant: 10500 }, { co2: 220, montant: 10500 },
+      { co2: 225, montant: 10500 }, { co2: 230, montant: 10500 },
+    ],
+  },
+  2020: {
+    confiance: "confirme",
+    plafondMontant: 20000, // plateau confirmé dès 185 g/km
+    grille: [
+      { co2: 100, montant: 0 }, { co2: 105, montant: 0 }, { co2: 110, montant: 50 },
+      { co2: 115, montant: 170 }, { co2: 120, montant: 260 }, { co2: 125, montant: 400 },
+      { co2: 130, montant: 818 }, { co2: 135, montant: 1276 }, { co2: 140, montant: 1901 },
+      { co2: 145, montant: 2726 }, { co2: 150, montant: 3784 }, { co2: 155, montant: 5105 },
+      { co2: 160, montant: 6724 }, { co2: 165, montant: 8671 }, { co2: 170, montant: 10980 },
+      { co2: 175, montant: 13682 }, { co2: 180, montant: 16810 }, { co2: 185, montant: 20000 },
+      { co2: 190, montant: 20000 }, { co2: 195, montant: 20000 }, { co2: 200, montant: 20000 },
+      { co2: 205, montant: 20000 }, { co2: 210, montant: 20000 }, { co2: 215, montant: 20000 },
+      { co2: 220, montant: 20000 },
+    ],
+  },
+  2021: {
+    confiance: "confirme",
+    plafondMontant: 30000, // plateau confirmé dès 220 g/km
+    grille: [
+      { co2: 90, montant: 0 }, { co2: 95, montant: 0 }, { co2: 100, montant: 0 },
+      { co2: 105, montant: 0 }, { co2: 110, montant: 0 }, { co2: 115, montant: 0 },
+      { co2: 120, montant: 0 }, { co2: 125, montant: 0 }, { co2: 130, montant: 0 },
+      { co2: 135, montant: 100 }, { co2: 140, montant: 210 }, { co2: 145, montant: 310 },
+      { co2: 150, montant: 540 }, { co2: 155, montant: 983 }, { co2: 160, montant: 1504 },
+      { co2: 165, montant: 2205 }, { co2: 170, montant: 3119 }, { co2: 175, montant: 4279 },
+      { co2: 180, montant: 5715 }, { co2: 185, montant: 7462 }, { co2: 190, montant: 9550 },
+      { co2: 195, montant: 12012 }, { co2: 200, montant: 14881 }, { co2: 205, montant: 18188 },
+      { co2: 210, montant: 21966 }, { co2: 215, montant: 26247 }, { co2: 220, montant: 30000 },
+      { co2: 225, montant: 30000 }, { co2: 230, montant: 30000 },
+    ],
+  },
+  2022: {
+    confiance: "confirme",
+    // Plafond réel documenté ailleurs à 40 000 € mais PAS encore atteint à 220 g/km
+    // dans ce sweep (toujours croissant) : plafondMontant volontairement omis.
+    grille: [
+      { co2: 100, montant: 0 }, { co2: 105, montant: 0 }, { co2: 110, montant: 0 },
+      { co2: 115, montant: 0 }, { co2: 120, montant: 0 }, { co2: 125, montant: 0 },
+      { co2: 130, montant: 100 }, { co2: 135, montant: 210 }, { co2: 140, montant: 310 },
+      { co2: 145, montant: 540 }, { co2: 150, montant: 983 }, { co2: 155, montant: 1504 },
+      { co2: 160, montant: 2205 }, { co2: 165, montant: 3119 }, { co2: 170, montant: 4279 },
+      { co2: 175, montant: 5715 }, { co2: 180, montant: 7462 }, { co2: 185, montant: 9550 },
+      { co2: 190, montant: 12012 }, { co2: 195, montant: 14881 }, { co2: 200, montant: 18188 },
+      { co2: 205, montant: 21966 }, { co2: 210, montant: 26247 }, { co2: 215, montant: 31063 },
+      { co2: 220, montant: 36447 },
+    ],
+  },
+  2023: {
+    confiance: "confirme",
+    // Progression fortement ralentie entre 225g (49 047€) et 230g (50 000€) mais pas
+    // encore parfaitement plate : plafondMontant (probable ~50 000€) omis par prudence.
+    grille: [
+      { co2: 90, montant: 0 }, { co2: 95, montant: 0 }, { co2: 100, montant: 0 },
+      { co2: 105, montant: 0 }, { co2: 110, montant: 0 }, { co2: 115, montant: 0 },
+      { co2: 120, montant: 0 }, { co2: 125, montant: 100 }, { co2: 130, montant: 210 },
+      { co2: 135, montant: 310 }, { co2: 140, montant: 540 }, { co2: 145, montant: 983 },
+      { co2: 150, montant: 1504 }, { co2: 155, montant: 2205 }, { co2: 160, montant: 3119 },
+      { co2: 165, montant: 4279 }, { co2: 170, montant: 5715 }, { co2: 175, montant: 7462 },
+      { co2: 180, montant: 9550 }, { co2: 185, montant: 12012 }, { co2: 190, montant: 14881 },
+      { co2: 195, montant: 18188 }, { co2: 200, montant: 21966 }, { co2: 205, montant: 26247 },
+      { co2: 210, montant: 31063 }, { co2: 215, montant: 36447 }, { co2: 220, montant: 42431 },
+      { co2: 225, montant: 49047 }, { co2: 230, montant: 50000 },
+    ],
+  },
+  2024: {
+    confiance: "confirme",
+    plafondMontant: 60000, // plateau confirmé dès 195 g/km
+    grille: [
+      { co2: 100, montant: 0 }, { co2: 105, montant: 0 }, { co2: 110, montant: 0 },
+      { co2: 115, montant: 0 }, { co2: 120, montant: 100 }, { co2: 125, montant: 210 },
+      { co2: 130, montant: 310 }, { co2: 135, montant: 540 }, { co2: 140, montant: 983 },
+      { co2: 145, montant: 1504 }, { co2: 150, montant: 2205 }, { co2: 155, montant: 3119 },
+      { co2: 160, montant: 4279 }, { co2: 165, montant: 5715 }, { co2: 170, montant: 8770 },
+      { co2: 175, montant: 14325 }, { co2: 180, montant: 22380 }, { co2: 185, montant: 32935 },
+      { co2: 190, montant: 45990 }, { co2: 195, montant: 60000 }, { co2: 200, montant: 60000 },
+      { co2: 205, montant: 60000 }, { co2: 210, montant: 60000 }, { co2: 215, montant: 60000 },
+      { co2: 220, montant: 60000 },
+    ],
+  },
+  2025: {
+    confiance: "confirme",
+    plafondMontant: 60000, // plateau confirmé dès 195 g/km (identique à 2024)
+    grille: [
+      { co2: 90, montant: 0 }, { co2: 95, montant: 0 }, { co2: 100, montant: 0 },
+      { co2: 105, montant: 0 }, { co2: 110, montant: 0 }, { co2: 115, montant: 0 },
+      { co2: 120, montant: 100 }, { co2: 125, montant: 210 }, { co2: 130, montant: 310 },
+      { co2: 135, montant: 540 }, { co2: 140, montant: 983 }, { co2: 145, montant: 1504 },
+      { co2: 150, montant: 2205 }, { co2: 155, montant: 3119 }, { co2: 160, montant: 4279 },
+      { co2: 165, montant: 5715 }, { co2: 170, montant: 8770 }, { co2: 175, montant: 14325 },
+      { co2: 180, montant: 22380 }, { co2: 185, montant: 32935 }, { co2: 190, montant: 45990 },
+      { co2: 195, montant: 60000 }, { co2: 200, montant: 60000 }, { co2: 205, montant: 60000 },
+      { co2: 210, montant: 60000 }, { co2: 215, montant: 60000 }, { co2: 220, montant: 60000 },
+      { co2: 225, montant: 60000 }, { co2: 230, montant: 60000 },
+    ],
+  },
+  2026: {
+    confiance: "confirme",
+    plafondMontant: 80000, // plateau confirmé dès 195 g/km
+    grille: [
+      { co2: 100, montant: 0 }, { co2: 105, montant: 0 }, { co2: 110, montant: 100 },
+      { co2: 115, montant: 210 }, { co2: 120, montant: 310 }, { co2: 125, montant: 540 },
+      { co2: 130, montant: 983 }, { co2: 135, montant: 1504 }, { co2: 140, montant: 2205 },
+      { co2: 145, montant: 3119 }, { co2: 150, montant: 4279 }, { co2: 155, montant: 5715 },
+      { co2: 160, montant: 8770 }, { co2: 165, montant: 14325 }, { co2: 170, montant: 22380 },
+      { co2: 175, montant: 32935 }, { co2: 180, montant: 45990 }, { co2: 185, montant: 61245 },
+      { co2: 190, montant: 76800 }, { co2: 195, montant: 80000 }, { co2: 200, montant: 80000 },
+      { co2: 205, montant: 80000 }, { co2: 210, montant: 80000 }, { co2: 215, montant: 80000 },
+      { co2: 220, montant: 80000 },
+    ],
+  },
 };
 
 // ✅ Source primaire confirmée (13/09/2026) : même API, source=13. Barème par
@@ -387,7 +545,7 @@ function getCoefficientDecote(ageMois) {
 function getMalusCO2Brut(annee, co2) {
   const b = BAREME_CO2_PAR_ANNEE[annee];
   if (!b) return null;
-  if (co2 < 100 || co2 > 220) return null; // hors plage confirmée par l'API officielle
+  if (co2 < b.grille[0].co2 || co2 > b.grille[b.grille.length - 1].co2) return null; // hors plage confirmée pour cette année
   const exact = b.grille.find((e) => e.co2 === co2);
   if (exact) return { montant: exact.montant, confiance: b.confiance };
   let avant = b.grille[0], apres = b.grille[b.grille.length - 1];

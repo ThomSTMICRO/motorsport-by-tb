@@ -58,37 +58,46 @@ pour n'importe quelle combinaison année/CO2/poids/région, sans dépendre d'agr
 (souvent bloqués par Cloudflare ou incomplets). Les sections ci-dessous ont été mises à jour en
 conséquence.
 
-## Barème malus CO2 — grilles confirmées via l'API officielle (13/09/2026)
+## Barème malus CO2 — ✅ les 15 années demandées (2012-2026) confirmées via l'API officielle
 
-Interrogation directe de `source=3`, tous les 5 g/km, plage 100-220 g/km, pour 7 années :
-**2012, 2015, 2018, 2020, 2022, 2024, 2026**. Confiance `"confirme"` pour toutes (source
-primaire officielle). Grilles complètes dans `copilote-app/lib/bareme-data.js`.
+Interrogation directe de `source=3`, tous les 5 g/km. Deux passes :
+- **13/09/2026, 1ère passe** : 7 années (2012, 2015, 2018, 2020, 2022, 2024, 2026), plage
+  100-220 g/km.
+- **13/09/2026, 2e passe** : les 8 années restantes (2013, 2014, 2016, 2017, 2019, 2021, 2023,
+  2025), plage élargie 90-230 g/km. **Le barème 2012-2026 est désormais complet.**
+
+Confiance `"confirme"` pour les 15 années (source primaire officielle). Grilles complètes dans
+`copilote-app/lib/bareme-data.js`.
 
 Point de contrôle (sanity check) : `source=3&annee=2026&minCO2=162&maxCO2=162` → `10692` (cohérent
 avec la progression 2026 : 160g→8770€, 165g→14325€, 162g proche de l'interpolation attendue).
 
-| CO2 (g/km) | 2012 | 2015 | 2018 | 2020 | 2022 | 2024 | 2026 |
-|---|---|---|---|---|---|---|---|
-| 120 | 0 € | 0 € | 50 € | 260 € | 0 € | 100 € | 310 € |
-| 140 | 0 € | 250 € | 1 050 € | 1 901 € | 310 € | 983 € | 2 205 € |
-| 160 | 750 € | 2 200 € | 4 050 € | 6 724 € | 2 205 € | 4 279 € | 8 770 € |
-| **162** | — | — | **4 460 €** ✅ cas réel payé | — | — | — | — |
-| 180 | 750 € | 3 000 € | 9 050 € | 16 810 € | 7 462 € | 22 380 € | 45 990 € |
-| 200 | 2 300 € | 6 500 € | 10 500 € | 20 000 € | 18 188 € | 60 000 € | 80 000 € |
-| 220 | 2 300 € | 8 000 € | 10 500 € | 20 000 € | 36 447 € | 60 000 € | 80 000 € |
-| **Plafond** | 2 300 € (dès 195g) | 8 000 € (dès 205g) | 10 500 € (dès 185g) | 20 000 € (dès 185g) | 40 000 € ⚠️ non atteint dans ce sweep (220g=36 447€, toujours croissant) | 60 000 € (dès 195g) | 80 000 € (dès 195g) |
+| CO2 (g/km) | 2012 | 2013 | 2014 | 2015 | 2016 | 2017 | 2018 | 2019 | 2020 | 2021 | 2022 | 2023 | 2024 | 2025 | 2026 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 140 | 0€ | 100€ | 250€ | 250€ | 250€ | 473€ | 1 050€ | 690€ | 1 901€ | 210€ | 310€ | 540€ | 983€ | 983€ | 2 205€ |
+| 160 | 750€ | 1 500€ | 2 200€ | 2 200€ | 2 200€ | 2 773€ | 4 050€ | 3 113€ | 6 724€ | 1 504€ | 2 205€ | 3 119€ | 4 279€ | 4 279€ | 8 770€ |
+| **162** | — | — | — | — | — | — | **4 460€** ✅ cas réel payé | — | — | — | — | — | — | — | — |
+| 180 | 750€ | 2 000€ | 3 000€ | 3 000€ | 3 000€ | 7 073€ | 9 050€ | 7 340€ | 16 810€ | 5 715€ | 7 462€ | 9 550€ | 22 380€ | 22 380€ | 45 990€ |
+| 200 | 2 300€ | 5 000€ | 6 500€ | 6 500€ | 6 500€ | 10 000€ | 10 500€ | 10 500€ | 20 000€ | 14 881€ | 18 188€ | 21 966€ | 60 000€ | 60 000€ | 80 000€ |
+| **Plafond** | 2 300€ | 6 000€ | 8 000€ | 8 000€ | 8 000€ | 10 000€ | 10 500€ | 10 500€ | 20 000€ | 30 000€ | 40 000€⚠️ | ~50 000€⚠️ | 60 000€ | 60 000€ | 80 000€ |
+
+⚠️ 2022 : plafond documenté ailleurs à 40 000€ mais non atteint dans le sweep (220g=36 447€,
+toujours croissant). 2023 : dernier point sampled 230g=50 000€ après 225g=49 047€ — progression
+très ralentie mais pas parfaitement plate, plafond non retenu par prudence.
 
 Le point 162g/km = 4 460 € pour 2018 est **exactement identique** à la valeur déjà déduite du cas
-réel payé (Audi Q5, 2 786,76 € au total) — recoupement parfait entre les deux sources.
+réel payé (Audi Q5, 2 786,76 € au total) — recoupement parfait entre les deux sources. Autre
+recoupement notable : les grilles 2014 et 2016 sont **identiques** à la grille 2015 déjà connue
+(mêmes valeurs à chaque point testé) — cohérent avec un barème resté stable sur cette période.
 
-**Années encore manquantes** (le barème demandé va de 2012 à 2026, soit 15 années) :
-2013, 2014, 2016, 2017, 2019, 2021, 2023, 2025. Non collectées à ce jour — un futur passage sur
-`source=3` avec ces années comblera ce trou (méthode identique, déjà éprouvée).
-
-**Limites actuelles de la plage testée** : seul 100-220 g/km a été interrogé. En dessous de
-100 g/km, les valeurs observées sont déjà à 0€ pour toutes les années (cohérent avec un seuil de
-déclenchement au-dessus de 100g), mais ce n'est pas confirmé point par point. Au-dessus de 220
-g/km, seule l'année 2022 n'a pas encore atteint son plateau connu (40 000€) dans le sweep actuel.
+**Limites restantes de la plage testée** : 90-230 g/km pour les 8 années de la 2e passe, 100-220
+g/km pour les 7 de la 1ère. En dehors de ces plages (par année), aucune valeur n'est disponible.
+Un passage d'affinage gramme par gramme (2018, 2022, 2024, 2026) a été lancé dans la même session
+mais **bloqué par un rate-limit serveur (HTTP 429)** après environ 900 requêtes séquentielles —
+seule la portion 2018 @ 90-196g a pu être obtenue avant le blocage (identique point par point à la
+grille 5g/km déjà confirmée). Cet affinage n'était pas nécessaire pour répondre à la demande
+initiale (barème 2012-2026) et reste une amélioration optionnelle future, à refaire avec un délai
+plus long entre requêtes.
 
 ## Décote par âge (véhicule d'occasion importé) — réforme du 1er mars 2025
 
@@ -242,8 +251,10 @@ indépendant de la date du jour. À vérifier avant de s'y fier pour un calcul.
 - Toutes les autres régions : ⚠️ **estimé** — sourcé via extraits de recherche web (plusieurs
   agrégateurs carte grise concordants), mais les pages elles-mêmes (direct-carte-grise.fr,
   caroom.fr) sont bloquées par Cloudflare, donc jamais consultées intégralement.
-- ⚠️ Code INSEE 32 (Hauts-de-France) interrogé mais réponse vide (`[]`) — non résolu (peut-être
-  un paramètre manquant, ex. `annee`, ou un code régional erroné).
+- ⚠️ Code INSEE 32 (Hauts-de-France) interrogé deux fois : réponse vide (`[]`) sans le
+  paramètre `annee`, puis `ERR_429` (rate-limit serveur) lors d'une 2e tentative avec
+  `annee=2026` le 13/09/2026 — toujours non résolu, à retenter avec un délai plus long entre
+  requêtes.
 
 | Région | Tarif 2026 (€/CV) | Confiance |
 |---|---|---|
@@ -308,16 +319,22 @@ pas sur le pilotage du simulateur gouvernemental.
    officiel, et extraction des grilles CO2 confirmées pour 2012, 2015, 2018, 2020, 2022, 2024,
    2026 (100-220 g/km), des grilles poids complètes pour 2022-2026, et de 3 tarifs régionaux
    supplémentaires confirmés (Île-de-France, Auvergne-Rhône-Alpes, PACA).
-3. **Combler les 8 années manquantes** du barème demandé (2012-2026 complet) : 2013, 2014, 2016,
-   2017, 2019, 2021, 2023, 2025 — même méthode API, déjà éprouvée.
-4. **Élargir la plage CO2 testée** au-delà de 100-220 g/km — en particulier confirmer le plafond
-   réel de 2022 (documenté à 40 000€ mais pas encore atteint dans le sweep actuel) en interrogeant
-   des valeurs > 220 g/km.
-5. **Résoudre le code régional 32** (Hauts-de-France, réponse API vide) pour compléter la
-   confirmation des 13 régions métropolitaines.
-6. Décoder les sources encore mystérieuses de l'API (`source=4`, probablement lié à la puissance
+3. ✅ **FAIT (13/09/2026)** : les 8 années manquantes du barème CO2 (2013, 2014, 2016, 2017,
+   2019, 2021, 2023, 2025) ont été obtenues avec succès (plage élargie 90-230 g/km) — **le
+   barème demandé 2012-2026 est désormais complet et intégralement confirmé**.
+4. Élargir davantage la plage CO2 testée (au-delà de 90-230 g/km) — en particulier confirmer les
+   plafonds réels de 2022 (documenté à 40 000€) et 2023 (~50 000€, non parfaitement plat au
+   dernier point testé) en interrogeant des valeurs plus hautes. Non bloquant pour l'usage
+   courant (véhicules à fortes émissions, hors du parc typique importé).
+5. **Résoudre le code régional 32** (Hauts-de-France) — deux tentatives infructueuses (réponse
+   vide sans `annee`, puis `ERR_429` avec `annee=2026`) — à retenter avec un délai plus long
+   entre requêtes pour éviter le rate-limit serveur observé le 13/09/2026.
+6. Refaire l'affinage gramme par gramme (2018, 2022, 2024, 2026) interrompu par le rate-limit
+   HTTP 429 — utile pour un futur mode "précision maximale" mais non nécessaire pour répondre à
+   la demande actuelle (grille 5g/km déjà suffisante, avec interpolation linéaire entre points).
+7. Décoder les sources encore mystérieuses de l'API (`source=4`, probablement lié à la puissance
    administrative ; `source=2, 9, 10, 11, 14, 15, 16`, usage à déterminer) si utile à la
    complétude du moteur.
-7. Collecter d'autres cas réels pour continuer à valider le moteur de calcul en conditions
+8. Collecter d'autres cas réels pour continuer à valider le moteur de calcul en conditions
    réelles (le cas Q5 a déjà servi à vérifier Y1, Y3, la tranche de décote ET la règle
    d'arrondi des mois).
