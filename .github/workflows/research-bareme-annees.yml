@@ -29,6 +29,13 @@ jobs:
 
             const capturedUrls = new Set();
             const responses = {};
+            const requests = [];
+            page.on('request', (req) => {
+              const url = req.url();
+              if (url.includes('/Default/')) {
+                requests.push({ url, method: req.method(), postData: req.postData() });
+              }
+            });
             page.on('response', async (res) => {
               const url = res.url();
               if (url.includes('/Default/')) {
@@ -36,7 +43,7 @@ jobs:
                 try {
                   const ct = res.headers()['content-type'] || '';
                   if (ct.includes('json') || ct.includes('text')) {
-                    responses[url] = await res.text();
+                    responses[url] = (responses[url] || '') + '\n<<<NEXT>>>\n' + await res.text();
                   }
                 } catch (e) {}
               }
@@ -94,7 +101,7 @@ jobs:
               await forceUnhideAndClick(id);
               await page.waitForTimeout(200);
             }
-            await set('poidsSaisi', '1900', false);
+            await set('poidsSaisi', '1400', false);
             await page.waitForTimeout(300);
             await forceUnhideOnly('TauxCO2Saisi');
             await page.fill('#TauxCO2Saisi', '162', { force: true, timeout: 5000 });
@@ -105,6 +112,9 @@ jobs:
             console.log('Clicking "Afficher le resultat"...');
             await page.click('button:has-text("Afficher le résultat")', { timeout: 8000 }).catch(e => console.log('CLICK_RESULT_FAIL', e.message.split('\n')[0]));
             await page.waitForTimeout(1500);
+
+            console.log('\n=== ALL /Default/* REQUESTS (' + requests.length + ') ===');
+            for (const r of requests) console.log('  ' + r.method + ' ' + r.url + (r.postData ? '  BODY:' + r.postData.slice(0,300) : ''));
 
             console.log('\n=== ALL /Default/* URLS CAPTURED (' + capturedUrls.size + ') ===');
             for (const u of capturedUrls) console.log(' ', u);
@@ -127,6 +137,11 @@ jobs:
                 console.log('\n--- ' + k + ' ---');
                 console.log(JSON.stringify(datas[k]).slice(0, 1500));
               }
+
+              console.log('\n=== json.sources ===');
+              console.log(JSON.stringify(json.sources).slice(0, 4000));
+              console.log('\n=== json.profiles ===');
+              console.log(JSON.stringify(json.profiles).slice(0, 2000));
             }
 
             console.log('\n=== NON-FIELDS RESPONSES CAPTURED (' + Object.keys(responses).length + ' total) ===');
