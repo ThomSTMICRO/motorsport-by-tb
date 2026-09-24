@@ -145,15 +145,6 @@
   .toc-nav a:hover{color:var(--ivory);background:rgba(23,36,28,0.06);}
   @media (max-width:820px){ .toc-nav{display:none;} }
 
-  .progress-track{position:fixed;top:0;left:0;right:0;height:2px;z-index:70;}
-  .progress-fill{height:100%;width:0%;background:linear-gradient(90deg, var(--red-bright), var(--brass-bright));transition:width .1s linear;}
-
-  /* ---------- Révélation générique au défilement ---------- */
-  .rv{opacity:0;transform:translateY(24px);transition:opacity .7s cubic-bezier(.2,.7,.2,1), transform .7s cubic-bezier(.2,.7,.2,1);}
-  .rv.is-in{opacity:1;transform:translateY(0);}
-  .rv-d1{transition-delay:.08s;} .rv-d2{transition-delay:.16s;} .rv-d3{transition-delay:.24s;} .rv-d4{transition-delay:.32s;} .rv-d5{transition-delay:.4s;}
-  @media (prefers-reduced-motion:reduce){ .rv{transition:none;opacity:1;transform:none;} html{scroll-behavior:auto;} }
-
   .btn{
     display:inline-flex;align-items:center;gap:8px;
     font-family:'Oswald',sans-serif;font-weight:600;font-size:14.5px;letter-spacing:.01em;
@@ -172,8 +163,8 @@
   /* ---------- Hero ---------- */
   .fhero{position:relative;min-height:100vh;display:flex;align-items:flex-end;overflow:hidden;}
   .fhero-bg{
-    position:absolute;inset:-8% -8%;width:116%;height:116%;object-fit:cover;object-position:60% 46%;
-    will-change:transform;filter:saturate(1.05);
+    position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:60% 46%;
+    filter:saturate(1.05);
   }
   .fhero-overlay{
     position:absolute;inset:0;
@@ -189,13 +180,6 @@
   }
   .fhero .lead{font-size:18px;color:var(--on-dark-dim);max-width:52ch;margin-bottom:32px;}
   .fhero .cta-actions{display:flex;gap:14px;flex-wrap:wrap;}
-  .scroll-cue{
-    position:absolute;bottom:28px;left:50%;transform:translateX(-50%);z-index:2;
-    display:flex;flex-direction:column;align-items:center;gap:8px;
-    color:var(--on-dark-faint);font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.1em;
-  }
-  .scroll-cue svg{width:14px;height:14px;animation:bob 1.8s ease-in-out infinite;}
-  @keyframes bob{0%,100%{transform:translateY(0);}50%{transform:translateY(6px);}}
 
   /* ---------- Sections génériques ---------- */
   .fsection{padding:100px 0;position:relative;}
@@ -235,17 +219,10 @@
     .stat-card{border-right:none;border-bottom:1px solid var(--line-light);padding:0 0 20px;}
   }
 
-  /* ---------- Bandeaux photo pleine largeur (parallaxe) ---------- */
+  /* ---------- Bandeaux photo pleine largeur ---------- */
   .photo-band{position:relative;height:78vh;min-height:460px;overflow:hidden;}
-  .photo-band-bg{
-    position:absolute;inset:-12% 0;height:124%;width:100%;
-    overflow:hidden;will-change:transform;
-  }
-  .photo-band-bg-inner{
-    width:100%;height:100%;background-size:cover;background-position:center;
-    transform:scale(1.14);transition:transform 1.8s cubic-bezier(.16,.7,.2,1);
-  }
-  .photo-band.is-in .photo-band-bg-inner{transform:scale(1);}
+  .photo-band-bg{position:absolute;inset:0;height:100%;width:100%;overflow:hidden;}
+  .photo-band-bg-inner{width:100%;height:100%;background-size:cover;background-position:center;}
   .photo-band-overlay{
     position:absolute;inset:0;
     background:linear-gradient(0deg, rgba(18,32,26,0.9) 0%, rgba(18,32,26,0.15) 40%, rgba(18,32,26,0.05) 60%, rgba(18,32,26,0.55) 100%);
@@ -271,7 +248,6 @@
   .facts-photo-frame{
     border-radius:var(--radius-md);overflow:hidden;border:1px solid var(--line-soft);
     box-shadow:0 24px 60px -20px rgba(0,0,0,0.6);
-    transition:transform .15s ease-out;will-change:transform;
   }
   .facts-photo-frame img{width:100%;height:100%;object-fit:cover;aspect-ratio:3/4;}
   @media (max-width:860px){ .facts-layout{grid-template-columns:1fr;gap:32px;} .facts-photo-frame img{aspect-ratio:16/10;} }
@@ -359,8 +335,6 @@
 </head>
 <body>
 
-<div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
-
 <div class="deck-topbar">
   <a href="index.html" class="back-link">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>
@@ -379,67 +353,63 @@
 
   <!-- HERO -->
   <section class="fhero" id="hero">
-    <img class="fhero-bg" id="heroParallax" src="images/formation/sortie-club-bateau.jpg" alt="Thomas Bona et deux membres du club MOTORSPORT by TB lors d'une sortie en mer entre passionnés">
+    <img class="fhero-bg" src="images/formation/sortie-club-bateau.jpg" alt="Thomas Bona et deux membres du club MOTORSPORT by TB lors d'une sortie en mer entre passionnés">
     <div class="fhero-overlay"></div>
     <div class="wrap fhero-inner">
-      <div class="eyebrow rv">Formation et accompagnement</div>
-      <h1 class="rv rv-d1">Achat-revente et <em>importation</em> automobile</h1>
-      <p class="lead rv rv-d2">Apprendre le métier, obtenir les accès, et réaliser ses premières opérations accompagné.</p>
-      <div class="cta-actions rv rv-d3">
+      <div class="eyebrow">Formation et accompagnement</div>
+      <h1>Achat-revente et <em>importation</em> automobile</h1>
+      <p class="lead">Apprendre le métier, obtenir les accès, et réaliser ses premières opérations accompagné.</p>
+      <div class="cta-actions">
         <a href="#contact" class="btn btn-primary">On en parle</a>
         <a href="#modules" class="btn btn-outline">Voir les modules</a>
       </div>
-    </div>
-    <div class="scroll-cue">
-      <span>DÉFILER</span>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
     </div>
   </section>
 
   <!-- STATS -->
   <section class="fsection is-light" id="resultats">
     <div class="wrap">
-      <div class="eyebrow rv">Ce que j'ai construit</div>
-      <h2 class="rv rv-d1">Avant de former, j'ai fait tourner l'activité.</h2>
-      <p class="lead rv rv-d2">Trois repères, sur six ans de terrain.</p>
+      <div class="eyebrow">Ce que j'ai construit</div>
+      <h2 >Avant de former, j'ai fait tourner l'activité.</h2>
+      <p class="lead">Trois repères, sur six ans de terrain.</p>
       <hr class="hr">
       <div class="stat-grid">
-        <div class="stat-card rv rv-d1">
-          <div class="stat-num" data-count="600000" data-suffix=" €">0 €</div>
+        <div class="stat-card">
+          <div class="stat-num">600 000 €</div>
           <div class="stat-label">de chiffre d'affaires</div>
           <div class="stat-note">Réalisés dès la première année d'activité.</div>
         </div>
-        <div class="stat-card rv rv-d2">
-          <div class="stat-num" data-count="4">0</div>
+        <div class="stat-card">
+          <div class="stat-num">4</div>
           <div class="stat-label">sociétés créées</div>
           <div class="stat-note">En six ans, dans plusieurs pays.</div>
         </div>
-        <div class="stat-card rv rv-d3">
-          <div class="stat-num" data-count="30">0</div>
+        <div class="stat-card">
+          <div class="stat-num">30</div>
           <div class="stat-label">véhicules importés</div>
           <div class="stat-note">Tous immatriculés, aucun bloqué administrativement.</div>
         </div>
       </div>
-      <p class="closing-line rv rv-d4">Ce que je transmets, ce sont les méthodes qui ont produit ces résultats.</p>
+      <p class="closing-line">Ce que je transmets, ce sont les méthodes qui ont produit ces résultats.</p>
     </div>
   </section>
 
   <!-- PHILOSOPHIE -->
   <section class="fsection is-light" id="philosophie">
     <div class="wrap">
-      <div class="eyebrow rv">Ma philosophie</div>
-      <h2 class="rv rv-d1">Le plaisir avant le volume.</h2>
-      <p class="lead rv rv-d2">MOTORSPORT, c'est une autre façon de voir la vente automobile. Choisir ses véhicules, les sélectionner, en avoir peu mais savoir exactement ce qu'on vend — voilà l'essentiel.</p>
-      <p class="lead rv rv-d3">Un parc rempli de voitures, ce sont des charges qui tombent tous les mois, qu'elles se vendent ou non. C'est la raison pour laquelle beaucoup de jeunes entrepreneurs de l'automobile font faillite. Ma méthode est différente : peu de stock, une vraie marge, et un métier qu'on fait par plaisir plutôt que par volume.</p>
-      <p class="closing-line rv rv-d4">Simple, et surtout fonctionnelle — c'est exactement ce que je transmets dans cette formation.</p>
+      <div class="eyebrow">Ma philosophie</div>
+      <h2 >Le plaisir avant le volume.</h2>
+      <p class="lead">MOTORSPORT, c'est une autre façon de voir la vente automobile. Choisir ses véhicules, les sélectionner, en avoir peu mais savoir exactement ce qu'on vend — voilà l'essentiel.</p>
+      <p class="lead">Un parc rempli de voitures, ce sont des charges qui tombent tous les mois, qu'elles se vendent ou non. C'est la raison pour laquelle beaucoup de jeunes entrepreneurs de l'automobile font faillite. Ma méthode est différente : peu de stock, une vraie marge, et un métier qu'on fait par plaisir plutôt que par volume.</p>
+      <p class="closing-line">Simple, et surtout fonctionnelle — c'est exactement ce que je transmets dans cette formation.</p>
     </div>
   </section>
 
   <!-- BANDEAU PHOTO — résultat livré -->
   <section class="photo-band">
-    <div class="photo-band-bg" data-parallax><div class="photo-band-bg-inner" style="background-image:url('images/formation/porsche-911-livraison.jpg')"></div></div>
+    <div class="photo-band-bg"><div class="photo-band-bg-inner" style="background-image:url('images/formation/porsche-911-livraison.jpg')"></div></div>
     <div class="photo-band-overlay"></div>
-    <div class="wrap photo-band-caption rv">
+    <div class="wrap photo-band-caption">
       <span class="photo-band-tag">Livraison client</span>
       <p>« Une recherche réussie se termine ici : les clés remises, la plaque MOTORSPORT posée. »</p>
     </div>
@@ -448,25 +418,25 @@
   <!-- OÙ SE GAGNE L'ARGENT -->
   <section class="fsection" id="marche">
     <div class="wrap">
-      <div class="eyebrow rv">Où se gagne l'argent</div>
-      <h2 class="rv rv-d1">Trois réalités du métier</h2>
-      <p class="lead rv rv-d2">À comprendre avant de se lancer.</p>
+      <div class="eyebrow">Où se gagne l'argent</div>
+      <h2 >Trois réalités du métier</h2>
+      <p class="lead">À comprendre avant de se lancer.</p>
       <div class="facts-layout">
         <div class="facts-list">
-          <div class="fact-row rv rv-d1">
+          <div class="fact-row">
             <h3>La marge se fait à l'achat</h3>
             <p>Un véhicule bien acheté est déjà à moitié revendu. Tout se joue sur le sourcing et l'estimation, pas sur la négociation finale.</p>
           </div>
-          <div class="fact-row rv rv-d2">
+          <div class="fact-row">
             <h3>L'import ouvre le marché</h3>
             <p>Acheter en Europe et revendre en France, c'est ce qui crée l'écart de prix. Encore faut-il savoir gérer les démarches.</p>
           </div>
-          <div class="fact-row rv rv-d3">
+          <div class="fact-row">
             <h3>Le commercial fait la vente</h3>
             <p>À véhicule égal, c'est l'approche et la confiance qui décident le client, et qui protègent ta marge.</p>
           </div>
         </div>
-        <div class="facts-photo-frame tilt rv rv-d2">
+        <div class="facts-photo-frame">
           <img src="images/formation/bmw-z4-transport.jpg" alt="Transport d'une BMW Z4 sur plateau, préparation pour l'importation">
         </div>
       </div>
@@ -476,15 +446,15 @@
   <!-- OUTILS ET RÉSEAU -->
   <section class="access-split">
     <div class="access-panel is-dark">
-      <div class="eyebrow rv">Pas seulement de la théorie</div>
-      <h2 class="rv rv-d1">Les outils et le réseau que j'utilise au quotidien, mis à ta disposition.</h2>
+      <div class="eyebrow">Pas seulement de la théorie</div>
+      <h2 >Les outils et le réseau que j'utilise au quotidien, mis à ta disposition.</h2>
     </div>
     <div class="access-panel is-light">
       <ul class="access-list">
-        <li class="rv rv-d1"><h3>Les logiciels</h3><p>Ceux qui me servent à estimer, sourcer et suivre mes véhicules.</p></li>
-        <li class="rv rv-d2"><h3>Mes contacts</h3><p>Le carnet d'adresses qui fait gagner des mois de tâtonnement.</p></li>
-        <li class="rv rv-d3"><h3>Le parrainage</h3><p>L'accès aux plateformes et aux enchères pro, partout en Europe.</p></li>
-        <li class="rv rv-d4"><h3>Le garantisseur</h3><p>Mon partenaire qui garantit les véhicules que tu revends.</p></li>
+        <li ><h3>Les logiciels</h3><p>Ceux qui me servent à estimer, sourcer et suivre mes véhicules.</p></li>
+        <li ><h3>Mes contacts</h3><p>Le carnet d'adresses qui fait gagner des mois de tâtonnement.</p></li>
+        <li ><h3>Le parrainage</h3><p>L'accès aux plateformes et aux enchères pro, partout en Europe.</p></li>
+        <li ><h3>Le garantisseur</h3><p>Mon partenaire qui garantit les véhicules que tu revends.</p></li>
       </ul>
     </div>
   </section>
@@ -492,26 +462,26 @@
   <!-- MODULES -->
   <section class="fsection is-light" id="modules">
     <div class="wrap">
-      <div class="eyebrow rv">Les modules</div>
-      <h2 class="rv rv-d1">Chaque bloc peut être pris seul</h2>
-      <p class="lead rv rv-d2">Ou dans le cadre du programme complet.</p>
+      <div class="eyebrow">Les modules</div>
+      <h2 >Chaque bloc peut être pris seul</h2>
+      <p class="lead">Ou dans le cadre du programme complet.</p>
       <div class="module-grid">
-        <div class="module-card rv rv-d1"><h3>Commercial</h3><p>Approche client, posture, négociation, closing.</p></div>
-        <div class="module-card rv rv-d1"><h3>Juridique et fiscal</h3><p>Quelle structure choisir, et comment l'utiliser.</p></div>
-        <div class="module-card rv rv-d2"><h3>Achat-revente</h3><p>Sourcing, estimation, calcul de la marge réelle.</p></div>
-        <div class="module-card rv rv-d2"><h3>Dépôt-vente</h3><p>Contrat, commission, gestion du stock.</p></div>
-        <div class="module-card is-key rv rv-d3"><h3>Importation</h3><p>Toutes les démarches administratives, de A à Z.</p></div>
-        <div class="module-card rv rv-d3"><h3>Accès et réseau</h3><p>Logiciels, contacts, parrainages, garantisseur.</p></div>
+        <div class="module-card"><h3>Commercial</h3><p>Approche client, posture, négociation, closing.</p></div>
+        <div class="module-card"><h3>Juridique et fiscal</h3><p>Quelle structure choisir, et comment l'utiliser.</p></div>
+        <div class="module-card"><h3>Achat-revente</h3><p>Sourcing, estimation, calcul de la marge réelle.</p></div>
+        <div class="module-card"><h3>Dépôt-vente</h3><p>Contrat, commission, gestion du stock.</p></div>
+        <div class="module-card is-key"><h3>Importation</h3><p>Toutes les démarches administratives, de A à Z.</p></div>
+        <div class="module-card"><h3>Accès et réseau</h3><p>Logiciels, contacts, parrainages, garantisseur.</p></div>
       </div>
-      <p class="closing-line rv rv-d4">L'importation est le module qui change tout : c'est lui qui crée la marge.</p>
+      <p class="closing-line">L'importation est le module qui change tout : c'est lui qui crée la marge.</p>
     </div>
   </section>
 
   <!-- BANDEAU PHOTO — passion / lifestyle -->
   <section class="photo-band">
-    <div class="photo-band-bg" data-parallax><div class="photo-band-bg-inner" style="background-image:url('images/formation/portrait-vignoble.jpg')"></div></div>
+    <div class="photo-band-bg"><div class="photo-band-bg-inner" style="background-image:url('images/formation/portrait-vignoble.jpg')"></div></div>
     <div class="photo-band-overlay"></div>
-    <div class="wrap photo-band-caption rv">
+    <div class="wrap photo-band-caption">
       <span class="photo-band-tag">Thomas Bona</span>
       <p>« Ce métier, je le fais depuis six ans. Ce que je transmets, c'est du vécu — pas de la théorie. »</p>
     </div>
@@ -520,34 +490,34 @@
   <!-- COMMUNAUTÉ & ÉTAT D'ESPRIT -->
   <section class="fsection" id="communaute">
     <div class="wrap">
-      <div class="eyebrow rv">L'état d'esprit</div>
-      <h2 class="rv rv-d1">Une communauté, pas un métier solitaire.</h2>
-      <p class="lead rv rv-d2">Ce métier a mauvaise réputation — l'image du vendeur qui roule des mécaniques. Je veux le dédramatiser, le rendre accessible, et donner envie à des gens qui n'auraient jamais osé s'y lancer seuls.</p>
-      <p class="lead rv rv-d3">Le réseau n'est pas un supplément, c'est un vrai levier de réussite. Plus la communauté grandit, plus chacun y gagne.</p>
-      <blockquote class="motto rv rv-d4">
+      <div class="eyebrow">L'état d'esprit</div>
+      <h2 >Une communauté, pas un métier solitaire.</h2>
+      <p class="lead">Ce métier a mauvaise réputation — l'image du vendeur qui roule des mécaniques. Je veux le dédramatiser, le rendre accessible, et donner envie à des gens qui n'auraient jamais osé s'y lancer seuls.</p>
+      <p class="lead">Le réseau n'est pas un supplément, c'est un vrai levier de réussite. Plus la communauté grandit, plus chacun y gagne.</p>
+      <blockquote class="motto">
         <p>« Mangia e fai mangiare. »</p>
         <span>Je mange, et je fais manger — ma réussite passe par celle des gens que j'accompagne.</span>
       </blockquote>
-      <p class="lead rv rv-d5">Rouler en belle voiture, ce n'est pas se ruiner : c'est se forger une psychologie de personne qui réussit, et qui a d'autant plus envie d'en gagner. Honnêteté, justice, loyauté — les seules règles qui comptent vraiment.</p>
-      <a href="https://www.instagram.com/motorsport.bytb/" target="_blank" rel="noopener" class="btn btn-outline rv rv-d5">Rejoindre la communauté sur Instagram</a>
+      <p class="lead">Rouler en belle voiture, ce n'est pas se ruiner : c'est se forger une psychologie de personne qui réussit, et qui a d'autant plus envie d'en gagner. Honnêteté, justice, loyauté — les seules règles qui comptent vraiment.</p>
+      <a href="https://www.instagram.com/motorsport.bytb/" target="_blank" rel="noopener" class="btn btn-outline">Rejoindre la communauté sur Instagram</a>
     </div>
   </section>
 
   <!-- DEUX FAÇONS D'AVANCER -->
   <section class="path-split">
     <div class="path-panel">
-      <div class="eyebrow rv">Deux façons d'avancer</div>
-      <h2 class="rv rv-d1">À la carte</h2>
-      <p class="lead rv rv-d2" style="color:var(--ink-dim);margin-top:14px;">On choisit ensemble, selon ton objectif et le temps que tu peux y consacrer.</p>
-      <ul class="path-list rv rv-d3">
+      <div class="eyebrow">Deux façons d'avancer</div>
+      <h2 >À la carte</h2>
+      <p class="lead" style="color:var(--ink-dim);margin-top:14px;">On choisit ensemble, selon ton objectif et le temps que tu peux y consacrer.</p>
+      <ul class="path-list">
         <li>Tu choisis les modules qui t'intéressent</li>
         <li>Format court, on va droit au but</li>
         <li>Idéal si tu as déjà des bases sur le reste</li>
       </ul>
     </div>
     <div class="path-panel is-dark">
-      <h2 class="rv">Le programme complet</h2>
-      <ul class="path-list rv rv-d1">
+      <h2 >Le programme complet</h2>
+      <ul class="path-list">
         <li>Tous les modules, dans l'ordre logique</li>
         <li>Une série d'appels, autant qu'il en faut</li>
         <li>Un accompagnement sur tes premières voitures</li>
@@ -559,39 +529,39 @@
   <!-- COMMENT ÇA SE PASSE -->
   <section class="fsection is-light">
     <div class="wrap">
-      <div class="eyebrow rv">Comment ça se passe</div>
-      <h2 class="rv rv-d1">Le déroulé du programme complet</h2>
+      <div class="eyebrow">Comment ça se passe</div>
+      <h2 >Le déroulé du programme complet</h2>
       <div class="timeline">
-        <div class="tl-step rv rv-d1">
+        <div class="tl-step">
           <div class="tl-marker-col"><div class="tl-dot"></div><div class="tl-line"></div></div>
           <div class="tl-body"><h3>On fait le point</h3><p>Ton objectif, ton temps disponible, ton niveau de départ.</p></div>
         </div>
-        <div class="tl-step rv rv-d2">
+        <div class="tl-step">
           <div class="tl-marker-col"><div class="tl-dot"></div><div class="tl-line"></div></div>
           <div class="tl-body"><h3>Les fondations</h3><p>Le commercial, puis l'achat-revente et l'importation.</p></div>
         </div>
-        <div class="tl-step rv rv-d3">
+        <div class="tl-step">
           <div class="tl-marker-col"><div class="tl-dot"></div><div class="tl-line"></div></div>
           <div class="tl-body"><h3>La structure</h3><p>Le cadre juridique et fiscal, pour travailler proprement.</p></div>
         </div>
-        <div class="tl-step rv rv-d4">
+        <div class="tl-step">
           <div class="tl-marker-col"><div class="tl-dot"></div></div>
           <div class="tl-body"><h3>Le terrain</h3><p>Je t'accompagne sur tes premières voitures, de l'achat à la revente.</p></div>
         </div>
       </div>
-      <p class="closing-line rv rv-d5">À la carte, même principe : on isole l'étape qui t'intéresse.</p>
+      <p class="closing-line">À la carte, même principe : on isole l'étape qui t'intéresse.</p>
     </div>
   </section>
 
   <!-- QUEL QUE SOIT TON POINT DE DÉPART -->
   <section class="fsection is-light">
     <div class="wrap">
-      <div class="eyebrow rv">Quel que soit ton point de départ</div>
-      <h2 class="rv rv-d1">Salarié en quête de challenge, envie d'un complément de revenus, ou projet de vraie reconversion — à chacun son objectif.</h2>
+      <div class="eyebrow">Quel que soit ton point de départ</div>
+      <h2 >Salarié en quête de challenge, envie d'un complément de revenus, ou projet de vraie reconversion — à chacun son objectif.</h2>
       <div class="trio-grid">
-        <div class="trio-card rv rv-d1"><h3>Le défi professionnel</h3><p>Sortir de la routine et apprendre un vrai métier de terrain, à ton rythme, en parallèle de ton poste actuel.</p></div>
-        <div class="trio-card rv rv-d2"><h3>Le complément de revenus</h3><p>Faire de l'achat-revente à côté, pour arrondir tes fins de mois sans tout bouleverser.</p></div>
-        <div class="trio-card rv rv-d3"><h3>Le vrai business</h3><p>Construire une activité automobile complète, jusqu'à pouvoir en vivre pleinement.</p></div>
+        <div class="trio-card"><h3>Le défi professionnel</h3><p>Sortir de la routine et apprendre un vrai métier de terrain, à ton rythme, en parallèle de ton poste actuel.</p></div>
+        <div class="trio-card"><h3>Le complément de revenus</h3><p>Faire de l'achat-revente à côté, pour arrondir tes fins de mois sans tout bouleverser.</p></div>
+        <div class="trio-card"><h3>Le vrai business</h3><p>Construire une activité automobile complète, jusqu'à pouvoir en vivre pleinement.</p></div>
       </div>
     </div>
   </section>
@@ -599,25 +569,25 @@
   <!-- CTA FINAL -->
   <section class="fsection cta-section" id="contact">
     <div class="wrap">
-      <div class="eyebrow rv">La prochaine étape</div>
-      <h2 class="rv rv-d1" style="font-size:clamp(30px,4.6vw,52px);">On en parle, sans engagement</h2>
-      <ul class="cta-list rv rv-d2">
+      <div class="eyebrow">La prochaine étape</div>
+      <h2  style="font-size:clamp(30px,4.6vw,52px);">On en parle, sans engagement</h2>
+      <ul class="cta-list">
         <li>Un premier échange gratuit, en visio ou en direct</li>
         <li>Je réponds à toutes tes questions, quel que soit ton point de départ</li>
         <li>On voit ce qui te correspond, et on décide seulement après</li>
       </ul>
-      <div class="cta-actions rv rv-d3" style="display:flex;gap:14px;flex-wrap:wrap;">
+      <div class="cta-actions" style="display:flex;gap:14px;flex-wrap:wrap;">
         <a href="tel:+33652871194" class="btn btn-primary">Appeler +33 6 52 87 11 94</a>
         <a href="index.html" class="btn btn-outline">Revenir au site</a>
       </div>
-      <div class="cta-foot rv rv-d4">
+      <div class="cta-foot">
         <div>
           <div class="name">Thomas Bona</div>
           <div class="org">MTSPRT — MOTORSPORT by TB</div>
         </div>
         <a class="phone mono" href="tel:+33652871194">+33 6 52 87 11 94</a>
       </div>
-      <div class="legal-links rv rv-d4">
+      <div class="legal-links">
         <a href="mentions-legales.html">Mentions légales</a>
         <span aria-hidden="true">·</span>
         <a href="politique-confidentialite.html">Politique de confidentialité</a>
@@ -634,122 +604,6 @@
     window.addEventListener('load', function(){
       navigator.serviceWorker.register('sw.js').catch(function(){});
     });
-  }
-
-  // ---- Barre de progression globale ----
-  var progressFill = document.getElementById('progressFill');
-  function updateProgress(){
-    var scrollTop = window.scrollY || document.documentElement.scrollTop;
-    var docHeight = document.documentElement.scrollHeight - window.innerHeight;
-    progressFill.style.width = (docHeight > 0 ? (scrollTop / docHeight) * 100 : 0) + '%';
-  }
-  window.addEventListener('scroll', updateProgress, {passive:true});
-  window.addEventListener('resize', updateProgress);
-  updateProgress();
-
-  // ---- Révélation générique au défilement ----
-  var revealEls = document.querySelectorAll('.rv');
-  if('IntersectionObserver' in window){
-    var revealObserver = new IntersectionObserver(function(entries){
-      entries.forEach(function(entry){
-        if(entry.isIntersecting){
-          entry.target.classList.add('is-in');
-          revealObserver.unobserve(entry.target);
-        }
-      });
-    }, {threshold:0.15, rootMargin:'0px 0px -8% 0px'});
-    revealEls.forEach(function(el){ revealObserver.observe(el); });
-  } else {
-    revealEls.forEach(function(el){ el.classList.add('is-in'); });
-  }
-
-  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-  // ---- Effet Ken Burns : zoom arrière progressif à l'entrée des bandeaux photo ----
-  var photoBands = document.querySelectorAll('.photo-band');
-  if('IntersectionObserver' in window){
-    var bandObserver = new IntersectionObserver(function(entries){
-      entries.forEach(function(entry){
-        if(entry.isIntersecting){
-          entry.target.classList.add('is-in');
-          bandObserver.unobserve(entry.target);
-        }
-      });
-    }, {threshold:0.2});
-    photoBands.forEach(function(el){ bandObserver.observe(el); });
-  } else {
-    photoBands.forEach(function(el){ el.classList.add('is-in'); });
-  }
-
-  // ---- Légère inclinaison 3D au survol ----
-  if(!reduceMotion && window.matchMedia('(hover: hover)').matches){
-    document.querySelectorAll('.tilt').forEach(function(el){
-      el.addEventListener('mousemove', function(e){
-        var rect = el.getBoundingClientRect();
-        var x = (e.clientX - rect.left) / rect.width - 0.5;
-        var y = (e.clientY - rect.top) / rect.height - 0.5;
-        el.style.transform = 'perspective(900px) rotateX(' + (-y * 5) + 'deg) rotateY(' + (x * 5) + 'deg) translateY(-2px)';
-      });
-      el.addEventListener('mouseleave', function(){ el.style.transform = ''; });
-    });
-  }
-
-  // ---- Parallaxe sur le hero et les bandeaux photo ----
-  var heroImg = document.getElementById('heroParallax');
-  var bandImgs = document.querySelectorAll('.photo-band-bg');
-  var ticking = false;
-  function updateParallax(){
-    var y = window.scrollY || document.documentElement.scrollTop;
-    if(heroImg && !reduceMotion){
-      heroImg.style.transform = 'translateY(' + (y * 0.25) + 'px)';
-    }
-    if(!reduceMotion){
-      bandImgs.forEach(function(el){
-        var rect = el.parentElement.getBoundingClientRect();
-        var center = rect.top + rect.height / 2 - window.innerHeight / 2;
-        el.style.transform = 'translateY(' + (center * -0.18) + 'px)';
-      });
-    }
-    ticking = false;
-  }
-  window.addEventListener('scroll', function(){
-    if(!ticking){ requestAnimationFrame(updateParallax); ticking = true; }
-  }, {passive:true});
-  updateParallax();
-
-  // ---- Compteurs animés ----
-  var counters = document.querySelectorAll('.stat-num[data-count]');
-  function animateCounter(el){
-    var target = parseInt(el.getAttribute('data-count'), 10) || 0;
-    var suffix = el.getAttribute('data-suffix') || '';
-    var duration = 1400;
-    var start = null;
-    if(reduceMotion){
-      el.textContent = target.toLocaleString('fr-FR') + suffix;
-      return;
-    }
-    function step(ts){
-      if(start === null) start = ts;
-      var progress = Math.min(1, (ts - start) / duration);
-      var eased = 1 - Math.pow(1 - progress, 3);
-      var value = Math.round(target * eased);
-      el.textContent = value.toLocaleString('fr-FR') + suffix;
-      if(progress < 1) requestAnimationFrame(step);
-    }
-    requestAnimationFrame(step);
-  }
-  if('IntersectionObserver' in window){
-    var counterObserver = new IntersectionObserver(function(entries){
-      entries.forEach(function(entry){
-        if(entry.isIntersecting){
-          animateCounter(entry.target);
-          counterObserver.unobserve(entry.target);
-        }
-      });
-    }, {threshold:0.5});
-    counters.forEach(function(el){ counterObserver.observe(el); });
-  } else {
-    counters.forEach(animateCounter);
   }
 })();
 </script>
