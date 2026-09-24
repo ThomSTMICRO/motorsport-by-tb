@@ -823,6 +823,8 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
     car.position.y -= box.min.y * scale;
     scene.add(car);
     render();
+  }, undefined, function(err){
+    console.error('Showcase 3D: échec du chargement du modèle', err);
   });
 
   // ---- Chorégraphie caméra : orbite + travelling avant/arrière autour du véhicule ----
