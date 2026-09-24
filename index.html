@@ -164,15 +164,30 @@
   @media (max-width:920px){ .process-cards{grid-template-columns:1fr 1fr;} }
   @media (max-width:640px){ .process-cards{grid-template-columns:1fr;} }
 
-  /* ---------- Aperçu 3D ---------- */
+  /* ---------- Aperçu 3D : caméra pilotée par le scroll ---------- */
   .showcase-3d{background:var(--dark-0);}
   .showcase-3d .section-head{color:var(--on-dark);margin-left:auto;margin-right:auto;text-align:center;max-width:56ch;}
   .showcase-3d .section-head h2{color:var(--on-dark);}
   .showcase-3d .section-head p{color:var(--on-dark-dim);}
-  .showcase-stage{position:relative;width:100%;height:460px;border-radius:var(--radius-md);overflow:hidden;background:radial-gradient(ellipse at 50% 68%, rgba(247,243,228,0.07), transparent 68%);}
+  /* Hauteur de la zone de défilement = durée de la chorégraphie caméra. La scène
+     reste "collée" (sticky) au viewport tant qu'on progresse dans cette zone. */
+  .showcase-scroll{position:relative;height:260vh;}
+  .showcase-sticky{position:sticky;top:0;height:100vh;display:flex;align-items:center;justify-content:center;overflow:hidden;}
+  .showcase-stage{position:absolute;inset:0;width:100%;height:100%;}
   .showcase-stage canvas{display:block;width:100%;height:100%;}
-  .showcase-note{margin:16px auto 0;max-width:56ch;text-align:center;font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--on-dark-dim);opacity:0.8;}
-  @media (max-width:640px){ .showcase-stage{height:300px;} }
+  /* Vignette pour un rendu plus "cinéma" et pour fondre les bords du rendu WebGL
+     dans le fond sombre de la section, quel que soit l'arrière-plan de la scène 3D. */
+  .showcase-sticky::after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 50%, transparent 45%, var(--dark-0) 100%);}
+  .showcase-captions{position:absolute;left:0;right:0;bottom:64px;z-index:2;text-align:center;padding:0 24px;}
+  .showcase-caption{position:absolute;left:0;right:0;bottom:0;margin:0 auto;max-width:52ch;font-family:'Oswald',sans-serif;font-size:clamp(18px,2.6vw,26px);font-weight:500;color:var(--on-dark);opacity:0;transform:translateY(10px);transition:opacity .5s ease, transform .5s ease;}
+  .showcase-caption.is-active{opacity:1;transform:translateY(0);}
+  .showcase-note{margin:0 auto;max-width:56ch;text-align:center;font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--on-dark-dim);opacity:0.8;}
+  @media (max-width:820px){
+    .showcase-scroll{height:auto;}
+    .showcase-sticky{position:relative;top:auto;height:340px;}
+    .showcase-captions{bottom:20px;}
+    .showcase-caption{font-size:16px;}
+  }
 
   /* ---------- Preuve : sourcing aux enchères ---------- */
   .proof-photo{border-radius:var(--radius-md);overflow:hidden;border:1px solid var(--line-soft);box-shadow:0 24px 60px -28px rgba(23,36,28,0.35);max-width:820px;margin:0 auto;}
@@ -375,14 +390,25 @@
   </section>
 
   <!-- APERÇU 3D -->
-  <section class="section-pad showcase-3d" id="showcase">
-    <div class="wrap">
+  <section class="showcase-3d" id="showcase">
+    <div class="wrap section-pad" style="padding-bottom:32px;">
       <div class="section-head">
         <div class="eyebrow-mono">Aperçu</div>
-        <h2>Le niveau de détail qu'on recherche sur chaque véhicule</h2>
-        <p>Faites défiler pour la faire tourner.</p>
+        <h2>Le niveau de détail qu'on exige sur chaque véhicule</h2>
+        <p>Faites défiler : la caméra tourne autour du véhicule.</p>
       </div>
-      <div class="showcase-stage" id="showcaseStage" role="img" aria-label="Modèle 3D d'une voiture de sport, tournant au fil du défilement"></div>
+    </div>
+    <div class="showcase-scroll" id="showcaseScroll">
+      <div class="showcase-sticky">
+        <div class="showcase-stage" id="showcaseStage" role="img" aria-label="Caméra 3D tournant autour d'une voiture de sport au fil du défilement"></div>
+        <div class="showcase-captions" id="showcaseCaptions">
+          <p class="showcase-caption is-active" data-idx="0">Carrosserie inspectée au millimètre.</p>
+          <p class="showcase-caption" data-idx="1">Mécanique vérifiée avant chaque proposition.</p>
+          <p class="showcase-caption" data-idx="2">Le même niveau d'exigence, sur chaque voiture qu'on vend.</p>
+        </div>
+      </div>
+    </div>
+    <div class="wrap section-pad" style="padding-top:24px;">
       <p class="showcase-note">Modèle 3D d'illustration, pas le véhicule réellement en stock.<br>« Car Concept » par Eric Chadwick / Darmstadt Graphics Group — licence CC BY 4.0.</p>
     </div>
   </section>
@@ -718,14 +744,22 @@
 <script type="module">
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 (function initShowcase3D(){
+  var scrollEl = document.getElementById('showcaseScroll');
   var stage = document.getElementById('showcaseStage');
-  if(!stage) return;
+  var captionEls = document.querySelectorAll('.showcase-caption');
+  if(!scrollEl || !stage) return;
 
   var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  var baseRotation = Math.PI * 0.15;
-  var spinRange = Math.PI * 2.4;
+  // La chorégraphie caméra pilotée par le scroll (+ bloom) est réservée au desktop :
+  // sur mobile, le scroll-jacking d'une zone de 260vh nuit à la navigation, on garde
+  // donc une simple rotation lente, sans post-traitement.
+  var cinematic = window.matchMedia('(min-width: 821px)').matches && !reduceMotion;
 
   var renderer;
   try{ renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); }
@@ -733,24 +767,48 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
   if(!renderer || !renderer.getContext()) return;
 
   var width = stage.clientWidth || 1, height = stage.clientHeight || 1;
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, cinematic ? 1.75 : 1.5));
   renderer.setSize(width, height);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.15;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   stage.appendChild(renderer.domElement);
 
   var scene = new THREE.Scene();
-  var camera = new THREE.PerspectiveCamera(32, width / height, 0.1, 100);
-  camera.position.set(0, 1.25, 5.6);
-  camera.lookAt(0, 0.45, 0);
+  scene.background = new THREE.Color(0x0b140f);
+  scene.fog = new THREE.Fog(0x0b140f, 6, 17);
 
-  scene.add(new THREE.HemisphereLight(0x557799, 0x14100c, 1.5));
-  var key = new THREE.DirectionalLight(0xffffff, 2.6);
+  var camera = new THREE.PerspectiveCamera(28, width / height, 0.1, 100);
+
+  scene.add(new THREE.HemisphereLight(0x3d5a4a, 0x0d0b08, 1.1));
+  var key = new THREE.DirectionalLight(0xfff2df, 2.5);
   key.position.set(4, 6, 3);
   scene.add(key);
-  var rim = new THREE.DirectionalLight(0x88a6ff, 1.2);
+  var rim = new THREE.DirectionalLight(0xc9a24b, 1.5);
   rim.position.set(-5, 3, -4);
   scene.add(rim);
+
+  var ground = new THREE.Mesh(
+    new THREE.CircleGeometry(20, 48),
+    new THREE.MeshStandardMaterial({ color: 0x11170f, roughness: 0.92, metalness: 0.05 })
+  );
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.y = -0.001;
+  scene.add(ground);
+
+  // Reflets de carrosserie cohérents avec la scène (studio sombre + touche laiton) plutôt
+  // qu'un environnement neutre par défaut.
+  var pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(scene, 0.05).texture;
+  pmrem.dispose();
+
+  var composer = null;
+  if(cinematic){
+    composer = new EffectComposer(renderer);
+    composer.addPass(new RenderPass(scene, camera));
+    composer.addPass(new UnrealBloomPass(new THREE.Vector2(width, height), 0.5, 0.4, 0.85));
+    composer.addPass(new OutputPass());
+  }
 
   var car = null;
   new GLTFLoader().load('models/car-concept.glb', function(gltf){
@@ -763,40 +821,93 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
     car.position.x -= center.x * scale;
     car.position.z -= center.z * scale;
     car.position.y -= box.min.y * scale;
-    car.rotation.y = baseRotation;
     scene.add(car);
     render();
   });
 
-  function render(){ renderer.render(scene, camera); }
+  // ---- Chorégraphie caméra : orbite + travelling avant/arrière autour du véhicule ----
+  var target = new THREE.Vector3(0, 0.55, 0);
+  var checkpoints = [
+    { theta: 35,  phi: 78, radius: 6.2, fov: 26, color: 0x0b140f },
+    { theta: 118, phi: 84, radius: 4.3, fov: 30, color: 0x141006 },
+    { theta: 205, phi: 89, radius: 3.0, fov: 34, color: 0x1c1206 },
+    { theta: 300, phi: 68, radius: 5.4, fov: 25, color: 0x0b140f }
+  ].map(function(cp){
+    return { theta: cp.theta * Math.PI / 180, phi: cp.phi * Math.PI / 180, radius: cp.radius, fov: cp.fov, color: new THREE.Color(cp.color) };
+  });
+
+  function lerp(a, b, t){ return a + (b - a) * t; }
+  function sphericalToCartesian(theta, phi, radius){
+    return new THREE.Vector3(
+      target.x + radius * Math.sin(phi) * Math.sin(theta),
+      target.y + radius * Math.cos(phi),
+      target.z + radius * Math.sin(phi) * Math.cos(theta)
+    );
+  }
+
+  var tmpColor = new THREE.Color();
+  function setCameraAtProgress(p){
+    var segCount = checkpoints.length - 1;
+    var scaled = Math.max(0, Math.min(1, p)) * segCount;
+    var idx = Math.min(Math.floor(scaled), segCount - 1);
+    var t = scaled - idx;
+    var a = checkpoints[idx], b = checkpoints[idx + 1];
+    var theta = lerp(a.theta, b.theta, t);
+    var phi = lerp(a.phi, b.phi, t);
+    var radius = lerp(a.radius, b.radius, t);
+    var fov = lerp(a.fov, b.fov, t);
+    camera.position.copy(sphericalToCartesian(theta, phi, radius));
+    camera.lookAt(target);
+    if(fov !== camera.fov){ camera.fov = fov; camera.updateProjectionMatrix(); }
+    tmpColor.copy(a.color).lerp(b.color, t);
+    scene.background.copy(tmpColor);
+    scene.fog.color.copy(tmpColor);
+
+    var capIdx = Math.min(captionEls.length - 1, Math.floor(p * captionEls.length));
+    captionEls.forEach(function(el, i){ el.classList.toggle('is-active', i === capIdx); });
+  }
+  setCameraAtProgress(0);
+
+  function render(){
+    if(composer) composer.render();
+    else renderer.render(scene, camera);
+  }
   render();
 
-  function progressInSection(){
-    var rect = stage.getBoundingClientRect();
-    var vh = window.innerHeight || 1;
-    var total = rect.height + vh;
-    return Math.max(0, Math.min(1, (vh - rect.top) / total));
+  function progress(){
+    var rect = scrollEl.getBoundingClientRect();
+    var total = rect.height - window.innerHeight;
+    if(total <= 0) return 0;
+    return Math.max(0, Math.min(1, -rect.top / total));
   }
 
   var visible = false;
   new IntersectionObserver(function(entries){
     visible = entries[0].isIntersecting;
-  }, { threshold: 0.05 }).observe(stage);
+  }, { threshold: 0.01 }).observe(scrollEl);
 
-  var ticking = false;
-  window.addEventListener('scroll', function(){
-    if(reduceMotion || !visible || !car || ticking) return;
-    ticking = true;
-    requestAnimationFrame(function(){
-      car.rotation.y = baseRotation + progressInSection() * spinRange;
-      render();
-      ticking = false;
-    });
-  }, { passive: true });
+  var idleAngle = 0;
+  function loop(){
+    if(visible){
+      if(cinematic){
+        idleAngle += 0.0015;
+        if(car) car.rotation.y = idleAngle;
+        setCameraAtProgress(progress());
+        render();
+      } else {
+        idleAngle += 0.006;
+        if(car) car.rotation.y = idleAngle;
+        render();
+      }
+    }
+    requestAnimationFrame(loop);
+  }
+  if(!reduceMotion) requestAnimationFrame(loop);
 
   window.addEventListener('resize', function(){
     width = stage.clientWidth || 1; height = stage.clientHeight || 1;
     renderer.setSize(width, height);
+    if(composer) composer.setSize(width, height);
     camera.aspect = width / height;
     camera.updateProjectionMatrix();
     render();
