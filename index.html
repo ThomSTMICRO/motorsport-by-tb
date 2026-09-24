@@ -353,7 +353,6 @@
         <li><a href="#services">Services</a></li>
         <li><a href="#avis">Avis</a></li>
         <li><a href="formation.html">Formation</a></li>
-        <li><a href="calculateur-import.html">Calculateur d'import</a></li>
         <li><a href="#contact">Contact</a></li>
       </ul>
       <div class="nav-cta">
@@ -681,7 +680,6 @@
           <li><a href="#services">Services</a></li>
           <li><a href="#recherche">Recherche personnalisée</a></li>
           <li><a href="formation.html">Formation</a></li>
-          <li><a href="calculateur-import.html">Calculateur d'import</a></li>
           <li><a href="#avis">Avis clients</a></li>
         </ul>
       </div>
@@ -833,10 +831,6 @@
 <script type="module">
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
-import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 (function initShowcase3D(){
   var scrollEl = document.getElementById('showcaseScroll');
@@ -856,7 +850,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
   if(!renderer || !renderer.getContext()) return;
 
   var width = stage.clientWidth || 1, height = stage.clientHeight || 1;
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, cinematic ? 1.75 : 1.5));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, cinematic ? 1.3 : 1.2));
   renderer.setSize(width, height);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.0;
@@ -890,14 +884,9 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
   var pmrem = new THREE.PMREMGenerator(renderer);
   scene.environment = pmrem.fromScene(scene, 0.05).texture;
   pmrem.dispose();
-
-  var composer = null;
-  if(cinematic){
-    composer = new EffectComposer(renderer);
-    composer.addPass(new RenderPass(scene, camera));
-    composer.addPass(new UnrealBloomPass(new THREE.Vector2(width, height), 0.12, 0.25, 0.94));
-    composer.addPass(new OutputPass());
-  }
+  // Pas de post-traitement (bloom) : coûteux à chaque frame sur une scène de 113
+  // meshes, et c'est lui qui provoquait les halos disproportionnés signalés. Un
+  // rendu direct reste net et est nettement plus léger.
 
   // ---- Chorégraphie caméra : orbite + travelling avant/arrière autour du véhicule,
   // avec un plan rapproché sur une roue (checkpoint 2) une fois sa position réelle
@@ -989,10 +978,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
   }
   setCameraAtProgress(0);
 
-  function render(){
-    if(composer) composer.render();
-    else renderer.render(scene, camera);
-  }
+  function render(){ renderer.render(scene, camera); }
   render();
 
   function progress(){
@@ -1007,14 +993,20 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
     visible = entries[0].isIntersecting;
   }, { threshold: 0.01 }).observe(scrollEl);
 
+  // Ne redessine que si quelque chose a vraiment changé (progression du scroll,
+  // ou légère rotation en veille sur mobile) : pas de rendu à 60fps en continu
+  // pendant qu'on lit la page sans bouger, avec un véhicule immobile à l'écran.
   var idleAngle = 0;
+  var lastProgress = -1;
   function loop(){
     if(visible){
       if(cinematic){
-        // Le véhicule reste immobile ici : seule la caméra se déplace, pour que le
-        // point de visée calculé sur la roue (checkpoint 2) reste exact.
-        setCameraAtProgress(progress());
-        render();
+        var p = progress();
+        if(p !== lastProgress){
+          lastProgress = p;
+          setCameraAtProgress(p);
+          render();
+        }
       } else {
         idleAngle += 0.006;
         if(car) car.rotation.y = idleAngle;
@@ -1028,7 +1020,6 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
   window.addEventListener('resize', function(){
     width = stage.clientWidth || 1; height = stage.clientHeight || 1;
     renderer.setSize(width, height);
-    if(composer) composer.setSize(width, height);
     camera.aspect = width / height;
     camera.updateProjectionMatrix();
     render();
