@@ -133,6 +133,16 @@
   .hero-overlay{position:absolute;inset:0;background:linear-gradient(100deg, rgba(18,32,26,0.95) 0%, rgba(18,32,26,0.86) 30%, rgba(18,32,26,0.55) 58%, rgba(18,32,26,0.22) 100%);z-index:1;}
   .hero-inner{position:relative;z-index:2;max-width:680px;color:var(--on-dark);}
   @media (max-width:760px){ .hero-video{display:none;} }
+
+  /* ---------- Chiffres clés (compteurs animés) ---------- */
+  .stats-strip{background:var(--dark-0);padding:52px 0;}
+  .stats-strip-inner{display:flex;align-items:center;justify-content:space-between;gap:32px;flex-wrap:wrap;}
+  .stats-row{display:flex;gap:48px;flex-wrap:wrap;}
+  .stat-num{font-family:'Oswald',sans-serif;font-weight:700;font-size:clamp(30px,4vw,44px);color:var(--brass-on-dark);line-height:1;margin-bottom:8px;}
+  .stat-label{font-size:13.5px;color:var(--on-dark-dim);line-height:1.4;max-width:22ch;}
+  .stats-cta{color:var(--on-dark);border-color:rgba(247,243,228,0.4);flex-shrink:0;}
+  .stats-cta:hover{border-color:var(--brass-on-dark);color:var(--brass-on-dark);box-shadow:0 0 0 1px var(--brass-on-dark) inset;}
+  @media (max-width:760px){ .stats-row{gap:26px;} .stats-strip-inner{justify-content:flex-start;} }
   .hero-eyebrow{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--brass-on-dark);margin-bottom:18px;display:inline-flex;align-items:center;gap:8px;}
   .hero-eyebrow::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--red-bright);}
   .hero h1{font-size:clamp(32px,4.6vw,52px);line-height:1.1;margin-bottom:20px;color:var(--on-dark);}
@@ -175,6 +185,20 @@
   .process-marker{width:38px;height:38px;border-radius:50%;background:var(--bg-0);border:1.5px solid var(--brass);display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--brass-bright);margin-bottom:16px;}
   @media (max-width:920px){ .process-cards{grid-template-columns:1fr 1fr;} }
   @media (max-width:640px){ .process-cards{grid-template-columns:1fr;} }
+
+  /* ---------- Cars and Friends ---------- */
+  .insta-head{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:32px;}
+  .insta-head h2{font-size:clamp(24px,3vw,32px);margin:10px 0 12px;}
+  .insta-follow{display:inline-flex;align-items:center;gap:8px;flex-shrink:0;}
+  .caf-grid{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:auto auto;gap:20px;}
+  .caf-grid figure{margin:0;position:relative;border-radius:var(--radius-md);overflow:hidden;border:1px solid var(--line-soft);}
+  .caf-grid img{width:100%;height:100%;object-fit:cover;display:block;}
+  .caf-grid figcaption{position:absolute;left:0;right:0;bottom:0;padding:16px;background:linear-gradient(to top, rgba(18,32,26,0.85), transparent);color:var(--on-dark);font-size:13.5px;}
+  .caf-photo-main{grid-row:1 / 3;aspect-ratio:4/5;}
+  .caf-photo-a{aspect-ratio:16/10;}
+  .caf-photo-b{aspect-ratio:16/10;}
+  @media (max-width:760px){ .caf-grid{grid-template-columns:1fr;grid-template-rows:none;} .caf-photo-main{grid-row:auto;aspect-ratio:4/3;} }
+  @media (max-width:640px){ .insta-head{flex-direction:column;align-items:stretch;} }
 
   /* ---------- Aperçu 3D : caméra pilotée par le scroll ---------- */
   .showcase-3d{background:var(--dark-0);}
@@ -386,6 +410,27 @@
     </div>
   </section>
 
+  <!-- CHIFFRES CLÉS -->
+  <section class="stats-strip">
+    <div class="wrap stats-strip-inner">
+      <div class="stats-row">
+        <div class="stat-block">
+          <div class="stat-num" data-count="600000" data-suffix=" €">0 €</div>
+          <div class="stat-label">de chiffre d'affaires dès la première année</div>
+        </div>
+        <div class="stat-block">
+          <div class="stat-num" data-count="4">0</div>
+          <div class="stat-label">sociétés créées en six ans</div>
+        </div>
+        <div class="stat-block">
+          <div class="stat-num" data-count="30">0</div>
+          <div class="stat-label">véhicules importés, tous immatriculés</div>
+        </div>
+      </div>
+      <a href="formation.html#resultats" class="btn btn-outline stats-cta">En savoir plus sur moi →</a>
+    </div>
+  </section>
+
   <!-- QU'EST-CE QU'UN MANDATAIRE -->
   <section class="section-pad" id="mandataire">
     <div class="wrap">
@@ -433,6 +478,37 @@
           <h3>La livraison</h3>
           <p>Import, mise en conformité administrative et remise du véhicule près de chez vous.</p>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CARS AND FRIENDS -->
+  <section class="section-pad" id="passion">
+    <div class="wrap">
+      <div class="insta-head">
+        <div>
+          <div class="eyebrow-mono">Communauté</div>
+          <h2>Cars and Friends</h2>
+          <p style="color:var(--ivory-dim);font-size:16px;max-width:56ch;">Les meilleures affaires ne se trouvent pas seul. Entre passionnés, sur les quais de la Côte d'Azur, on partage les bonnes adresses — et les belles voitures.</p>
+        </div>
+        <a href="https://www.instagram.com/motorsport.bytb/" target="_blank" rel="noopener" class="btn btn-outline insta-follow">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>
+          @motorsport.bytb
+        </a>
+      </div>
+      <div class="caf-grid">
+        <figure class="caf-photo-main">
+          <img src="images/cars-and-friends/quai-villefranche.jpg" alt="Supercars alignées sur le quai de Villefranche-sur-Mer, voiliers et yachts au mouillage en arrière-plan" loading="lazy">
+          <figcaption>Rendez-vous entre passionnés, quai de Villefranche-sur-Mer.</figcaption>
+        </figure>
+        <figure class="caf-photo-a">
+          <img src="images/cars-and-friends/portes-papillon.jpg" alt="Porsche, McLaren et Bentley garées portes ouvertes devant la capitainerie" loading="lazy">
+          <figcaption>Porsche, McLaren, Bentley — la Riviera comme terrain de jeu.</figcaption>
+        </figure>
+        <figure class="caf-photo-b">
+          <img src="images/cars-and-friends/cercle-motorsport.jpg" alt="Thomas Bona et deux amis posant devant une Ferrari jaune et une McLaren violette, face à la mer" loading="lazy">
+          <figcaption>Thomas et le cercle MOTORSPORT By TB.</figcaption>
+        </figure>
       </div>
     </div>
   </section>
@@ -814,6 +890,40 @@
     var proofTimer = setInterval(function(){ goToProofSlide(proofIndex + 1); }, 5500);
     proofCarousel.addEventListener('mouseenter', function(){ clearInterval(proofTimer); });
     proofCarousel.addEventListener('mouseleave', function(){ proofTimer = setInterval(function(){ goToProofSlide(proofIndex + 1); }, 5500); });
+  }
+
+  // Compteurs animés (chiffres clés)
+  var reduceMotionStats = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function animateStatCounter(el){
+    var target = parseInt(el.getAttribute('data-count'), 10) || 0;
+    var suffix = el.getAttribute('data-suffix') || '';
+    if(reduceMotionStats){
+      el.textContent = target.toLocaleString('fr-FR') + suffix;
+      return;
+    }
+    var duration = 1400, start = null;
+    function step(ts){
+      if(start === null) start = ts;
+      var p = Math.min(1, (ts - start) / duration);
+      var eased = 1 - Math.pow(1 - p, 3);
+      el.textContent = Math.round(target * eased).toLocaleString('fr-FR') + suffix;
+      if(p < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+  var statNums = document.querySelectorAll('.stat-num[data-count]');
+  if(statNums.length && 'IntersectionObserver' in window){
+    var statObserver = new IntersectionObserver(function(entries){
+      entries.forEach(function(entry){
+        if(entry.isIntersecting){
+          animateStatCounter(entry.target);
+          statObserver.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.5 });
+    statNums.forEach(function(el){ statObserver.observe(el); });
+  } else {
+    statNums.forEach(function(el){ animateStatCounter(el); });
   }
 })();
 </script>
