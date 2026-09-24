@@ -138,6 +138,15 @@
   .hero-actions .btn-outline{color:var(--on-dark);border-color:rgba(247,243,228,0.4);}
   .hero-actions .btn-outline:hover{border-color:var(--brass-on-dark);color:var(--brass-on-dark);box-shadow:0 0 0 1px var(--brass-on-dark) inset;}
 
+  /* ---------- Écran de chargement ---------- */
+  .site-preloader{position:fixed;inset:0;z-index:9999;background:var(--dark-0);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;transition:opacity .6s ease;}
+  .site-preloader.is-hidden{opacity:0;pointer-events:none;}
+  .preloader-mark{font-family:'Oswald',sans-serif;font-size:15px;letter-spacing:0.14em;text-transform:uppercase;color:var(--on-dark);}
+  .preloader-mark span{color:var(--brass-bright);}
+  .preloader-bar{width:220px;height:2px;background:rgba(247,243,228,0.15);border-radius:2px;overflow:hidden;}
+  .preloader-bar-fill{width:0%;height:100%;background:var(--brass-bright);transition:width .25s ease;}
+  .preloader-pct{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--on-dark-dim);}
+
   /* ---------- Section heads ---------- */
   .section-head{max-width:62ch;margin-bottom:40px;}
   .section-head h2{font-size:clamp(24px,3vw,32px);margin-bottom:12px;}
@@ -284,6 +293,30 @@
 </head>
 <body>
 
+<div class="site-preloader" id="sitePreloader">
+  <div class="preloader-mark">MOTORSPORT <span>By TB</span></div>
+  <div class="preloader-bar"><div class="preloader-bar-fill" id="preloaderFill"></div></div>
+  <div class="preloader-pct" id="preloaderPct">Chargement…</div>
+</div>
+<script>
+(function(){
+  document.documentElement.style.overflow = 'hidden';
+  var hidden = false;
+  window.__hidePreloader = function(){
+    if(hidden) return;
+    hidden = true;
+    var el = document.getElementById('sitePreloader');
+    if(el) el.classList.add('is-hidden');
+    document.documentElement.style.overflow = '';
+  };
+  // Filet de sécurité : si le modèle 3D (gros fichier) tarde ou échoue à charger
+  // pour une raison quelconque (réseau, CDN bloqué chez le visiteur…), on ne
+  // laisse jamais quelqu'un bloqué derrière l'écran de chargement.
+  window.addEventListener('load', function(){ setTimeout(window.__hidePreloader, 4000); });
+  setTimeout(window.__hidePreloader, 15000);
+})();
+</script>
+
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <symbol id="icon-car" viewBox="0 0 240 100">
     <path d="M18,72 L18,66 C18,58 24,52 32,50 L48,46 L64,28 C70,22 78,18 87,18 L152,18 C162,18 170,22 176,28 L190,46 C204,48 214,56 216,66 L216,72"
@@ -409,7 +442,7 @@
       </div>
     </div>
     <div class="wrap section-pad" style="padding-top:24px;">
-      <p class="showcase-note">Modèle 3D d'illustration, pas le véhicule réellement en stock.<br>« Car Concept » par Eric Chadwick / Darmstadt Graphics Group — licence CC BY 4.0.</p>
+      <p class="showcase-note">Modèle 3D d'illustration, pas nécessairement le véhicule réellement en stock.</p>
     </div>
   </section>
 
@@ -731,8 +764,8 @@
 })();
 </script>
 
-<!-- Aperçu 3D : modèle "Car Concept" (Eric Chadwick / Darmstadt Graphics Group, CC BY 4.0,
-     via Khronos glTF Sample Assets) — voiture d'illustration, pas le stock réel. -->
+<!-- Aperçu 3D : Porsche 911 (930) Turbo 1975 — modèle fourni par le client, droits d'usage
+     confirmés par ses soins. -->
 <script type="importmap">
 {
   "imports": {
@@ -810,12 +843,32 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
     composer.addPass(new OutputPass());
   }
 
-  var car = null, doorR = null, doorL = null;
-  // Angle d'ouverture des portes (elles pivotent autour de l'axe Z de leur propre
-  // charnière, tel que positionné par le modèle — sens opposé entre gauche/droite
-  // car les deux portes partagent la même orientation locale, non miroir).
-  var DOOR_OPEN_ANGLE = 55 * Math.PI / 180;
-  new GLTFLoader().load('models/car-concept.glb', function(gltf){
+  // ---- Chorégraphie caméra : orbite + travelling avant/arrière autour du véhicule,
+  // avec un plan rapproché sur une roue (checkpoint 2) une fois sa position réelle
+  // connue (calculée après chargement du modèle, voir plus bas).
+  var defaultTarget = { x: 0, y: 0.38, z: 0 };
+  var checkpoints = [
+    { theta: 35,  phi: 78, radius: 6.5, fov: 26, color: 0x0b140f, target: defaultTarget },
+    { theta: 112, phi: 84, radius: 4.6, fov: 28, color: 0x141006, target: defaultTarget },
+    { theta: 88,  phi: 87, radius: 1.9, fov: 32, color: 0x1c1206, target: defaultTarget },
+    { theta: 300, phi: 68, radius: 5.8, fov: 25, color: 0x0b140f, target: defaultTarget }
+  ].map(function(cp){
+    return {
+      theta: cp.theta * Math.PI / 180, phi: cp.phi * Math.PI / 180, radius: cp.radius,
+      fov: cp.fov, color: new THREE.Color(cp.color),
+      target: new THREE.Vector3(cp.target.x, cp.target.y, cp.target.z)
+    };
+  });
+  // Nom du nœud correspondant à une roue dans le modèle (repéré par analyse de sa
+  // géométrie — le fichier n'a pas de noms de pièces explicites). Sert de point de
+  // visée pour le plan rapproché ; si jamais introuvable, ce plan vise simplement
+  // le centre du véhicule comme les autres.
+  var WHEEL_NODE_NAME = 'Cylinder.009_24_57_157';
+
+  var car = null;
+  var preloaderFill = document.getElementById('preloaderFill');
+  var preloaderPct = document.getElementById('preloaderPct');
+  new GLTFLoader().load('models/porsche-911-930-turbo.glb', function(gltf){
     car = gltf.scene;
     var box = new THREE.Box3().setFromObject(car);
     var size = new THREE.Vector3(); box.getSize(size);
@@ -825,41 +878,34 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
     car.position.x -= center.x * scale;
     car.position.z -= center.z * scale;
     car.position.y -= box.min.y * scale;
-    doorR = car.getObjectByName('BodyDoorRColor1');
-    doorL = car.getObjectByName('BodyDoorLColor1');
     scene.add(car);
+    car.updateMatrixWorld(true);
+    var wheel = car.getObjectByName(WHEEL_NODE_NAME);
+    if(wheel){
+      var wheelPos = new THREE.Vector3();
+      wheel.getWorldPosition(wheelPos);
+      checkpoints[2].target.copy(wheelPos);
+    }
     render();
-  }, undefined, function(err){
+    if(window.__hidePreloader) window.__hidePreloader();
+  }, function(xhr){
+    if(xhr.lengthComputable && preloaderFill && preloaderPct){
+      var pct = Math.round((xhr.loaded / xhr.total) * 100);
+      preloaderFill.style.width = pct + '%';
+      preloaderPct.textContent = pct + '%';
+    }
+  }, function(err){
     console.error('Showcase 3D: échec du chargement du modèle', err);
-  });
-
-  // Portes fermées jusqu'à mi-parcours, grandes ouvertes le temps du plan
-  // rapproché, refermées avant le cadrage final.
-  function doorOpenAmount(p){
-    if(p < 0.25) return 0;
-    if(p < 0.5) return (p - 0.25) / 0.25;
-    if(p < 0.75) return 1;
-    if(p < 1.0) return 1 - (p - 0.75) / 0.25;
-    return 0;
-  }
-
-  // ---- Chorégraphie caméra : orbite + travelling avant/arrière autour du véhicule ----
-  var target = new THREE.Vector3(0, 0.55, 0);
-  var checkpoints = [
-    { theta: 35,  phi: 78, radius: 6.2, fov: 26, color: 0x0b140f },
-    { theta: 118, phi: 84, radius: 4.3, fov: 30, color: 0x141006 },
-    { theta: 205, phi: 89, radius: 3.0, fov: 34, color: 0x1c1206 },
-    { theta: 300, phi: 68, radius: 5.4, fov: 25, color: 0x0b140f }
-  ].map(function(cp){
-    return { theta: cp.theta * Math.PI / 180, phi: cp.phi * Math.PI / 180, radius: cp.radius, fov: cp.fov, color: new THREE.Color(cp.color) };
+    if(window.__hidePreloader) window.__hidePreloader();
   });
 
   function lerp(a, b, t){ return a + (b - a) * t; }
-  function sphericalToCartesian(theta, phi, radius){
+  var lerpedTarget = new THREE.Vector3();
+  function sphericalToCartesian(theta, phi, radius, tgt){
     return new THREE.Vector3(
-      target.x + radius * Math.sin(phi) * Math.sin(theta),
-      target.y + radius * Math.cos(phi),
-      target.z + radius * Math.sin(phi) * Math.cos(theta)
+      tgt.x + radius * Math.sin(phi) * Math.sin(theta),
+      tgt.y + radius * Math.cos(phi),
+      tgt.z + radius * Math.sin(phi) * Math.cos(theta)
     );
   }
 
@@ -874,8 +920,9 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
     var phi = lerp(a.phi, b.phi, t);
     var radius = lerp(a.radius, b.radius, t);
     var fov = lerp(a.fov, b.fov, t);
-    camera.position.copy(sphericalToCartesian(theta, phi, radius));
-    camera.lookAt(target);
+    lerpedTarget.copy(a.target).lerp(b.target, t);
+    camera.position.copy(sphericalToCartesian(theta, phi, radius, lerpedTarget));
+    camera.lookAt(lerpedTarget);
     if(fov !== camera.fov){ camera.fov = fov; camera.updateProjectionMatrix(); }
     tmpColor.copy(a.color).lerp(b.color, t);
     scene.background.copy(tmpColor);
@@ -883,10 +930,6 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
     var capIdx = Math.min(captionEls.length - 1, Math.floor(p * captionEls.length));
     captionEls.forEach(function(el, i){ el.classList.toggle('is-active', i === capIdx); });
-
-    var doorAmount = doorOpenAmount(p);
-    if(doorR) doorR.rotation.z = DOOR_OPEN_ANGLE * doorAmount;
-    if(doorL) doorL.rotation.z = -DOOR_OPEN_ANGLE * doorAmount;
   }
   setCameraAtProgress(0);
 
@@ -912,8 +955,8 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
   function loop(){
     if(visible){
       if(cinematic){
-        idleAngle += 0.0015;
-        if(car) car.rotation.y = idleAngle;
+        // Le véhicule reste immobile ici : seule la caméra se déplace, pour que le
+        // point de visée calculé sur la roue (checkpoint 2) reste exact.
         setCameraAtProgress(progress());
         render();
       } else {
