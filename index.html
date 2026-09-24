@@ -164,6 +164,16 @@
   @media (max-width:920px){ .process-cards{grid-template-columns:1fr 1fr;} }
   @media (max-width:640px){ .process-cards{grid-template-columns:1fr;} }
 
+  /* ---------- Aperçu 3D ---------- */
+  .showcase-3d{background:var(--dark-0);}
+  .showcase-3d .section-head{color:var(--on-dark);margin-left:auto;margin-right:auto;text-align:center;max-width:56ch;}
+  .showcase-3d .section-head h2{color:var(--on-dark);}
+  .showcase-3d .section-head p{color:var(--on-dark-dim);}
+  .showcase-stage{position:relative;width:100%;height:460px;border-radius:var(--radius-md);overflow:hidden;background:radial-gradient(ellipse at 50% 68%, rgba(247,243,228,0.07), transparent 68%);}
+  .showcase-stage canvas{display:block;width:100%;height:100%;}
+  .showcase-note{margin:16px auto 0;max-width:56ch;text-align:center;font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--on-dark-dim);opacity:0.8;}
+  @media (max-width:640px){ .showcase-stage{height:300px;} }
+
   /* ---------- Preuve : sourcing aux enchères ---------- */
   .proof-photo{border-radius:var(--radius-md);overflow:hidden;border:1px solid var(--line-soft);box-shadow:0 24px 60px -28px rgba(23,36,28,0.35);max-width:820px;margin:0 auto;}
   .proof-photo img{width:100%;height:auto;display:block;aspect-ratio:4/3;object-fit:cover;}
@@ -361,6 +371,19 @@
           <p>Import, mise en conformité administrative et remise du véhicule près de chez vous.</p>
         </div>
       </div>
+    </div>
+  </section>
+
+  <!-- APERÇU 3D -->
+  <section class="section-pad showcase-3d" id="showcase">
+    <div class="wrap">
+      <div class="section-head">
+        <div class="eyebrow-mono">Aperçu</div>
+        <h2>Le niveau de détail qu'on recherche sur chaque véhicule</h2>
+        <p>Faites défiler pour la faire tourner.</p>
+      </div>
+      <div class="showcase-stage" id="showcaseStage" role="img" aria-label="Modèle 3D d'une voiture de sport, tournant au fil du défilement"></div>
+      <p class="showcase-note">Modèle 3D d'illustration, pas le véhicule réellement en stock.<br>« Car Concept » par Eric Chadwick / Darmstadt Graphics Group — licence CC BY 4.0.</p>
     </div>
   </section>
 
@@ -678,6 +701,105 @@
     dossier.classList.remove('is-submitted');
     confirmPanel.classList.remove('is-visible');
 
+  });
+})();
+</script>
+
+<!-- Aperçu 3D : modèle "Car Concept" (Eric Chadwick / Darmstadt Graphics Group, CC BY 4.0,
+     via Khronos glTF Sample Assets) — voiture d'illustration, pas le stock réel. -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+(function initShowcase3D(){
+  var stage = document.getElementById('showcaseStage');
+  if(!stage) return;
+
+  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var baseRotation = Math.PI * 0.15;
+  var spinRange = Math.PI * 2.4;
+
+  var renderer;
+  try{ renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); }
+  catch(e){ renderer = null; }
+  if(!renderer || !renderer.getContext()) return;
+
+  var width = stage.clientWidth || 1, height = stage.clientHeight || 1;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+  renderer.setSize(width, height);
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  stage.appendChild(renderer.domElement);
+
+  var scene = new THREE.Scene();
+  var camera = new THREE.PerspectiveCamera(32, width / height, 0.1, 100);
+  camera.position.set(0, 1.25, 5.6);
+  camera.lookAt(0, 0.45, 0);
+
+  scene.add(new THREE.HemisphereLight(0x557799, 0x14100c, 1.5));
+  var key = new THREE.DirectionalLight(0xffffff, 2.6);
+  key.position.set(4, 6, 3);
+  scene.add(key);
+  var rim = new THREE.DirectionalLight(0x88a6ff, 1.2);
+  rim.position.set(-5, 3, -4);
+  scene.add(rim);
+
+  var car = null;
+  new GLTFLoader().load('models/car-concept.glb', function(gltf){
+    car = gltf.scene;
+    var box = new THREE.Box3().setFromObject(car);
+    var size = new THREE.Vector3(); box.getSize(size);
+    var center = new THREE.Vector3(); box.getCenter(center);
+    var scale = 2.6 / Math.max(size.x, size.y, size.z);
+    car.scale.setScalar(scale);
+    car.position.x -= center.x * scale;
+    car.position.z -= center.z * scale;
+    car.position.y -= box.min.y * scale;
+    car.rotation.y = baseRotation;
+    scene.add(car);
+    render();
+  });
+
+  function render(){ renderer.render(scene, camera); }
+  render();
+
+  function progressInSection(){
+    var rect = stage.getBoundingClientRect();
+    var vh = window.innerHeight || 1;
+    var total = rect.height + vh;
+    return Math.max(0, Math.min(1, (vh - rect.top) / total));
+  }
+
+  var visible = false;
+  new IntersectionObserver(function(entries){
+    visible = entries[0].isIntersecting;
+  }, { threshold: 0.05 }).observe(stage);
+
+  var ticking = false;
+  window.addEventListener('scroll', function(){
+    if(reduceMotion || !visible || !car || ticking) return;
+    ticking = true;
+    requestAnimationFrame(function(){
+      car.rotation.y = baseRotation + progressInSection() * spinRange;
+      render();
+      ticking = false;
+    });
+  }, { passive: true });
+
+  window.addEventListener('resize', function(){
+    width = stage.clientWidth || 1; height = stage.clientHeight || 1;
+    renderer.setSize(width, height);
+    camera.aspect = width / height;
+    camera.updateProjectionMatrix();
+    render();
   });
 })();
 </script>
