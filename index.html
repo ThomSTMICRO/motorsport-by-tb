@@ -1045,7 +1045,10 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
     if(window.__hidePreloader) window.__hidePreloader();
   }, function(xhr){
     if(xhr.lengthComputable && preloaderFill && preloaderPct){
-      var pct = Math.round((xhr.loaded / xhr.total) * 100);
+      // Plafonné à 100 : la compression en transit peut faire dépasser ce
+      // ratio (le navigateur compte les octets reçus différemment du total
+      // annoncé), d'où le "111 %" observé sans ce garde-fou.
+      var pct = Math.min(100, Math.round((xhr.loaded / xhr.total) * 100));
       preloaderFill.style.width = pct + '%';
       preloaderPct.textContent = pct + '%';
     }
