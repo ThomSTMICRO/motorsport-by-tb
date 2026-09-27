@@ -291,6 +291,25 @@
   .path-list li::before{content:"";position:absolute;left:0;top:9px;width:6px;height:6px;border-radius:50%;background:var(--brass);}
   @media (max-width:860px){ .path-split{grid-template-columns:1fr;} .path-panel{padding:60px 28px;} }
 
+  /* ---------- Tarifs & paiement ---------- */
+  .module-card{display:flex;flex-direction:column;}
+  .module-price-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:16px;padding-top:14px;border-top:1px solid var(--line-light);}
+  .module-card.is-key .module-price-row{border-top-color:rgba(247,243,228,0.18);}
+  .module-price{font-family:'Oswald',sans-serif;font-weight:600;font-size:17px;color:var(--brass-bright);}
+  .module-card.is-key .module-price{color:var(--brass-on-dark);}
+  .pay-btn{display:inline-flex;align-items:center;font-family:'Oswald',sans-serif;font-weight:600;font-size:13px;letter-spacing:.01em;padding:9px 16px;border-radius:var(--radius-sm);text-decoration:none;border:1.5px solid var(--brass);color:var(--brass-bright);transition:background .2s ease,color .2s ease;white-space:nowrap;}
+  .pay-btn:hover{background:var(--brass);color:#fff;}
+  .module-card.is-key .pay-btn{border-color:var(--brass-on-dark);color:var(--brass-on-dark);}
+  .module-card.is-key .pay-btn:hover{background:var(--brass-on-dark);color:var(--dark-0);}
+  .path-price{font-family:'Oswald',sans-serif;font-weight:700;font-size:clamp(26px,3vw,34px);margin:18px 0 6px;}
+  .path-panel:not(.is-dark) .path-price{color:var(--brass-bright);}
+  .path-panel.is-dark .path-price{color:var(--brass-on-dark);}
+  .path-price-note{font-size:13px;margin-bottom:18px;}
+  .path-panel:not(.is-dark) .path-price-note{color:var(--ink-faint);}
+  .path-panel.is-dark .path-price-note{color:var(--on-dark-faint);}
+  .market-note{margin-top:36px;padding:20px 24px;background:var(--paper);border:1px solid var(--line-light);border-radius:var(--radius-md);font-size:14px;color:var(--ink-dim);}
+  .market-note strong{color:var(--ink);}
+
   /* ---------- Timeline ---------- */
   .timeline{position:relative;margin-top:20px;max-width:70ch;}
   .tl-step{display:grid;grid-template-columns:56px 1fr;position:relative;}
@@ -345,6 +364,7 @@
     <a href="#philosophie">Philosophie</a>
     <a href="#marche">Marché</a>
     <a href="#modules">Modules</a>
+    <a href="#tarifs">Tarifs</a>
     <a href="#contact">Contact</a>
   </nav>
 </div>
@@ -459,6 +479,25 @@
     </div>
   </section>
 
+  <!--
+    PAIEMENT EN LIGNE — À ACTIVER (une seule fois, ~10 minutes) :
+    Les boutons "S'inscrire" ci-dessous et dans la section tarifs (#tarifs)
+    pointent vers des liens provisoires (buy.stripe.com/REMPLACER_...).
+    Pour les rendre fonctionnels :
+      1. Créer un compte sur https://dashboard.stripe.com/register (gratuit,
+         Stripe prélève seulement une commission par vente réussie).
+      2. Une fois le compte activé (identité + IBAN), aller dans
+         Stripe Dashboard > Payment Links > "+ Nouveau lien de paiement".
+      3. Créer un lien par module/programme, avec le prix affiché sur le site
+         (ex. "Module Commercial" à 290 €, "Programme complet" à 2 990 €...).
+      4. Copier l'URL générée (ex. https://buy.stripe.com/xxxxxxx) et
+         remplacer ici chaque "https://buy.stripe.com/REMPLACER_..." par
+         l'URL réelle correspondante (rechercher "REMPLACER_" dans ce fichier).
+    Aucune autre modification du site n'est nécessaire : ce sont de simples
+    liens, Stripe gère la page de paiement, la facture et l'email de
+    confirmation au client.
+  -->
+
   <!-- MODULES -->
   <section class="fsection is-light" id="modules">
     <div class="wrap">
@@ -466,14 +505,33 @@
       <h2 >Chaque bloc peut être pris seul</h2>
       <p class="lead">Ou dans le cadre du programme complet.</p>
       <div class="module-grid">
-        <div class="module-card"><h3>Commercial</h3><p>Approche client, posture, négociation, closing.</p></div>
-        <div class="module-card"><h3>Juridique et fiscal</h3><p>Quelle structure choisir, et comment l'utiliser.</p></div>
-        <div class="module-card"><h3>Achat-revente</h3><p>Sourcing, estimation, calcul de la marge réelle.</p></div>
-        <div class="module-card"><h3>Dépôt-vente</h3><p>Contrat, commission, gestion du stock.</p></div>
-        <div class="module-card is-key"><h3>Importation</h3><p>Toutes les démarches administratives, de A à Z.</p></div>
-        <div class="module-card"><h3>Accès et réseau</h3><p>Logiciels, contacts, parrainages, garantisseur.</p></div>
+        <div class="module-card">
+          <h3>Commercial</h3><p>Approche client, posture, négociation, closing.</p>
+          <div class="module-price-row"><span class="module-price">290 €</span><a href="https://buy.stripe.com/REMPLACER_module-commercial" class="pay-btn">S'inscrire</a></div>
+        </div>
+        <div class="module-card">
+          <h3>Juridique et fiscal</h3><p>Quelle structure choisir, et comment l'utiliser.</p>
+          <div class="module-price-row"><span class="module-price">290 €</span><a href="https://buy.stripe.com/REMPLACER_module-juridique" class="pay-btn">S'inscrire</a></div>
+        </div>
+        <div class="module-card">
+          <h3>Achat-revente</h3><p>Sourcing, estimation, calcul de la marge réelle.</p>
+          <div class="module-price-row"><span class="module-price">340 €</span><a href="https://buy.stripe.com/REMPLACER_module-achat-revente" class="pay-btn">S'inscrire</a></div>
+        </div>
+        <div class="module-card">
+          <h3>Dépôt-vente</h3><p>Contrat, commission, gestion du stock.</p>
+          <div class="module-price-row"><span class="module-price">290 €</span><a href="https://buy.stripe.com/REMPLACER_module-depot-vente" class="pay-btn">S'inscrire</a></div>
+        </div>
+        <div class="module-card is-key">
+          <h3>Importation</h3><p>Toutes les démarches administratives, de A à Z.</p>
+          <div class="module-price-row"><span class="module-price">490 €</span><a href="https://buy.stripe.com/REMPLACER_module-importation" class="pay-btn">S'inscrire</a></div>
+        </div>
+        <div class="module-card">
+          <h3>Accès et réseau</h3><p>Logiciels, contacts, parrainages, garantisseur.</p>
+          <div class="module-price-row"><span class="module-price">240 €</span><a href="https://buy.stripe.com/REMPLACER_module-acces-reseau" class="pay-btn">S'inscrire</a></div>
+        </div>
       </div>
       <p class="closing-line">L'importation est le module qui change tout : c'est lui qui crée la marge.</p>
+      <p class="market-note"><strong>Où ça se situe sur le marché :</strong> les formations 100 % vidéo, sans échange personnel (type M7 Academy, Benefauto), tournent autour de 180-300 €. Les organismes agréés (CNPA, ANFA) facturent 800 à 4 000 € pour des sessions collectives. Ici, chaque module inclut un échange direct avec Thomas — pas une vidéo générique — d'où un positionnement légèrement au-dessus du 100 % vidéo, et nettement en dessous des organismes agréés.</p>
     </div>
   </section>
 
@@ -504,7 +562,7 @@
   </section>
 
   <!-- DEUX FAÇONS D'AVANCER -->
-  <section class="path-split">
+  <section class="path-split" id="tarifs">
     <div class="path-panel">
       <div class="eyebrow">Deux façons d'avancer</div>
       <h2 >À la carte</h2>
@@ -514,6 +572,8 @@
         <li>Format court, on va droit au but</li>
         <li>Idéal si tu as déjà des bases sur le reste</li>
       </ul>
+      <div class="path-price-note" style="margin-top:20px;">À partir de 240 € le module</div>
+      <a href="#modules" class="btn btn-outline">Voir les prix par module</a>
     </div>
     <div class="path-panel is-dark">
       <h2 >Le programme complet</h2>
@@ -523,6 +583,9 @@
         <li>Un accompagnement sur tes premières voitures</li>
         <li>Tous les accès : outils, contacts, garantisseur</li>
       </ul>
+      <div class="path-price">2 990 €</div>
+      <div class="path-price-note">Paiement en une fois. Programmes intensifs équivalents chez les organismes agréés : 2 000 à 8 000 €.</div>
+      <a href="https://buy.stripe.com/REMPLACER_programme-complet" class="btn btn-primary">S'inscrire au programme complet</a>
     </div>
   </section>
 
