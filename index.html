@@ -899,8 +899,10 @@
 })();
 </script>
 
-<!-- Aperçu 3D : Porsche 911 (930) Turbo 1975 — modèle fourni par le client, droits d'usage
-     confirmés par ses soins. -->
+<!-- Aperçu 3D : Mercedes SLS AMG (2010) — modèle fourni par le client, droits d'usage
+     confirmés par ses soins. Fichier en un seul bloc fusionné (49 matériaux, un seul
+     objet) : pas de pièce "porte" séparée, donc pas d'ouverture de portes possible
+     avec ce fichier. -->
 <script type="importmap">
 {
   "imports": {
@@ -988,24 +990,16 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
       fov: cp.fov, target: new THREE.Vector3(cp.target.x, cp.target.y, cp.target.z)
     };
   });
-  // Nom du nœud correspondant à une roue dans le modèle (repéré par analyse de sa
-  // géométrie — le fichier n'a pas de noms de pièces explicites). Sert de point de
-  // visée pour le premier plan rapproché (checkpoint 1) ; si jamais introuvable,
-  // ce plan vise simplement le centre du véhicule comme les autres.
-  var WHEEL_NODE_NAME = 'Cylinder.009_24_57_157';
-
   var car = null;
   var showcaseLoading = document.getElementById('showcaseLoading');
-  // Chargement différé : le modèle (lourd, ~90 Mo) n'est demandé que lorsque le
-  // visiteur approche de cette section, pas dès l'ouverture de la page — sans
-  // ça, chaque chargement du site téléchargerait 90 Mo avant même d'afficher
-  // le premier écran, ce qui pénaliserait à la fois l'expérience réelle et le
-  // référencement (Core Web Vitals).
+  // Chargement différé : le modèle n'est demandé que lorsque le visiteur
+  // approche de cette section, pas dès l'ouverture de la page — pour ne pas
+  // pénaliser le premier affichage (expérience réelle et référencement).
   var modelLoadStarted = false;
   function loadCarModel(){
     if(modelLoadStarted) return;
     modelLoadStarted = true;
-    new GLTFLoader().load('models/porsche-911-930-turbo.glb', function(gltf){
+    new GLTFLoader().load('models/mercedes-sls-amg.glb', function(gltf){
       car = gltf.scene;
       var box = new THREE.Box3().setFromObject(car);
       var size = new THREE.Vector3(); box.getSize(size);
@@ -1016,13 +1010,6 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
       car.position.z -= center.z * scale;
       car.position.y -= box.min.y * scale;
       scene.add(car);
-      car.updateMatrixWorld(true);
-      var wheel = car.getObjectByName(WHEEL_NODE_NAME);
-      if(wheel){
-        var wheelPos = new THREE.Vector3();
-        wheel.getWorldPosition(wheelPos);
-        checkpoints[1].target.copy(wheelPos);
-      }
       render();
       if(showcaseLoading) showcaseLoading.classList.add('is-hidden');
     }, function(xhr){
