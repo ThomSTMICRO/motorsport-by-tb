@@ -200,24 +200,24 @@
   @media (max-width:760px){ .caf-grid{grid-template-columns:1fr;grid-template-rows:none;} .caf-photo-main{grid-row:auto;aspect-ratio:4/3;} }
   @media (max-width:640px){ .insta-head{flex-direction:column;align-items:stretch;} }
 
-  /* ---------- Aperçu 3D : caméra pilotée par le scroll ---------- */
-  .showcase-3d{background:var(--dark-0);}
-  .showcase-3d .section-head{color:var(--on-dark);margin-left:auto;margin-right:auto;text-align:center;max-width:56ch;}
-  .showcase-3d .section-head h2{color:var(--on-dark);}
-  .showcase-3d .section-head p{color:var(--on-dark-dim);}
+  /* ---------- Aperçu 3D : caméra pilotée par le scroll (décor clair) ---------- */
+  .showcase-3d{background:var(--bg-1);}
+  .showcase-3d .section-head{color:var(--ivory);margin-left:auto;margin-right:auto;text-align:center;max-width:56ch;}
+  .showcase-3d .section-head h2{color:var(--ivory);}
+  .showcase-3d .section-head p{color:var(--ivory-dim);}
   /* Hauteur de la zone de défilement = durée de la chorégraphie caméra. La scène
      reste "collée" (sticky) au viewport tant qu'on progresse dans cette zone. */
   .showcase-scroll{position:relative;height:260vh;}
   .showcase-sticky{position:sticky;top:0;height:100vh;display:flex;align-items:center;justify-content:center;overflow:hidden;}
   .showcase-stage{position:absolute;inset:0;width:100%;height:100%;}
   .showcase-stage canvas{display:block;width:100%;height:100%;}
-  /* Vignette pour un rendu plus "cinéma" et pour fondre les bords du rendu WebGL
-     dans le fond sombre de la section, quel que soit l'arrière-plan de la scène 3D. */
-  .showcase-sticky::after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 50%, transparent 45%, var(--dark-0) 100%);}
+  /* Vignette douce pour fondre les bords du rendu WebGL dans le fond clair de
+     la section, quel que soit l'arrière-plan exact de la scène 3D. */
+  .showcase-sticky::after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 50%, transparent 45%, var(--bg-1) 100%);}
   .showcase-captions{position:absolute;left:0;right:0;bottom:64px;z-index:2;text-align:center;padding:0 24px;}
-  .showcase-caption{position:absolute;left:0;right:0;bottom:0;margin:0 auto;max-width:52ch;font-family:'Oswald',sans-serif;font-size:clamp(18px,2.6vw,26px);font-weight:500;color:var(--on-dark);opacity:0;transform:translateY(10px);transition:opacity .5s ease, transform .5s ease;}
-  .showcase-caption.is-active{opacity:1;transform:translateY(0);}
-  .showcase-note{margin:0 auto;max-width:56ch;text-align:center;font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--on-dark-dim);opacity:0.8;}
+  .showcase-caption{position:absolute;left:0;right:0;bottom:0;margin:0 auto;max-width:52ch;font-family:'Oswald',sans-serif;font-size:clamp(18px,2.6vw,26px);font-weight:500;color:var(--ivory);background:rgba(255,255,255,0.72);backdrop-filter:blur(4px);border-radius:var(--radius-sm);padding:8px 18px;display:inline-block;left:50%;right:auto;transform:translate(-50%,10px);opacity:0;transition:opacity .5s ease, transform .5s ease;}
+  .showcase-caption.is-active{opacity:1;transform:translate(-50%,0);}
+  .showcase-note{margin:0 auto;max-width:56ch;text-align:center;font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--ivory-faint);opacity:0.9;}
   @media (max-width:820px){
     .showcase-scroll{height:auto;}
     .showcase-sticky{position:relative;top:auto;height:340px;}
@@ -967,30 +967,33 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   stage.appendChild(renderer.domElement);
 
+  // Décor studio clair (plutôt que le studio sombre précédent), dans les tons
+  // ivoire/crème déjà utilisés ailleurs sur le site.
+  var SCENE_BG = 0xF3EFE2;
   var scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x0b140f);
-  scene.fog = new THREE.Fog(0x0b140f, 6, 17);
+  scene.background = new THREE.Color(SCENE_BG);
+  scene.fog = new THREE.Fog(SCENE_BG, 8, 20);
 
   var camera = new THREE.PerspectiveCamera(28, width / height, 0.1, 100);
 
-  scene.add(new THREE.HemisphereLight(0x3d5a4a, 0x0d0b08, 1.1));
-  var key = new THREE.DirectionalLight(0xfff2df, 1.7);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0xD8D0BA, 1.4));
+  var key = new THREE.DirectionalLight(0xfff8ec, 2.1);
   key.position.set(4, 6, 3);
   scene.add(key);
-  var rim = new THREE.DirectionalLight(0xc9a24b, 1.5);
+  var rim = new THREE.DirectionalLight(0xc9a24b, 0.7);
   rim.position.set(-5, 3, -4);
   scene.add(rim);
 
   var ground = new THREE.Mesh(
     new THREE.CircleGeometry(20, 48),
-    new THREE.MeshStandardMaterial({ color: 0x11170f, roughness: 0.92, metalness: 0.05 })
+    new THREE.MeshStandardMaterial({ color: 0xE4DECB, roughness: 0.92, metalness: 0.05 })
   );
   ground.rotation.x = -Math.PI / 2;
   ground.position.y = -0.001;
   scene.add(ground);
 
-  // Reflets de carrosserie cohérents avec la scène (studio sombre + touche laiton) plutôt
-  // qu'un environnement neutre par défaut.
+  // Reflets de carrosserie cohérents avec le studio clair plutôt qu'un
+  // environnement neutre par défaut.
   var pmrem = new THREE.PMREMGenerator(renderer);
   scene.environment = pmrem.fromScene(scene, 0.05).texture;
   pmrem.dispose();
@@ -998,26 +1001,26 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
   // meshes, et c'est lui qui provoquait les halos disproportionnés signalés. Un
   // rendu direct reste net et est nettement plus léger.
 
-  // ---- Chorégraphie caméra : orbite + travelling avant/arrière autour du véhicule,
-  // avec un plan rapproché sur une roue (checkpoint 2) une fois sa position réelle
-  // connue (calculée après chargement du modèle, voir plus bas).
+  // ---- Chorégraphie caméra : tour complet à 360° autour du véhicule, avec deux
+  // temps de zoom rapproché en cours de route (theta va de 0 à 360 sans jamais
+  // reculer, contrairement à l'ancienne version qui faisait des allers-retours).
   var defaultTarget = { x: 0, y: 0.38, z: 0 };
   var checkpoints = [
-    { theta: 35,  phi: 78, radius: 6.5, fov: 26, color: 0x0b140f, target: defaultTarget },
-    { theta: 112, phi: 84, radius: 4.6, fov: 28, color: 0x141006, target: defaultTarget },
-    { theta: 88,  phi: 87, radius: 1.9, fov: 32, color: 0x1c1206, target: defaultTarget },
-    { theta: 300, phi: 68, radius: 5.8, fov: 25, color: 0x0b140f, target: defaultTarget }
+    { theta: 0,   phi: 80, radius: 6.0, fov: 26, target: defaultTarget },
+    { theta: 90,  phi: 85, radius: 2.2, fov: 32, target: defaultTarget },
+    { theta: 180, phi: 74, radius: 6.5, fov: 25, target: defaultTarget },
+    { theta: 270, phi: 88, radius: 2.1, fov: 33, target: defaultTarget },
+    { theta: 360, phi: 80, radius: 6.0, fov: 26, target: defaultTarget }
   ].map(function(cp){
     return {
       theta: cp.theta * Math.PI / 180, phi: cp.phi * Math.PI / 180, radius: cp.radius,
-      fov: cp.fov, color: new THREE.Color(cp.color),
-      target: new THREE.Vector3(cp.target.x, cp.target.y, cp.target.z)
+      fov: cp.fov, target: new THREE.Vector3(cp.target.x, cp.target.y, cp.target.z)
     };
   });
   // Nom du nœud correspondant à une roue dans le modèle (repéré par analyse de sa
   // géométrie — le fichier n'a pas de noms de pièces explicites). Sert de point de
-  // visée pour le plan rapproché ; si jamais introuvable, ce plan vise simplement
-  // le centre du véhicule comme les autres.
+  // visée pour le premier plan rapproché (checkpoint 1) ; si jamais introuvable,
+  // ce plan vise simplement le centre du véhicule comme les autres.
   var WHEEL_NODE_NAME = 'Cylinder.009_24_57_157';
 
   var car = null;
@@ -1039,7 +1042,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
     if(wheel){
       var wheelPos = new THREE.Vector3();
       wheel.getWorldPosition(wheelPos);
-      checkpoints[2].target.copy(wheelPos);
+      checkpoints[1].target.copy(wheelPos);
     }
     render();
     if(window.__hidePreloader) window.__hidePreloader();
@@ -1067,7 +1070,6 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
     );
   }
 
-  var tmpColor = new THREE.Color();
   function setCameraAtProgress(p){
     var segCount = checkpoints.length - 1;
     var scaled = Math.max(0, Math.min(1, p)) * segCount;
@@ -1082,9 +1084,6 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
     camera.position.copy(sphericalToCartesian(theta, phi, radius, lerpedTarget));
     camera.lookAt(lerpedTarget);
     if(fov !== camera.fov){ camera.fov = fov; camera.updateProjectionMatrix(); }
-    tmpColor.copy(a.color).lerp(b.color, t);
-    scene.background.copy(tmpColor);
-    scene.fog.color.copy(tmpColor);
 
     var capIdx = Math.min(captionEls.length - 1, Math.floor(p * captionEls.length));
     captionEls.forEach(function(el, i){ el.classList.toggle('is-active', i === capIdx); });
