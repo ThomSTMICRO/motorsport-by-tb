@@ -480,22 +480,22 @@
   </section>
 
   <!--
-    PAIEMENT EN LIGNE — À ACTIVER (une seule fois, ~10 minutes) :
+    PAIEMENT EN LIGNE (SumUp) — À ACTIVER (une seule fois, ~10 minutes) :
     Les boutons "S'inscrire" ci-dessous et dans la section tarifs (#tarifs)
-    pointent vers des liens provisoires (buy.stripe.com/REMPLACER_...).
+    pointent vers des liens provisoires (REMPLACER_LIEN_SUMUP/...).
     Pour les rendre fonctionnels :
-      1. Créer un compte sur https://dashboard.stripe.com/register (gratuit,
-         Stripe prélève seulement une commission par vente réussie).
-      2. Une fois le compte activé (identité + IBAN), aller dans
-         Stripe Dashboard > Payment Links > "+ Nouveau lien de paiement".
+      1. Créer/ouvrir un compte SumUp (app mobile SumUp ou sumup.com),
+         identité + IBAN à renseigner comme pour tout compte d'encaissement.
+      2. Dans l'app SumUp, aller dans "Paiements par lien" ("Payment Links")
+         > créer un nouveau lien à montant fixe.
       3. Créer un lien par module/programme, avec le prix affiché sur le site
-         (ex. "Module Commercial" à 290 €, "Programme complet" à 2 990 €...).
-      4. Copier l'URL générée (ex. https://buy.stripe.com/xxxxxxx) et
-         remplacer ici chaque "https://buy.stripe.com/REMPLACER_..." par
-         l'URL réelle correspondante (rechercher "REMPLACER_" dans ce fichier).
+         (ex. "Module Commercial" à 290 €, "Programme complet" à 2 990 €...),
+         un lien par ligne du tableau ci-dessous.
+      4. Copier l'URL générée par SumUp et remplacer ici chaque
+         "https://REMPLACER_LIEN_SUMUP/..." par l'URL réelle correspondante
+         (rechercher "REMPLACER_LIEN_SUMUP" dans ce fichier, 7 occurrences).
     Aucune autre modification du site n'est nécessaire : ce sont de simples
-    liens, Stripe gère la page de paiement, la facture et l'email de
-    confirmation au client.
+    liens, SumUp gère la page de paiement et la notification de règlement.
   -->
 
   <!-- MODULES -->
@@ -507,27 +507,27 @@
       <div class="module-grid">
         <div class="module-card">
           <h3>Commercial</h3><p>Approche client, posture, négociation, closing.</p>
-          <div class="module-price-row"><span class="module-price">290 €</span><a href="https://buy.stripe.com/REMPLACER_module-commercial" class="pay-btn">S'inscrire</a></div>
+          <div class="module-price-row"><span class="module-price">290 €</span><a href="https://REMPLACER_LIEN_SUMUP/module-commercial" class="pay-btn">S'inscrire</a></div>
         </div>
         <div class="module-card">
           <h3>Juridique et fiscal</h3><p>Quelle structure choisir, et comment l'utiliser.</p>
-          <div class="module-price-row"><span class="module-price">290 €</span><a href="https://buy.stripe.com/REMPLACER_module-juridique" class="pay-btn">S'inscrire</a></div>
+          <div class="module-price-row"><span class="module-price">290 €</span><a href="https://REMPLACER_LIEN_SUMUP/module-juridique" class="pay-btn">S'inscrire</a></div>
         </div>
         <div class="module-card">
           <h3>Achat-revente</h3><p>Sourcing, estimation, calcul de la marge réelle.</p>
-          <div class="module-price-row"><span class="module-price">340 €</span><a href="https://buy.stripe.com/REMPLACER_module-achat-revente" class="pay-btn">S'inscrire</a></div>
+          <div class="module-price-row"><span class="module-price">340 €</span><a href="https://REMPLACER_LIEN_SUMUP/module-achat-revente" class="pay-btn">S'inscrire</a></div>
         </div>
         <div class="module-card">
           <h3>Dépôt-vente</h3><p>Contrat, commission, gestion du stock.</p>
-          <div class="module-price-row"><span class="module-price">290 €</span><a href="https://buy.stripe.com/REMPLACER_module-depot-vente" class="pay-btn">S'inscrire</a></div>
+          <div class="module-price-row"><span class="module-price">290 €</span><a href="https://REMPLACER_LIEN_SUMUP/module-depot-vente" class="pay-btn">S'inscrire</a></div>
         </div>
         <div class="module-card is-key">
           <h3>Importation</h3><p>Toutes les démarches administratives, de A à Z.</p>
-          <div class="module-price-row"><span class="module-price">490 €</span><a href="https://buy.stripe.com/REMPLACER_module-importation" class="pay-btn">S'inscrire</a></div>
+          <div class="module-price-row"><span class="module-price">490 €</span><a href="https://REMPLACER_LIEN_SUMUP/module-importation" class="pay-btn">S'inscrire</a></div>
         </div>
         <div class="module-card">
           <h3>Accès et réseau</h3><p>Logiciels, contacts, parrainages, garantisseur.</p>
-          <div class="module-price-row"><span class="module-price">240 €</span><a href="https://buy.stripe.com/REMPLACER_module-acces-reseau" class="pay-btn">S'inscrire</a></div>
+          <div class="module-price-row"><span class="module-price">240 €</span><a href="https://REMPLACER_LIEN_SUMUP/module-acces-reseau" class="pay-btn">S'inscrire</a></div>
         </div>
       </div>
       <p class="closing-line">L'importation est le module qui change tout : c'est lui qui crée la marge.</p>
@@ -585,7 +585,7 @@
       </ul>
       <div class="path-price">2 990 €</div>
       <div class="path-price-note">Paiement en une fois. Programmes intensifs équivalents chez les organismes agréés : 2 000 à 8 000 €.</div>
-      <a href="https://buy.stripe.com/REMPLACER_programme-complet" class="btn btn-primary">S'inscrire au programme complet</a>
+      <a href="https://REMPLACER_LIEN_SUMUP/programme-complet" class="btn btn-primary">S'inscrire au programme complet</a>
     </div>
   </section>
 
