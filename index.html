@@ -950,10 +950,13 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
   var camera = new THREE.PerspectiveCamera(28, width / height, 0.1, 100);
 
   scene.add(new THREE.HemisphereLight(0xffffff, 0xD8D0BA, 1.4));
-  var key = new THREE.DirectionalLight(0xfff8ec, 2.1);
+  var key = new THREE.DirectionalLight(0xfff8ec, 2.6);
   key.position.set(4, 6, 3);
   scene.add(key);
-  var rim = new THREE.DirectionalLight(0xc9a24b, 0.7);
+  var fill = new THREE.DirectionalLight(0xffffff, 1.1);
+  fill.position.set(-4, 4, 5);
+  scene.add(fill);
+  var rim = new THREE.DirectionalLight(0xc9a24b, 0.8);
   rim.position.set(-5, 3, -4);
   scene.add(rim);
 
@@ -965,14 +968,37 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
   ground.position.y = -0.001;
   scene.add(ground);
 
-  // Reflets de carrosserie cohérents avec le studio clair plutôt qu'un
-  // environnement neutre par défaut.
-  var pmrem = new THREE.PMREMGenerator(renderer);
-  scene.environment = pmrem.fromScene(scene, 0.05).texture;
-  pmrem.dispose();
-  // Pas de post-traitement (bloom) : coûteux à chaque frame sur une scène de 113
-  // meshes, et c'est lui qui provoquait les halos disproportionnés signalés. Un
-  // rendu direct reste net et est nettement plus léger.
+  // Environnement de reflets dédié : une carrosserie brillante (peinture métallisée,
+  // chrome) a besoin de vraies variations de lumière à refléter pour "briller" —
+  // un environnement neutre (juste la scène elle-même, presque vide) donne une
+  // carrosserie plate et terne. On construit donc une petite "boîte à lumières"
+  // (quelques panneaux clairs/sombres autour de la voiture), qu'on capture une
+  // fois comme environnement de reflets puis qu'on jette : elle ne doit pas être
+  // visible dans le rendu final, seulement se refléter sur la carrosserie.
+  (function buildShinyEnvironment(){
+    var envScene = new THREE.Scene();
+    envScene.background = new THREE.Color(SCENE_BG);
+    function panel(w, h, color, x, y, z, rx, ry){
+      var mesh = new THREE.Mesh(
+        new THREE.PlaneGeometry(w, h),
+        new THREE.MeshBasicMaterial({ color: color, side: THREE.DoubleSide })
+      );
+      mesh.position.set(x, y, z);
+      mesh.rotation.set(rx, ry, 0);
+      envScene.add(mesh);
+    }
+    panel(30, 30, 0xffffff, 0, 16, 0, Math.PI / 2, 0);           // plafond clair
+    panel(24, 12, 0xfff6df, -16, 3, 0, 0, Math.PI / 2);          // bandeau latéral vif
+    panel(24, 12, 0xe9e2cc, 16, 3, 0, 0, -Math.PI / 2);          // bandeau latéral doux
+    panel(14, 6, 0xC9A24B, 0, 3, -16, 0, 0);                     // touche laiton en reflet
+    panel(30, 30, 0xB9AF92, 0, -9, 0, -Math.PI / 2, 0);          // sol plus sombre (contraste)
+    var pmrem = new THREE.PMREMGenerator(renderer);
+    scene.environment = pmrem.fromScene(envScene, 0.08).texture;
+    pmrem.dispose();
+  })();
+  // Pas de post-traitement (bloom) : coûteux à chaque frame et c'est lui qui
+  // provoquait les halos disproportionnés signalés précédemment. Un rendu
+  // direct, avec de vrais reflets d'environnement, reste net et léger.
 
   // ---- Chorégraphie caméra : tour complet à 360° autour du véhicule, avec deux
   // temps de zoom rapproché en cours de route (theta va de 0 à 360 sans jamais
@@ -992,44 +1018,36 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
   });
   var car = null;
   var showcaseLoading = document.getElementById('showcaseLoading');
-  // Chargement différé : le modèle n'est demandé que lorsque le visiteur
-  // approche de cette section, pas dès l'ouverture de la page — pour ne pas
-  // pénaliser le premier affichage (expérience réelle et référencement).
-  var modelLoadStarted = false;
-  function loadCarModel(){
-    if(modelLoadStarted) return;
-    modelLoadStarted = true;
-    new GLTFLoader().load('models/mercedes-sls-amg.glb', function(gltf){
-      car = gltf.scene;
-      var box = new THREE.Box3().setFromObject(car);
-      var size = new THREE.Vector3(); box.getSize(size);
-      var center = new THREE.Vector3(); box.getCenter(center);
-      var scale = 2.6 / Math.max(size.x, size.y, size.z);
-      car.scale.setScalar(scale);
-      car.position.x -= center.x * scale;
-      car.position.z -= center.z * scale;
-      car.position.y -= box.min.y * scale;
-      scene.add(car);
-      render();
-      if(showcaseLoading) showcaseLoading.classList.add('is-hidden');
-    }, function(xhr){
-      if(xhr.lengthComputable && showcaseLoading){
-        // Plafonné à 100 : la compression en transit peut faire dépasser ce
-        // ratio (le navigateur compte les octets reçus différemment du total
-        // annoncé), d'où le "111 %" déjà observé sans ce garde-fou.
-        var pct = Math.min(100, Math.round((xhr.loaded / xhr.total) * 100));
-        showcaseLoading.textContent = 'Chargement de l\'aperçu 3D… ' + pct + '%';
-      }
-    }, function(err){
-      console.error('Showcase 3D: échec du chargement du modèle', err);
-      if(showcaseLoading) showcaseLoading.textContent = 'Aperçu 3D indisponible pour le moment.';
-    });
-  }
-  // Se déclenche bien avant que la section soit réellement visible (marge de
-  // 1000px), pour que le modèle ait une chance d'être prêt à l'arrivée.
-  new IntersectionObserver(function(entries, obs){
-    if(entries[0].isIntersecting){ loadCarModel(); obs.disconnect(); }
-  }, { rootMargin: '1000px 0px' }).observe(scrollEl);
+  // Chargement dès l'ouverture de la page (pas différé) : le fichier est
+  // maintenant léger (16,5 Mo, contre 90 pour l'ancien modèle Porsche), donc
+  // le coût est raisonnable, et ça laisse le temps au modèle d'être prêt
+  // avant même que le visiteur n'arrive à cette section en scrollant. La page
+  // elle-même ne l'attend pas : rien n'est bloqué pendant ce chargement.
+  new GLTFLoader().load('models/mercedes-sls-amg.glb', function(gltf){
+    car = gltf.scene;
+    var box = new THREE.Box3().setFromObject(car);
+    var size = new THREE.Vector3(); box.getSize(size);
+    var center = new THREE.Vector3(); box.getCenter(center);
+    var scale = 2.6 / Math.max(size.x, size.y, size.z);
+    car.scale.setScalar(scale);
+    car.position.x -= center.x * scale;
+    car.position.z -= center.z * scale;
+    car.position.y -= box.min.y * scale;
+    scene.add(car);
+    render();
+    if(showcaseLoading) showcaseLoading.classList.add('is-hidden');
+  }, function(xhr){
+    if(xhr.lengthComputable && showcaseLoading){
+      // Plafonné à 100 : la compression en transit peut faire dépasser ce
+      // ratio (le navigateur compte les octets reçus différemment du total
+      // annoncé), d'où le "111 %" déjà observé sans ce garde-fou.
+      var pct = Math.min(100, Math.round((xhr.loaded / xhr.total) * 100));
+      showcaseLoading.textContent = 'Chargement de l\'aperçu 3D… ' + pct + '%';
+    }
+  }, function(err){
+    console.error('Showcase 3D: échec du chargement du modèle', err);
+    if(showcaseLoading) showcaseLoading.textContent = 'Aperçu 3D indisponible pour le moment.';
+  });
 
   function lerp(a, b, t){ return a + (b - a) * t; }
   var lerpedTarget = new THREE.Vector3();
