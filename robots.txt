@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://motorsportbytb.com/sitemap.xml
+Sitemap: https://motorsportbytb.github.io/motorsport-by-tb/sitemap.xml

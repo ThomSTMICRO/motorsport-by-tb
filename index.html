@@ -5,21 +5,21 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MOTORSPORT By TB — Mandataire automobile en Europe</title>
 <meta name="description" content="Mandataire automobile : nous cherchons, vérifions et importons pour vous le véhicule précis que vous voulez, partout en Europe. MOTORSPORT By TB, Cagnes-sur-Mer.">
-<link rel="canonical" href="https://motorsportbytb.com/">
+<link rel="canonical" href="https://motorsportbytb.github.io/motorsport-by-tb/">
 <meta name="theme-color" content="#12201A">
 
 <!-- Open Graph / partage social -->
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="MOTORSPORT By TB">
 <meta property="og:locale" content="fr_FR">
-<meta property="og:url" content="https://motorsportbytb.com/">
+<meta property="og:url" content="https://motorsportbytb.github.io/motorsport-by-tb/">
 <meta property="og:title" content="MOTORSPORT By TB — Mandataire automobile en Europe">
 <meta property="og:description" content="Mandataire automobile : nous cherchons, vérifions et importons pour vous le véhicule précis que vous voulez, partout en Europe.">
-<meta property="og:image" content="https://motorsportbytb.com/images/og/home.jpg">
+<meta property="og:image" content="https://motorsportbytb.github.io/motorsport-by-tb/images/og/home.jpg">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="MOTORSPORT By TB — Mandataire automobile en Europe">
 <meta name="twitter:description" content="Mandataire automobile : nous cherchons, vérifions et importons pour vous le véhicule précis que vous voulez, partout en Europe.">
-<meta name="twitter:image" content="https://motorsportbytb.com/images/og/home.jpg">
+<meta name="twitter:image" content="https://motorsportbytb.github.io/motorsport-by-tb/images/og/home.jpg">
 
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
@@ -42,8 +42,8 @@
   "@type": "AutomotiveBusiness",
   "name": "MOTORSPORT By TB",
   "description": "Mandataire automobile : recherche, vérification et importation de véhicules sur mesure, partout en Europe.",
-  "image": "https://motorsportbytb.com/images/og/home.jpg",
-  "url": "https://motorsportbytb.com/",
+  "image": "https://motorsportbytb.github.io/motorsport-by-tb/images/og/home.jpg",
+  "url": "https://motorsportbytb.github.io/motorsport-by-tb/",
   "telephone": "+33652871194",
   "email": "thomasbona.pro@gmail.com",
   "founder": { "@type": "Person", "name": "Thomas Bona" },
@@ -151,15 +151,6 @@
   .hero-actions .btn-outline{color:var(--on-dark);border-color:rgba(247,243,228,0.4);}
   .hero-actions .btn-outline:hover{border-color:var(--brass-on-dark);color:var(--brass-on-dark);box-shadow:0 0 0 1px var(--brass-on-dark) inset;}
 
-  /* ---------- Écran de chargement ---------- */
-  .site-preloader{position:fixed;inset:0;z-index:9999;background:var(--dark-0);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;transition:opacity .6s ease;}
-  .site-preloader.is-hidden{opacity:0;pointer-events:none;}
-  .preloader-mark{font-family:'Oswald',sans-serif;font-size:15px;letter-spacing:0.14em;text-transform:uppercase;color:var(--on-dark);}
-  .preloader-mark span{color:var(--brass-bright);}
-  .preloader-bar{width:220px;height:2px;background:rgba(247,243,228,0.15);border-radius:2px;overflow:hidden;}
-  .preloader-bar-fill{width:0%;height:100%;background:var(--brass-bright);transition:width .25s ease;}
-  .preloader-pct{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--on-dark-dim);}
-
   /* ---------- Section heads ---------- */
   .section-head{max-width:62ch;margin-bottom:40px;}
   .section-head h2{font-size:clamp(24px,3vw,32px);margin-bottom:12px;}
@@ -211,6 +202,8 @@
   .showcase-sticky{position:sticky;top:0;height:100vh;display:flex;align-items:center;justify-content:center;overflow:hidden;}
   .showcase-stage{position:absolute;inset:0;width:100%;height:100%;}
   .showcase-stage canvas{display:block;width:100%;height:100%;}
+  .showcase-loading{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--ivory-faint);white-space:nowrap;transition:opacity .4s ease;}
+  .showcase-loading.is-hidden{opacity:0;pointer-events:none;}
   /* Vignette douce pour fondre les bords du rendu WebGL dans le fond clair de
      la section, quel que soit l'arrière-plan exact de la scène 3D. */
   .showcase-sticky::after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 50%, transparent 45%, var(--bg-1) 100%);}
@@ -328,30 +321,6 @@
 </style>
 </head>
 <body>
-
-<div class="site-preloader" id="sitePreloader">
-  <div class="preloader-mark">MOTORSPORT <span>By TB</span></div>
-  <div class="preloader-bar"><div class="preloader-bar-fill" id="preloaderFill"></div></div>
-  <div class="preloader-pct" id="preloaderPct">Chargement…</div>
-</div>
-<script>
-(function(){
-  document.documentElement.style.overflow = 'hidden';
-  var hidden = false;
-  window.__hidePreloader = function(){
-    if(hidden) return;
-    hidden = true;
-    var el = document.getElementById('sitePreloader');
-    if(el) el.classList.add('is-hidden');
-    document.documentElement.style.overflow = '';
-  };
-  // Filet de sécurité : si le modèle 3D (gros fichier) tarde ou échoue à charger
-  // pour une raison quelconque (réseau, CDN bloqué chez le visiteur…), on ne
-  // laisse jamais quelqu'un bloqué derrière l'écran de chargement.
-  window.addEventListener('load', function(){ setTimeout(window.__hidePreloader, 4000); });
-  setTimeout(window.__hidePreloader, 15000);
-})();
-</script>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <symbol id="icon-car" viewBox="0 0 240 100">
@@ -524,7 +493,9 @@
     </div>
     <div class="showcase-scroll" id="showcaseScroll">
       <div class="showcase-sticky">
-        <div class="showcase-stage" id="showcaseStage" role="img" aria-label="Caméra 3D tournant autour d'une voiture de sport au fil du défilement"></div>
+        <div class="showcase-stage" id="showcaseStage" role="img" aria-label="Caméra 3D tournant autour d'une voiture de sport au fil du défilement">
+          <div class="showcase-loading" id="showcaseLoading">Chargement de l'aperçu 3D…</div>
+        </div>
         <div class="showcase-captions" id="showcaseCaptions">
           <p class="showcase-caption is-active" data-idx="0">Carrosserie inspectée au millimètre.</p>
           <p class="showcase-caption" data-idx="1">Mécanique vérifiée avant chaque proposition.</p>
@@ -1024,41 +995,54 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
   var WHEEL_NODE_NAME = 'Cylinder.009_24_57_157';
 
   var car = null;
-  var preloaderFill = document.getElementById('preloaderFill');
-  var preloaderPct = document.getElementById('preloaderPct');
-  new GLTFLoader().load('models/porsche-911-930-turbo.glb', function(gltf){
-    car = gltf.scene;
-    var box = new THREE.Box3().setFromObject(car);
-    var size = new THREE.Vector3(); box.getSize(size);
-    var center = new THREE.Vector3(); box.getCenter(center);
-    var scale = 2.6 / Math.max(size.x, size.y, size.z);
-    car.scale.setScalar(scale);
-    car.position.x -= center.x * scale;
-    car.position.z -= center.z * scale;
-    car.position.y -= box.min.y * scale;
-    scene.add(car);
-    car.updateMatrixWorld(true);
-    var wheel = car.getObjectByName(WHEEL_NODE_NAME);
-    if(wheel){
-      var wheelPos = new THREE.Vector3();
-      wheel.getWorldPosition(wheelPos);
-      checkpoints[1].target.copy(wheelPos);
-    }
-    render();
-    if(window.__hidePreloader) window.__hidePreloader();
-  }, function(xhr){
-    if(xhr.lengthComputable && preloaderFill && preloaderPct){
-      // Plafonné à 100 : la compression en transit peut faire dépasser ce
-      // ratio (le navigateur compte les octets reçus différemment du total
-      // annoncé), d'où le "111 %" observé sans ce garde-fou.
-      var pct = Math.min(100, Math.round((xhr.loaded / xhr.total) * 100));
-      preloaderFill.style.width = pct + '%';
-      preloaderPct.textContent = pct + '%';
-    }
-  }, function(err){
-    console.error('Showcase 3D: échec du chargement du modèle', err);
-    if(window.__hidePreloader) window.__hidePreloader();
-  });
+  var showcaseLoading = document.getElementById('showcaseLoading');
+  // Chargement différé : le modèle (lourd, ~90 Mo) n'est demandé que lorsque le
+  // visiteur approche de cette section, pas dès l'ouverture de la page — sans
+  // ça, chaque chargement du site téléchargerait 90 Mo avant même d'afficher
+  // le premier écran, ce qui pénaliserait à la fois l'expérience réelle et le
+  // référencement (Core Web Vitals).
+  var modelLoadStarted = false;
+  function loadCarModel(){
+    if(modelLoadStarted) return;
+    modelLoadStarted = true;
+    new GLTFLoader().load('models/porsche-911-930-turbo.glb', function(gltf){
+      car = gltf.scene;
+      var box = new THREE.Box3().setFromObject(car);
+      var size = new THREE.Vector3(); box.getSize(size);
+      var center = new THREE.Vector3(); box.getCenter(center);
+      var scale = 2.6 / Math.max(size.x, size.y, size.z);
+      car.scale.setScalar(scale);
+      car.position.x -= center.x * scale;
+      car.position.z -= center.z * scale;
+      car.position.y -= box.min.y * scale;
+      scene.add(car);
+      car.updateMatrixWorld(true);
+      var wheel = car.getObjectByName(WHEEL_NODE_NAME);
+      if(wheel){
+        var wheelPos = new THREE.Vector3();
+        wheel.getWorldPosition(wheelPos);
+        checkpoints[1].target.copy(wheelPos);
+      }
+      render();
+      if(showcaseLoading) showcaseLoading.classList.add('is-hidden');
+    }, function(xhr){
+      if(xhr.lengthComputable && showcaseLoading){
+        // Plafonné à 100 : la compression en transit peut faire dépasser ce
+        // ratio (le navigateur compte les octets reçus différemment du total
+        // annoncé), d'où le "111 %" déjà observé sans ce garde-fou.
+        var pct = Math.min(100, Math.round((xhr.loaded / xhr.total) * 100));
+        showcaseLoading.textContent = 'Chargement de l\'aperçu 3D… ' + pct + '%';
+      }
+    }, function(err){
+      console.error('Showcase 3D: échec du chargement du modèle', err);
+      if(showcaseLoading) showcaseLoading.textContent = 'Aperçu 3D indisponible pour le moment.';
+    });
+  }
+  // Se déclenche bien avant que la section soit réellement visible (marge de
+  // 1000px), pour que le modèle ait une chance d'être prêt à l'arrivée.
+  new IntersectionObserver(function(entries, obs){
+    if(entries[0].isIntersecting){ loadCarModel(); obs.disconnect(); }
+  }, { rootMargin: '1000px 0px' }).observe(scrollEl);
 
   function lerp(a, b, t){ return a + (b - a) * t; }
   var lerpedTarget = new THREE.Vector3();
