@@ -488,10 +488,13 @@
          identité + IBAN à renseigner comme pour tout compte d'encaissement.
       2. Dans l'app SumUp, aller dans "Paiements par lien" ("Payment Links")
          > créer un nouveau lien à montant fixe.
-      3. Créer un lien par module/programme, avec le prix affiché sur le site
+      3. IMPORTANT : activer le bouton "Lien réutilisable" / "Reusable link"
+         avant de valider — sans ça, le lien devient invalide dès le premier
+         client qui paie. Avec, le même lien sert à tous les clients suivants.
+      4. Créer un lien par module/programme, avec le prix affiché sur le site
          (ex. "Module Commercial" à 290 €, "Programme complet" à 2 990 €...),
          un lien par ligne du tableau ci-dessous.
-      4. Copier l'URL générée par SumUp et remplacer ici chaque
+      5. Copier l'URL générée par SumUp et remplacer ici chaque
          "https://REMPLACER_LIEN_SUMUP/..." par l'URL réelle correspondante
          (rechercher "REMPLACER_LIEN_SUMUP" dans ce fichier, 7 occurrences).
     Aucune autre modification du site n'est nécessaire : ce sont de simples
